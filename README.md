@@ -20,6 +20,12 @@ Open <http://127.0.0.1:8000/>. Create a local account in a second terminal with:
 
 The SQLite database is created locally as `db.sqlite3`. Do not use this development configuration for deployment.
 
+Review [compliance readiness](docs/COMPLIANCE_READINESS.md) before using real customer data or hosting the service. It records the current app boundary and India-specific operator responsibilities; it is not a legal certification.
+
+## Security configuration
+
+Local development defaults to `DEBUG=True`, binds to loopback in `start-local.bat`, and generates a fresh secret key when the server starts. Login locks out a username/IP pair after five failed attempts in a rolling 15-minute window. Sessions expire after eight hours and when the browser closes. Signed-in users can change passwords, and sign-out requires a CSRF-protected POST. For production, set `DJANGO_DEBUG=false`, provide a private high-entropy `DJANGO_SECRET_KEY`, and set `DJANGO_ALLOWED_HOSTS` to the exact hostnames before starting Django. Production mode redirects to HTTPS and enables secure session/CSRF cookies and one-hour HSTS. HSTS subdomain and browser-preload policies remain off until the real domain and every subdomain are confirmed. Never commit secrets. See [the security review](docs/SECURITY_REVIEW.md) for the tested controls and remaining launch work.
+
 ## Follow-ups and catalogue CSV
 
 Use **Follow-ups** to review open reminders. Each enquiry can have dated reminders, and a staff member marks them complete manually. WhatsApp opens only from the explicit link on an enquiry and never sends a message automatically.
@@ -50,8 +56,3 @@ regression tests, not a substitute for a buyer acceptance test.
 **Current security boundary:** records are separated per login/user in the
 local demo. Shared company accounts and multi-user approval hierarchies require
 additional design before any production rollout.
-
-
-## Security configuration
-
-Local development defaults to `DEBUG=True`, binds to loopback in `start-local.bat`, and generates a fresh secret key when the server starts. For production, set `DJANGO_DEBUG=false`, provide a private high-entropy `DJANGO_SECRET_KEY`, and set `DJANGO_ALLOWED_HOSTS` to the exact hostnames before starting Django. Production mode redirects to HTTPS and enables secure session/CSRF cookies and one-hour HSTS. HSTS subdomain and browser-preload policies remain off until the real domain and every subdomain are confirmed. Never commit secrets. See [the security review](docs/SECURITY_REVIEW.md) for the tested controls and remaining launch work.

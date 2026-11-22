@@ -23,12 +23,22 @@ class CustomerForm(StyledModelForm):
     class Meta:
         model = Customer
         fields = ["name", "company_name", "email", "phone", "billing_address", "notes"]
+        help_texts = {
+            "email": "Store business contact details only when you are authorised to do so.",
+            "phone": "Store business contact details only when you are authorised to do so.",
+            "notes": "Avoid sensitive personal data; keep only details needed for this trading relationship.",
+        }
 
 
 class SupplierForm(StyledModelForm):
     class Meta:
         model = Supplier
         fields = ["name", "company_name", "email", "phone", "address", "notes"]
+        help_texts = {
+            "email": "Store business contact details only when you are authorised to do so.",
+            "phone": "Store business contact details only when you are authorised to do so.",
+            "notes": "Avoid sensitive personal data; keep only details needed for this trading relationship.",
+        }
 
 
 class ProductForm(StyledModelForm):

@@ -605,6 +605,7 @@ class QuotePipelineAndPDFBoundaryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF-"))
+        self.assertIn(b"NOT A TAX INVOICE", response.content)
         self.assertIn(b"Pipeline customer", response.content)
         self.assertIn(b"Pay within 30 days", response.content)
         self.assertNotIn(b"<script>", response.content)

@@ -24,6 +24,8 @@
 | 2026-11-22 | Follow-ups and hardening | Attach dated reminders to enquiries; staff mark completion manually. Use enquiry states New, In progress and Closed, and quote states move through Ready/Approved, Sent, then Accepted/Lost (Expired only after the validity date). New quotes default to seven days of validity, which remains an editable assumption. WhatsApp links appear only for valid phone formats, open with an explicit staff click, and do not prefill or send a message. Product CSV import/export uses a fixed eight-column catalogue schema, validates all rows before an atomic import, is scoped to the signed-in owner, caps uploads at 1 MB / 500 rows, and prefixes spreadsheet formula-like exported cells with an apostrophe. | Provides local follow-up tracking and controlled data portability without background messaging, supplier rates, customer contacts, or cross-account exports | Yes |
 | 2026-11-22 | Security review | Generate a random development secret key; require `DJANGO_SECRET_KEY` and explicit allowed hosts with debug disabled; enable HTTPS redirect, secure cookies and one-hour HSTS in production mode; set a 12-character minimum with Django's built-in password validators; rotate the weak local demo admin credential. Keep HSTS subdomain/preload flags off until the real domain and all subdomains are confirmed. | Removes default-key, debug, weak-password and cookie/header risks while avoiding a long-lived HSTS policy for an unconfirmed domain | Yes |
 | 2026-11-22 | Repository setup | Seed the empty `b2bproject` repository on an orphan `development` branch with the existing tested MVP; leave `main` untouched. | Honors the branch-only publishing constraint without adding a commit to `main` | Yes |
+| 2026-11-22 | Security and compliance readiness | Limit login attempts with django-axes; mark generated quotation PDFs as not tax invoices; remind users to minimize personal data; document India-specific operator obligations and unresolved release checks. | Adds practical application safeguards without claiming that software alone certifies legal compliance | Yes |
+| 2026-11-22 | Account safeguards | Expire sessions after eight hours and at browser close; use Django's password-change views and POST-only logout with CSRF protection. | Reduces exposure from unattended sessions while retaining standard Django account behavior | Yes |
 
 ## Questions for the next morning review
 1. Should the first demo focus on stainless steel only or include MS/alloy products?
@@ -35,7 +37,8 @@
 7. Should unprefixed ten-digit phone numbers always be treated as Indian numbers when opening WhatsApp?
 8. Are the selected quotation outcomes and follow-up reminder fields sufficient for the pilot pipeline?
 9. What legal company name, logo and quotation contact details should replace the demo document identity?
-10. What production hostname and subdomains will be HTTPS-only, and which shared cache should enforce login throttling across workers before any public launch?
+10. What production hostname and subdomains will be HTTPS-only, and which trusted TLS proxy will terminate HTTPS and provide the client IP to login throttling?
+11. Who will own the privacy contact, data retention schedule, incident response, India-based log storage, GST configuration, and any required data-processor contracts for the hosted service?
 
 Questions do not block unrelated safe implementation. Never fabricate an answer; mark the relevant workflow as a configurable pilot assumption.
 

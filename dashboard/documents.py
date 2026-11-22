@@ -107,6 +107,8 @@ def build_quote_pdf(quote):
         story.extend([Spacer(1, 3 * mm), Paragraph("<b>Delivery terms</b>", small), Paragraph(_safe(quote.delivery_terms), small)])
     story.extend([
         Spacer(1, 5 * mm),
+        Paragraph("<b>QUOTATION ONLY - NOT A TAX INVOICE</b>", small),
+        Spacer(1, 2 * mm),
         Paragraph("Tax rate and commercial terms are shown as configured for this quotation.", small),
     ])
 

@@ -248,3 +248,19 @@ form[aria-busy="true"] button[type=submit] { cursor: progress; opacity: .75; }
 .pipeline-grid .metric { padding: .7rem; border-inline-start: 3px solid var(--border); }
 .pipeline-grid .metric:hover { border-color: var(--blue); background: var(--blue-soft); }
 .financials { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--border); }
+
+.table-wide { overflow-wrap: normal; }
+.table-wide thead th { min-width: 6.5rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .button, button[type="submit"] { position: relative; }
+  .button:active::after, button[type="submit"]:active::after {
+    content: ""; position: absolute; pointer-events: none;
+    width: .65rem; height: .65rem; top: 50%; left: 50%;
+    border-radius: 50%; background: currentColor;
+    animation: tap-bubble .22s ease-out forwards;
+  }
+  @keyframes tap-bubble {
+    from { transform: translate(-50%, -50%) scale(.5); opacity: .3; }
+    to { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+  }
+}

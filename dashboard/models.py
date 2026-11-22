@@ -80,6 +80,35 @@ class TeamInvitation(models.Model):
         return self.expires_at <= timezone.now()
 
 
+class AuditEvent(models.Model):
+    """Record sensitive workspace changes without copying commercial values or notes."""
+
+    class Action(models.TextChoices):
+        WORKSPACE_RENAMED = "workspace_renamed", "Workspace renamed"
+        INVITATION_CREATED = "invitation_created", "Team invitation created"
+        INVITATION_ACCEPTED = "invitation_accepted", "Team invitation accepted"
+        INVITATION_REVOKED = "invitation_revoked", "Team invitation revoked"
+        MEMBER_ROLE_CHANGED = "member_role_changed", "Team member role changed"
+        MEMBER_REMOVED = "member_removed", "Team member removed"
+        PRICING_UPDATED = "pricing_updated", "Quote pricing guardrails changed"
+        QUOTE_APPROVED = "quote_approved", "Quotation approved"
+        QUOTE_STATUS_CHANGED = "quote_status_changed", "Quotation status changed"
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="audit_events")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="business_audit_events",
+    )
+    action = models.CharField(max_length=32, choices=Action.choices)
+    object_type = models.CharField(max_length=24)
+    object_id = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["owner", "-created_at"], name="audit_owner_created_idx")]
+
+
 class OwnedRecord(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)

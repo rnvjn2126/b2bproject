@@ -8,6 +8,7 @@
 - django-axes blocks a username/IP pair after five failed logins in a rolling 15-minute window and returns `429` with `Retry-After`.
 - CSRF protects state changes. The app scopes customer, supplier, product, enquiry, offer, quote, follow-up, pricing, PDF, and CSV access to the company owner account. Invited teammates share that account's records; owner and manager roles control pricing changes and quote approvals, while only owners manage membership.
 - Team invitations use a high-entropy one-time bearer token whose SHA-256 digest is stored, expire after 72 hours, are email-bound, require the signed-in email for existing accounts, and can be revoked by the owner. Invitation delivery is manual; the app sends no email.
+- Owners and managers can view an account-scoped activity history of quote approvals/status changes, pricing guardrail changes, and team access changes. Entries omit rates, margins, invitation emails, and free-text notes.
 - CSV imports validate the entire file before writing and cap files at 1 MB / 500 rows. Exports escape formula-like cells.
 - Customer quotes omit procurement prices and margins. Quote pages and PDFs reject records owned by another account, and the PDF is labelled as not a tax invoice.
 
@@ -17,21 +18,22 @@
 - An untrusted `Host` returned `400` in production-mode configuration.
 - Fifth bad login from a username/IP pair returned `429`; the correct password remained blocked for that pair, while another user from another IP could log in.
 - Password change used Django validation and kept the current user signed in. `GET` logout returned `405`; CSRF-protected `POST` signed out.
-- Existing tests cover multiple users, shared workspace boundaries, sales/manager permissions, invitation acceptance and revocation, quote pricing and approval, supplier comparisons, PDF confidentiality, follow-ups, and CSV constraints.
+- Existing tests cover multiple users, shared workspace boundaries, sales/manager permissions, invitation acceptance and revocation, activity history, quote pricing and approval, supplier comparisons, PDF confidentiality, follow-ups, and CSV constraints.
 
 ## Verification status
 
 - `manage.py check`: passed.
 - `manage.py makemigrations --check --dry-run`: passed; no missing model migrations.
 - `manage.py test dashboard.test_security --noinput`: passed, 8 tests.
-- `manage.py test dashboard.test_teams --noinput`: passed, 7 tests covering invitations, membership, shared data, and role boundaries.
-- `manage.py test --noinput`: passed, 69 tests across multiple synthetic users and records.
+- `manage.py test dashboard.test_teams --noinput`: passed, 8 tests covering invitations, membership, shared data, activity history, and role boundaries.
+- `manage.py test --noinput`: passed, 70 tests across multiple synthetic users and records.
 - Production-mode `manage.py check --deploy` reported only `security.W005` and `security.W021`, because HSTS subdomain coverage and browser preload are intentionally disabled pending domain confirmation.
 
 ## Remaining launch work
 
 - Confirm the production hostname, HTTPS-only subdomains, TLS proxy, forwarded client-IP behavior, and shared production database. Axes' default database handler depends on a shared durable database across workers.
 - The shared workspace currently gives all invited teammates company-wide record visibility. Branch- and salesperson-level restrictions and a tamper-evident activity log are not implemented.
+- The activity history is an application feature, not a tamper-evident security log or a substitute for legally required infrastructure log retention.
 - Configure secret storage, encryption/key management, backups, monitoring, and secure India-based infrastructure logs. Application tests do not verify provider operations.
 - Assign privacy and incident-response owners; review retention, notice/rights handling, subprocessors, processor contracts, incident reporting, and tax treatment with Indian counsel and a chartered accountant.
 - Do not use the local SQLite configuration or quotation PDF as a production tax-invoice service.

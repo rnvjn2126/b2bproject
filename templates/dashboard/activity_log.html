@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Workspace activity | Steel Quotes{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Workspace activity</h1>
+  <p>Recent approvals, pricing-guardrail changes, and team access changes. Commercial values and notes are not copied into this log.</p>
+  {% for event in page %}
+    <article class="row">
+      <strong>{{ event.get_action_display }}</strong>
+      <span> · {{ event.object_type|title }} #{{ event.object_id }}</span>
+      <span> · {% if event.actor %}{{ event.actor.get_username }}{% else %}Former user{% endif %}</span>
+      <time datetime="{{ event.created_at|date:'c' }}"> · {{ event.created_at|date:"j M Y, H:i" }}</time>
+    </article>
+  {% empty %}<p>No recorded activity yet.</p>{% endfor %}
+  {% if page.has_previous or page.has_next %}
+    <nav class="pagination" aria-label="Activity pages">
+      {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Newer</a>{% endif %}
+      <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Older</a>{% endif %}
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}

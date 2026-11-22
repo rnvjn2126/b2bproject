@@ -25,7 +25,7 @@ from .accounts import (
     account_owner, business_account_for, can_manage_account, can_manage_team, user_can_join_account,
 )
 from .models import (
-    BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings,
+    AuditEvent, BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings,
     RFQ, RFQLine, Supplier, SupplierOffer, TeamInvitation, TeamMembership,
 )
 
@@ -91,9 +91,17 @@ def team_list(request):
 
         action = request.POST.get("action")
         if action == "rename":
+            old_name = account.name
             account_form = BusinessAccountForm(request.POST, instance=account)
             if account_form.is_valid():
-                account_form.save()
+                with transaction.atomic():
+                    account_form.save()
+                    if account.name != old_name:
+                        AuditEvent.objects.create(
+                            owner=account.owner, actor=request.user,
+                            action=AuditEvent.Action.WORKSPACE_RENAMED,
+                            object_type="workspace", object_id=str(account.pk),
+                        )
                 return redirect("dashboard:team_list")
         elif action == "invite":
             invitation_form = TeamInvitationForm(request.POST, account=account)
@@ -114,7 +122,13 @@ def team_list(request):
                         expires_at=timezone.now() + timedelta(hours=72),
                     )
                     invitation.full_clean()
-                    invitation.save()
+                    with transaction.atomic():
+                        invitation.save()
+                        AuditEvent.objects.create(
+                            owner=account.owner, actor=request.user,
+                            action=AuditEvent.Action.INVITATION_CREATED,
+                            object_type="invitation", object_id=str(invitation.pk),
+                        )
                     request.session["team_invite_url"] = request.build_absolute_uri(
                         reverse("dashboard:team_invite_accept", args=[token]),
                     )
@@ -132,6 +146,7 @@ def team_list(request):
         ),
         "role_choices": TeamMembership.Role.choices,
         "is_owner": is_owner,
+        "can_manage_account": can_manage_account(request.user, account),
         "invite_url": request.session.pop("team_invite_url", "") if is_owner else "",
     })
 
@@ -143,7 +158,13 @@ def team_member_remove(request, pk):
     if not account or not can_manage_team(request.user, account):
         raise PermissionDenied("Only the business owner can remove team members.")
     member = get_object_or_404(account.memberships, pk=pk)
-    member.delete()
+    with transaction.atomic():
+        member.delete()
+        AuditEvent.objects.create(
+            owner=account.owner, actor=request.user,
+            action=AuditEvent.Action.MEMBER_REMOVED,
+            object_type="team_member", object_id=str(pk),
+        )
     return redirect("dashboard:team_list")
 
 
@@ -157,9 +178,16 @@ def team_member_role(request, pk):
     role = request.POST.get("role")
     if role not in TeamMembership.Role.values:
         return HttpResponseBadRequest("Choose a valid team role.")
-    member.role = role
-    member.full_clean()
-    member.save(update_fields=["role"])
+    if role != member.role:
+        with transaction.atomic():
+            member.role = role
+            member.full_clean()
+            member.save(update_fields=["role"])
+            AuditEvent.objects.create(
+                owner=account.owner, actor=request.user,
+                action=AuditEvent.Action.MEMBER_ROLE_CHANGED,
+                object_type="team_member", object_id=str(member.pk),
+            )
     return redirect("dashboard:team_list")
 
 
@@ -173,7 +201,13 @@ def team_invitation_revoke(request, pk):
         account.invitations.filter(accepted_at__isnull=True, revoked_at__isnull=True), pk=pk,
     )
     invitation.revoked_at = timezone.now()
-    invitation.save(update_fields=["revoked_at"])
+    with transaction.atomic():
+        invitation.save(update_fields=["revoked_at"])
+        AuditEvent.objects.create(
+            owner=account.owner, actor=request.user,
+            action=AuditEvent.Action.INVITATION_REVOKED,
+            object_type="invitation", object_id=str(invitation.pk),
+        )
     return redirect("dashboard:team_list")
 
 
@@ -220,6 +254,11 @@ def team_invite_accept(request, token):
                 membership.save()
                 invitation.accepted_at = timezone.now()
                 invitation.save(update_fields=["accepted_at"])
+                AuditEvent.objects.create(
+                    owner=invitation.account.owner, actor=accepted_user,
+                    action=AuditEvent.Action.INVITATION_ACCEPTED,
+                    object_type="invitation", object_id=str(invitation.pk),
+                )
             else:
                 accepted_user = None
 
@@ -235,6 +274,16 @@ def team_invite_accept(request, token):
     return render(request, "registration/team_invite_accept.html", {
         "invitation": invitation, "form": form, "error": error, "can_accept": can_accept,
     })
+
+
+@login_required
+def activity_log(request):
+    if not can_manage_account(request.user):
+        raise PermissionDenied("Only the owner or a manager can view workspace activity.")
+    owner = account_owner(request.user)
+    events = AuditEvent.objects.filter(owner=owner).select_related("actor")
+    page = Paginator(events, 50).get_page(request.GET.get("page"))
+    return render(request, "dashboard/activity_log.html", {"page": page})
 
 
 @login_required
@@ -466,7 +515,14 @@ def quote_pricing_settings(request):
         raise PermissionDenied("Only the owner or a manager can change quote pricing guardrails.")
     form = QuotePricingSettingsForm(request.POST or None, instance=settings)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        if form.has_changed():
+            with transaction.atomic():
+                form.save()
+                AuditEvent.objects.create(
+                    owner=owner, actor=request.user,
+                    action=AuditEvent.Action.PRICING_UPDATED,
+                    object_type="pricing_settings", object_id=str(settings.pk),
+                )
         return redirect("dashboard:quote_pricing_settings")
     return render(request, "dashboard/quote_pricing_settings.html", {"form": form, "can_edit": can_edit})
 
@@ -681,8 +737,14 @@ def quote_update_status(request, pk):
     else:
         quote.closed_at = now
     quote.status = target
-    quote.full_clean()
-    quote.save(update_fields=["status", "sent_at", "closed_at", "updated_at"])
+    with transaction.atomic():
+        quote.full_clean()
+        quote.save(update_fields=["status", "sent_at", "closed_at", "updated_at"])
+        AuditEvent.objects.create(
+            owner=owner, actor=request.user,
+            action=AuditEvent.Action.QUOTE_STATUS_CHANGED,
+            object_type="quote", object_id=str(quote.pk),
+        )
     return redirect("dashboard:quote_detail", pk=quote.pk)
 
 
@@ -738,8 +800,14 @@ def quote_approve(request, pk):
     quote.status = Quote.Status.APPROVED
     quote.approved_by = request.user
     quote.approved_at = timezone.now()
-    quote.full_clean()
-    quote.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+    with transaction.atomic():
+        quote.full_clean()
+        quote.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+        AuditEvent.objects.create(
+            owner=owner, actor=request.user,
+            action=AuditEvent.Action.QUOTE_APPROVED,
+            object_type="quote", object_id=str(quote.pk),
+        )
     return redirect("dashboard:quote_detail", pk=quote.pk)
 
 

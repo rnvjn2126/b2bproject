@@ -17,6 +17,7 @@ A small or midsize Indian steel trader receives enquiries by phone, WhatsApp and
 6. Branded HTML/PDF quotation with revisions, expiry and payment/delivery terms.
 7. Quote pipeline, follow-up dates and manual WhatsApp click-to-chat.
 8. Safe CSV import/export, access-control hardening and mobile usability.
+9. Shared team workspaces with owner-managed invitations, owner/manager quote approvals, and an owner/manager activity history for high-impact changes.
 
 ## Commercial rules and definitions
 - Currency: INR by default. Use decimal arithmetic, not binary float, for money.

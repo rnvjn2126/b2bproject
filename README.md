@@ -24,6 +24,8 @@ The workspace dashboard includes a private, account-scoped checklist for adding 
 
 The business owner can name the workspace and create a one-time invitation link for a teammate. Links expire in 72 hours; the app stores only a digest and does not email invitations. Teammates must use the invited email. Owners alone manage member roles and access. Owners and managers can approve below-floor quotations and edit pricing guardrails; sales members can work in the shared company records but cannot perform those actions. This is a local MVP control, not a production identity or compliance certification.
 
+Owners and managers can review selected workspace activity, including quote approvals and status changes, pricing changes, and membership changes. Entries do not store rates, margins, invitation emails, or user-entered notes. This application history is not tamper-evident.
+
 The SQLite database is created locally as `db.sqlite3`. Do not use this development configuration for deployment.
 
 Review [compliance readiness](docs/COMPLIANCE_READINESS.md) before using real customer data or hosting the service. It records the current app boundary and India-specific operator responsibilities; it is not a legal certification.

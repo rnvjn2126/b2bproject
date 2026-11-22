@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import BusinessAccount, Customer, Quote, QuotePricingSettings, RFQ, TeamInvitation, TeamMembership
+from .models import AuditEvent, BusinessAccount, Customer, Quote, QuotePricingSettings, RFQ, TeamInvitation, TeamMembership
 
 
 class TeamWorkspaceTests(TestCase):
@@ -39,6 +39,9 @@ class TeamWorkspaceTests(TestCase):
         self.assertEqual(response.status_code, 302)
         invitation = TeamInvitation.objects.get()
         self.assertEqual(invitation.email, "teammate@example.test")
+        self.assertTrue(AuditEvent.objects.filter(
+            owner=self.owner, actor=self.owner, action=AuditEvent.Action.INVITATION_CREATED,
+        ).exists())
         invite_url = self.client.session["team_invite_url"]
         token = invite_url.split("/team/invitations/", 1)[1].split("/", 1)[0]
         self.assertEqual(invitation.token_digest, hashlib.sha256(token.encode()).hexdigest())
@@ -56,6 +59,9 @@ class TeamWorkspaceTests(TestCase):
         self.assertEqual(teammate.team_membership.account, self.account)
         self.assertEqual(teammate.team_membership.role, TeamMembership.Role.MANAGER)
         self.assertIsNotNone(TeamInvitation.objects.get(pk=invitation.pk).accepted_at)
+        self.assertTrue(AuditEvent.objects.filter(
+            owner=self.owner, actor=teammate, action=AuditEvent.Action.INVITATION_ACCEPTED,
+        ).exists())
         self.assertEqual(Customer.objects.filter(owner=self.owner).count(), 1)
 
         self.assertContains(self.client.get(reverse("dashboard:customer_list")), "Company-wide customer")
@@ -86,11 +92,21 @@ class TeamWorkspaceTests(TestCase):
         self.quote.refresh_from_db()
         self.assertEqual(self.quote.approved_by, manager)
         self.assertEqual(self.quote.status, Quote.Status.APPROVED)
+        self.assertTrue(AuditEvent.objects.filter(
+            owner=self.owner, actor=manager, action=AuditEvent.Action.QUOTE_APPROVED,
+        ).exists())
         manager_settings = self.client.post(settings_url, {
             "target_margin_percent": "15", "minimum_margin_percent": "8", "maximum_discount_percent": "5",
         })
         self.assertRedirects(manager_settings, settings_url)
         self.assertEqual(QuotePricingSettings.objects.get(owner=self.owner).target_margin_percent, 15)
+        self.assertTrue(AuditEvent.objects.filter(
+            owner=self.owner, actor=manager, action=AuditEvent.Action.PRICING_UPDATED,
+        ).exists())
+        self.assertContains(self.client.get(reverse("dashboard:activity_log")), "Quotation approved")
+
+        self.client.force_login(sales)
+        self.assertEqual(self.client.get(reverse("dashboard:activity_log")).status_code, 403)
 
     def test_team_members_cannot_access_another_business_workspace(self):
         teammate = get_user_model().objects.create_user(username="workspace-member", password="Member-Test-Password-9!")
@@ -111,6 +127,9 @@ class TeamWorkspaceTests(TestCase):
         self.assertRedirects(response, reverse("dashboard:team_list"))
         invitation.refresh_from_db()
         self.assertIsNotNone(invitation.revoked_at)
+        self.assertTrue(AuditEvent.objects.filter(
+            owner=self.owner, actor=self.owner, action=AuditEvent.Action.INVITATION_REVOKED,
+        ).exists())
         self.assertEqual(self.client.get(invite_url).status_code, 404)
 
     def test_invitation_is_bound_to_email_and_an_existing_user_can_join(self):
@@ -160,3 +179,15 @@ class TeamWorkspaceTests(TestCase):
         self.assertRedirects(response, reverse("dashboard:team_list"))
         membership.refresh_from_db()
         self.assertEqual(membership.role, TeamMembership.Role.MANAGER)
+        self.assertTrue(AuditEvent.objects.filter(
+            owner=self.owner, actor=self.owner, action=AuditEvent.Action.MEMBER_ROLE_CHANGED,
+        ).exists())
+
+    def test_activity_log_is_scoped_to_the_company(self):
+        other = get_user_model().objects.create_user(username="audit-outsider", password="Audit-Outsider-Password-98!")
+        AuditEvent.objects.create(
+            owner=other, actor=other, action=AuditEvent.Action.WORKSPACE_RENAMED,
+            object_type="workspace", object_id="private-company",
+        )
+        self.assertContains(self.client.get(reverse("dashboard:activity_log")), "No recorded activity yet")
+        self.assertNotContains(self.client.get(reverse("dashboard:activity_log")), "audit-outsider")

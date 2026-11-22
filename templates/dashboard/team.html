@@ -4,6 +4,7 @@
 <section class="card">
   <h1>Business workspace</h1>
   <p>Shared workspace for {{ account.name }}. Owner: {{ account.owner.get_username }}.</p>
+  {% if can_manage_account %}<p><a href="{% url 'dashboard:activity_log' %}">View recent workspace activity</a></p>{% endif %}
   {% if is_owner %}
     <h2>Workspace name</h2>
     <form method="post">

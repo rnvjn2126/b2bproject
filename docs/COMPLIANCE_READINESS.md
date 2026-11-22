@@ -6,6 +6,7 @@
 
 - Customer and supplier records are scoped to the signed-in account. Forms remind staff to store only authorised business contact details and avoid sensitive personal information.
 - Business workspaces can store teammate account names and invitation email addresses. Invited sales and manager accounts share company-wide business records; only owners manage team membership. Invitations are manual, one-time, email-bound, revocable, and expire after 72 hours.
+- Owners and managers can review an in-app history of selected quote, pricing, and team-access changes. This operational view is editable through the application database and is not a tamper-resistant or retention-compliant infrastructure log.
 - Passwords use Django's similarity, common-password, numeric-password, and 12-character minimum checks. django-axes locks a username/IP pair after five failed attempts in a rolling 15-minute window and returns HTTP 429 with `Retry-After`.
 - CSRF protection, secure production cookies, HTTPS redirect, host validation, content-type and framing headers, protected quotation PDFs, and owner-scoped exports are enabled or tested.
 - Quotation PDFs say **QUOTATION ONLY - NOT A TAX INVOICE**. The app captures a user-entered tax percentage for a sales quotation; it does not determine tax classification, issue GST invoices, submit returns, or generate e-invoices.

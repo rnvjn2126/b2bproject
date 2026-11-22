@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import (
-    Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings, RFQ,
+    AuditEvent, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings, RFQ,
     RFQLine, Supplier, SupplierOffer,
 )
 
@@ -645,6 +645,10 @@ class QuotePipelineAndPDFBoundaryTests(TestCase):
         quote.refresh_from_db()
         self.assertEqual(quote.status, Quote.Status.ACCEPTED)
         self.assertIsNotNone(quote.closed_at)
+        self.assertEqual(AuditEvent.objects.filter(
+            owner=self.user, actor=self.user, action=AuditEvent.Action.QUOTE_STATUS_CHANGED,
+            object_type="quote", object_id=str(quote.pk),
+        ).count(), 2)
         self.assertEqual(self.client.get(update_url).status_code, 405)
 
     def test_quote_document_terms_tax_and_revisions_are_snapshotted(self):

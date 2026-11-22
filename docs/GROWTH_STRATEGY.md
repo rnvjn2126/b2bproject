@@ -13,10 +13,10 @@ Public vendor pages show a range of expectations in this market. QuoteMitra emph
 | Segment | Likely buying job | Product experience to prioritize | Evidence of fit |
 |---|---|---|---|
 | Small owner-led trader | Replace repeated spreadsheet and chat work without a long setup | One-user setup, product CSV import, synthetic guided example, fast quote workflow, simple mobile pages, clear data export | First enquiry-to-quote completion, time to first quote, repeat use |
-| Midsize distributor | Coordinate salespeople and protect commercial guardrails | Shared company workspace, owner/manager/sales roles, owner-and-manager approval queue, import/export, configurable quote terms | Invited teammates, approval usage, repeat quotes, retained accounts |
+| Midsize distributor | Coordinate salespeople and protect commercial guardrails | Shared company workspace, owner/manager/sales roles, approval queue, activity history, import/export, configurable quote terms | Invited teammates, approval usage, repeat quotes, retained accounts |
 | Large or multi-branch group | Integrate with established finance and operational systems | Strong tenant isolation, multiple branches, detailed audit, SSO, API/webhooks, ERP/accounting integration, configurable retention and support | Security review completion, integration usage, branch adoption, renewal |
 
-These are roadmap hypotheses. The local application now supports a shared company workspace, invitations, owner-managed roles, and owner/manager quote approvals. It still has no branch scoping, SSO, activity audit history, or ERP integration. Do not sell those capabilities until built and tested.
+These are roadmap hypotheses. The local application now supports a shared company workspace, invitations, owner-managed roles, owner/manager quote approvals, and a limited activity history for approvals, quote status, guardrails, and membership changes. It still has no branch scoping, SSO, tamper-evident audit logging, or ERP integration. Do not sell those capabilities until built and tested.
 
 ## Acquisition path without paid spend
 
@@ -32,7 +32,7 @@ The Ministry of MSME's TEAM initiative aims to help micro and small enterprises 
 
 1. Improve first-run activation with a guided checklist and synthetic demo workflow.
 2. Build company accounts, invitations, roles, and independent approval permissions before targeting teams. (Implemented in the local development build.)
-3. Add auditable changes to pricing, approvals, quote status, and membership.
+3. Add auditable changes to pricing, approvals, quote status, and membership. (A limited owner/manager activity history is implemented; it is not tamper-evident.)
 4. Add operational reports: quote response time, wins/losses, follow-up completion, and margin distribution with owner scoping.
 5. Add integrations only after pilots identify the systems that matter most. Likely candidates to validate include Tally/ERP exports and a customer-facing quote share flow.
 6. Before enterprise offers, finish production architecture, security review, data-processing terms, support, recovery, and applicable legal/tax review.

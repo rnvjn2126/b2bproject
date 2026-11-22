@@ -6,6 +6,7 @@ app_name = "dashboard"
 urlpatterns = [
     path("", views.home, name="home"),
     path("team/", views.team_list, name="team_list"),
+    path("team/activity/", views.activity_log, name="activity_log"),
     path("team/invitations/<slug:token>/accept/", views.team_invite_accept, name="team_invite_accept"),
     path("team/members/<int:pk>/role/", views.team_member_role, name="team_member_role"),
     path("team/members/<int:pk>/remove/", views.team_member_remove, name="team_member_remove"),

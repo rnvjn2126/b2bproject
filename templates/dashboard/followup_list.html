@@ -2,17 +2,21 @@
 {% block title %}Follow-ups · Steel Quotes{% endblock %}
 {% block content %}
 <section class="card">
-  <h1>Open follow-ups</h1>
+  <h1>{% if status == "completed" %}Completed follow-ups{% elif status == "all" %}All follow-ups{% else %}Open follow-ups{% endif %}</h1>
+  <form class="inline-form" method="get">
+    <label for="q">Search follow-ups<input id="q" name="q" type="search" value="{{ query }}"></label>
+    <label for="status">Show<select id="status" name="status"><option value="open"{% if status == "open" %} selected{% endif %}>Open</option><option value="completed"{% if status == "completed" %} selected{% endif %}>Completed</option><option value="all"{% if status == "all" %} selected{% endif %}>All</option></select></label>
+    <button type="submit">Filter</button>
+  </form>
   {% for follow_up in follow_ups %}
     <article class="row">
       <strong>Due {{ follow_up.due_on }}</strong>{% if follow_up.due_on < today %}<span class="errors"> · Overdue</span>{% endif %}
       <div><a href="{% url 'dashboard:rfq_detail' follow_up.rfq.pk %}">{{ follow_up.rfq.reference|default:follow_up.rfq }} · {{ follow_up.rfq.customer }}</a></div>
       {% if follow_up.note %}<p>{{ follow_up.note|linebreaksbr }}</p>{% endif %}
-      <form method="post" action="{% url 'dashboard:followup_complete' follow_up.pk %}">
-        {% csrf_token %}<button type="submit">Mark complete</button>
-      </form>
+      {% if follow_up.is_complete %}<p>Completed {{ follow_up.completed_at|date:"j M Y, H:i" }}</p>{% else %}<form method="post" action="{% url 'dashboard:followup_complete' follow_up.pk %}">{% csrf_token %}<button type="submit">Mark complete</button></form>{% endif %}
     </article>
   {% empty %}<p>No open follow-ups.</p>{% endfor %}
   <p><a href="{% url 'dashboard:rfq_list' %}">Back to enquiries</a></p>
+  {% include "dashboard/pagination.html" with page_obj=follow_ups query=query status=status %}
 </section>
 {% endblock %}

@@ -63,6 +63,38 @@ class CatalogueTests(TestCase):
         self.assertContains(response, "My Customer")
         self.assertNotContains(response, "Other Customer")
 
+    def test_catalogue_search_is_case_insensitive_and_owner_scoped(self):
+        Customer.objects.create(owner=self.user, name="North Steel Works")
+        Customer.objects.create(owner=self.other, name="North Private Customer")
+        Supplier.objects.create(owner=self.user, name="North Metals")
+        Supplier.objects.create(owner=self.other, name="North Private Supplier")
+        Product.objects.create(owner=self.user, name="Round bar", grade="304", shape="round_bar", unit="kg")
+        Product.objects.create(owner=self.other, name="Private 304 sheet", shape="sheet", unit="kg")
+
+        pages = (
+            ("dashboard:customer_list", "north", "North Steel Works", "North Private Customer"),
+            ("dashboard:supplier_list", "north", "North Metals", "North Private Supplier"),
+            ("dashboard:product_list", "304", "Round bar", "Private 304 sheet"),
+        )
+        for route, query, visible, hidden in pages:
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route), {"q": query})
+                self.assertContains(response, visible)
+                self.assertNotContains(response, hidden)
+
+    def test_catalogue_lists_paginate_after_25_records(self):
+        for index in range(26):
+            Customer.objects.create(owner=self.user, name=f"Customer {index:02d}")
+
+        first = self.client.get(reverse("dashboard:customer_list"))
+        self.assertTrue(first.context["is_paginated"])
+        self.assertEqual(len(first.context["records"]), 25)
+        self.assertContains(first, "Page 1 of 2")
+
+        second = self.client.get(reverse("dashboard:customer_list"), {"page": "2"})
+        self.assertEqual(len(second.context["records"]), 1)
+        self.assertContains(second, "Customer 25")
+
     def test_other_users_records_cannot_be_viewed_edited_or_deleted(self):
         records = [
             (Customer.objects.create(owner=self.other, name="Private Customer"), "customer"),
@@ -158,6 +190,28 @@ class RFQIntakeTests(TestCase):
         foreign_rfq = RFQ.objects.create(owner=self.other, customer=self.foreign_customer, received_on="2026-11-21")
         self.assertEqual(self.client.get(reverse("dashboard:rfq_detail", args=[foreign_rfq.pk])).status_code, 404)
         self.assertNotContains(self.client.get(reverse("dashboard:rfq_list")), str(foreign_rfq))
+
+    def test_enquiry_search_and_status_filter_keep_account_boundary(self):
+        match = RFQ.objects.create(
+            owner=self.user, customer=self.customer, reference="BEAM-100", received_on="2026-11-22",
+            status=RFQ.Status.IN_PROGRESS,
+        )
+        closed = RFQ.objects.create(
+            owner=self.user, customer=self.customer, reference="BEAM-200", received_on="2026-11-22",
+            status=RFQ.Status.CLOSED,
+        )
+        foreign = RFQ.objects.create(
+            owner=self.other, customer=self.foreign_customer, reference="BEAM-PRIVATE", received_on="2026-11-22",
+            status=RFQ.Status.IN_PROGRESS,
+        )
+
+        response = self.client.get(reverse("dashboard:rfq_list"), {
+            "q": "beam", "status": RFQ.Status.IN_PROGRESS,
+        })
+        self.assertContains(response, match.reference)
+        self.assertNotContains(response, closed.reference)
+        self.assertNotContains(response, foreign.reference)
+        self.assertEqual(response.context["rfqs"].paginator.count, 1)
 
     def test_foreign_customer_and_product_cannot_be_submitted(self):
         bad_customer = self.client.post(reverse("dashboard:rfq_create"), self.payload(customer=self.foreign_customer.pk))
@@ -362,6 +416,25 @@ class QuotePricingTests(TestCase):
             f"offer_{self.line.pk}": self.offer.pk,
             f"discount_{self.line.pk}": discount,
         })
+
+    def test_quote_search_and_status_filter_keep_account_boundary(self):
+        self.post_quote()
+        quote = Quote.objects.get(owner=self.user)
+        foreign_customer = Customer.objects.create(owner=self.other, name="Private quote customer")
+        foreign_rfq = RFQ.objects.create(
+            owner=self.other, customer=foreign_customer, reference="QT-PRIVATE", received_on="2026-11-22",
+        )
+        Quote.objects.create(
+            owner=self.other, rfq=foreign_rfq, number="QT-PRIVATE",
+            target_margin_percent="12.00", minimum_margin_percent="8.00", maximum_discount_percent="5.00",
+        )
+
+        response = self.client.get(reverse("dashboard:quote_list"), {
+            "q": quote.number, "status": Quote.Status.READY,
+        })
+        self.assertContains(response, quote.number)
+        self.assertNotContains(response, "QT-PRIVATE")
+        self.assertEqual(response.context["quotes"].paginator.count, 1)
 
     def test_default_target_margin_calculates_a_transparent_quote(self):
         response = self.post_quote()
@@ -672,6 +745,32 @@ class FollowUpAndPipelineTests(TestCase):
         self.assertEqual(follow_up.rfq, self.rfq)
         self.assertContains(self.client.get(reverse("dashboard:rfq_detail", args=[self.rfq.pk])), "Call about delivery timing")
         self.assertContains(self.client.get(reverse("dashboard:followup_list")), "FU-001")
+
+    def test_followup_list_searches_and_shows_completed_items_without_foreign_records(self):
+        open_item = FollowUp.objects.create(
+            owner=self.user, rfq=self.rfq, due_on="2026-11-23", note="Steel delivery check",
+        )
+        completed_item = FollowUp.objects.create(
+            owner=self.user, rfq=self.rfq, due_on="2026-11-21", note="Steel grade confirmed",
+            completed_at="2026-11-22T00:00:00Z",
+        )
+        FollowUp.objects.create(
+            owner=self.other, rfq=self.other_rfq, due_on="2026-11-23", note="Private steel reminder",
+        )
+
+        open_response = self.client.get(reverse("dashboard:followup_list"), {"q": "delivery", "status": "open"})
+        self.assertContains(open_response, "Steel delivery check")
+        self.assertNotContains(open_response, "Steel grade confirmed")
+        self.assertNotContains(open_response, "Private steel reminder")
+
+        completed_response = self.client.get(
+            reverse("dashboard:followup_list"), {"q": "steel", "status": "completed"},
+        )
+        self.assertContains(completed_response, "Steel grade confirmed")
+        self.assertNotContains(completed_response, "Mark complete")
+        self.assertNotContains(completed_response, "Private steel reminder")
+        self.assertFalse(open_item.is_complete)
+        self.assertTrue(completed_item.is_complete)
 
     def test_followup_dates_are_required_and_empty_submission_saves_nothing(self):
         response = self.client.post(reverse("dashboard:followup_create", args=[self.rfq.pk]), {

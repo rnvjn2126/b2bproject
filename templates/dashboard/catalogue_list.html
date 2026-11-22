@@ -4,6 +4,10 @@
 <section class="card">
   <h1>{{ title }}</h1>
   <p><a href="{% url create_url %}">Add {{ singular }}</a></p>
+  <form class="inline-form" method="get">
+    <label for="q">Search {{ title|lower }}<input id="q" name="q" type="search" value="{{ query }}"></label>
+    <button type="submit">Search</button>{% if query %}<a href="?">Clear</a>{% endif %}
+  </form>
   {% if import_url %}<p><a href="{% url import_url %}">Import products from CSV</a> · <a href="{% url export_url %}">Export products to CSV</a></p>{% endif %}
   {% for record in records %}
     <article class="row"><strong>{{ record.name }}</strong>
@@ -13,5 +17,6 @@
       <a href="{% url 'dashboard:'|add:singular|add:'_update' record.pk %}">Edit</a> · <a href="{% url 'dashboard:'|add:singular|add:'_delete' record.pk %}">Delete</a>
     </article>
   {% empty %}<p>No {{ title|lower }} yet.</p>{% endfor %}
+  {% if is_paginated %}{% include "dashboard/pagination.html" with page_obj=page_obj query=query %}{% endif %}
 </section>
 {% endblock %}

@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.urls import reverse
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
@@ -44,7 +45,21 @@ def home(request):
 @login_required
 def rfq_list(request):
     rfqs = RFQ.objects.filter(owner=request.user, customer__owner=request.user).select_related("customer")
-    return render(request, "dashboard/rfq_list.html", {"rfqs": rfqs})
+    query = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    if query:
+        rfqs = rfqs.filter(
+            Q(reference__icontains=query) | Q(customer__name__icontains=query)
+            | Q(customer__company_name__icontains=query) | Q(notes__icontains=query),
+        )
+    if status not in RFQ.Status.values:
+        status = ""
+    if status:
+        rfqs = rfqs.filter(status=status)
+    return render(request, "dashboard/rfq_list.html", {
+        "rfqs": Paginator(rfqs, 25).get_page(request.GET.get("page")),
+        "query": query, "status": status, "status_choices": RFQ.Status.choices,
+    })
 
 
 @login_required
@@ -157,10 +172,24 @@ def followup_complete(request, pk):
 def followup_list(request):
     follow_ups = FollowUp.objects.filter(
         owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
-        completed_at__isnull=True,
     ).select_related("rfq", "rfq__customer").order_by("due_on", "id")
+    query = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "open")
+    if status not in {"open", "completed", "all"}:
+        status = "open"
+    if status == "open":
+        follow_ups = follow_ups.filter(completed_at__isnull=True)
+    elif status == "completed":
+        follow_ups = follow_ups.filter(completed_at__isnull=False)
+    if query:
+        follow_ups = follow_ups.filter(
+            Q(rfq__reference__icontains=query) | Q(rfq__customer__name__icontains=query)
+            | Q(rfq__customer__company_name__icontains=query) | Q(note__icontains=query),
+        )
     return render(request, "dashboard/followup_list.html", {
-        "follow_ups": follow_ups, "today": timezone.localdate(),
+        "follow_ups": Paginator(follow_ups, 25).get_page(request.GET.get("page")),
+        "query": query, "status": status,
+        "today": timezone.localdate(),
     })
 
 
@@ -388,7 +417,22 @@ def quote_list(request):
     quotes = Quote.objects.filter(
         owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
     ).select_related("rfq", "rfq__customer").order_by("-created_at", "-id")
-    return render(request, "dashboard/quote_list.html", {"quotes": quotes, "today": timezone.localdate()})
+    query = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    if query:
+        quotes = quotes.filter(
+            Q(number__icontains=query) | Q(rfq__reference__icontains=query)
+            | Q(rfq__customer__name__icontains=query) | Q(rfq__customer__company_name__icontains=query),
+        )
+    if status not in Quote.Status.values:
+        status = ""
+    if status:
+        quotes = quotes.filter(status=status)
+    return render(request, "dashboard/quote_list.html", {
+        "quotes": Paginator(quotes, 25).get_page(request.GET.get("page")),
+        "query": query, "status": status, "status_choices": Quote.Status.choices,
+        "today": timezone.localdate(),
+    })
 
 
 @login_required
@@ -486,15 +530,28 @@ def quote_approve(request, pk):
 class OwnedListView(LoginRequiredMixin, ListView):
     template_name = "dashboard/catalogue_list.html"
     context_object_name = "records"
+    paginate_by = 25
+    search_fields = ()
     title = "Catalogue"
     singular = "record"
 
     def get_queryset(self):
-        return self.model.objects.filter(owner=self.request.user)
+        records = self.model.objects.filter(owner=self.request.user)
+        query = self.request.GET.get("q", "").strip()
+        if query and self.search_fields:
+            matches = Q()
+            for field in self.search_fields:
+                matches |= Q(**{f"{field}__icontains": query})
+            records = records.filter(matches)
+        return records
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        data.update(title=self.title, singular=self.singular, create_url=f"dashboard:{self.singular}_create")
+        data.update(
+            title=self.title, singular=self.singular,
+            create_url=f"dashboard:{self.singular}_create",
+            query=self.request.GET.get("q", "").strip(),
+        )
         return data
 
 
@@ -547,6 +604,7 @@ class OwnedDeleteView(LoginRequiredMixin, DeleteView):
 
 class CustomerListView(OwnedListView):
     model, title, singular = Customer, "Customers", "customer"
+    search_fields = ("name", "company_name", "email", "phone")
 
 
 class CustomerCreateView(OwnedCreateView):
@@ -563,6 +621,7 @@ class CustomerDeleteView(OwnedDeleteView):
 
 class SupplierListView(OwnedListView):
     model, title, singular = Supplier, "Suppliers", "supplier"
+    search_fields = ("name", "company_name", "email", "phone")
 
 
 class SupplierCreateView(OwnedCreateView):
@@ -579,6 +638,7 @@ class SupplierDeleteView(OwnedDeleteView):
 
 class ProductListView(OwnedListView):
     model, title, singular = Product, "Products", "product"
+    search_fields = ("name", "grade", "dimensions", "shape")
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)

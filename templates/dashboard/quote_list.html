@@ -3,6 +3,11 @@
 {% block content %}
 <section class="card">
   <h1>Quotation pipeline</h1>
+  <form class="inline-form" method="get">
+    <label for="q">Search quotations<input id="q" name="q" type="search" value="{{ query }}"></label>
+    <label for="status">Status<select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <button type="submit">Filter</button>
+  </form>
   {% for quote in quotes %}
     <article class="row">
       <strong><a href="{% url 'dashboard:quote_detail' quote.pk %}">{{ quote.number }} · Revision {{ quote.revision }}</a></strong>
@@ -12,5 +17,6 @@
     </article>
   {% empty %}<p>No quotations prepared yet.</p>{% endfor %}
   <p><a href="{% url 'dashboard:rfq_list' %}">Back to enquiries</a></p>
+  {% include "dashboard/pagination.html" with page_obj=quotes query=query status=status %}
 </section>
 {% endblock %}

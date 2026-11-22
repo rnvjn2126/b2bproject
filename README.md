@@ -30,6 +30,8 @@ Local development defaults to `DEBUG=True`, binds to loopback in `start-local.ba
 
 Use **Follow-ups** to review open reminders. Each enquiry can have dated reminders, and a staff member marks them complete manually. WhatsApp opens only from the explicit link on an enquiry and never sends a message automatically.
 
+Customer, supplier, product, enquiry, quote, and follow-up lists support case-insensitive search and paginate in groups of 25. Enquiries and quotes can be filtered by status; follow-ups can show open, completed, or all reminders.
+
 The **Products** page supports importing and exporting the product catalogue. CSV uses the headers `name, grade, shape, dimensions, unit, weight_basis, weight_kg, notes`; imports are validated as a whole before saving and exports include only the signed-in user's products. Customer contacts and supplier rates are not included.
 
 ## Development checks

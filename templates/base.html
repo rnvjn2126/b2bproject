@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Steel Quotes{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'dashboard/steel-quotes.css' %}">
+  <script src="{% static 'dashboard/interactions.js' %}" defer></script>
 </head>
 <body class="{% if request.user.is_authenticated %}workspace{% else %}public-page{% endif %}">
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -40,6 +41,6 @@
   {% else %}
     <header class="public-header">{% include "dashboard/brand.html" %}</header>
   {% endif %}
-  <main id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
+  <main id="main-content" tabindex="-1">{% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}{% block content %}{% endblock %}</main>
 </body>
 </html>

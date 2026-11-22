@@ -3,6 +3,7 @@ import hashlib
 import secrets
 from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
+from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -393,6 +394,7 @@ def rfq_create(request):
                 line.save()
             for line in formset.deleted_objects:
                 line.delete()
+        messages.success(request, "Enquiry recorded.")
         return redirect("dashboard:rfq_detail", pk=rfq.pk)
     return render(request, "dashboard/rfq_form.html", {"form": form, "formset": formset})
 
@@ -460,6 +462,7 @@ def followup_create(request, pk):
         follow_up.rfq = rfq
         follow_up.full_clean()
         follow_up.save()
+        messages.success(request, "Follow-up scheduled.")
         return redirect("dashboard:rfq_detail", pk=rfq.pk)
     return render(request, "dashboard/followup_form.html", {"form": form, "rfq": rfq})
 
@@ -730,6 +733,7 @@ def _quote_create_page(request, rfq, source_quote=None):
                 )
                 quote_line.full_clean()
                 quote_line.save()
+        messages.success(request, "Quotation saved.")
         return redirect("dashboard:quote_detail", pk=quote.pk)
     return render(request, "dashboard/quote_create.html", {
         "rfq": rfq,

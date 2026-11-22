@@ -220,3 +220,26 @@ progress::-webkit-progress-value { border-radius: 1rem; background: var(--blue);
   .account-name { max-width: 7ch; }
   .login-art { display: none; }
 }
+
+.notice { padding: .75rem 1rem; border-inline-start: 3px solid #277851; background: var(--surface); }
+form[aria-busy="true"] button[type=submit] { cursor: progress; opacity: .75; }
+@media (prefers-reduced-motion: no-preference) {
+  .button, button, .metric { transition: background-color .12s, border-color .12s, transform .12s; }
+  .button:active, button:active { transform: translateY(1px); box-shadow: 0 0 0 .28rem #5786ff38; }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark; color: #edf2ff; background: #101827;
+    --surface: #18253a; --border: #384964; --muted: #bccae0;
+    --blue: #335ebd; --blue-dark: #a8c5ff; --blue-soft: #263b5d; --danger: #ffb1ba;
+  }
+  .primary-nav a, .empty-state strong, .metric strong { color: #edf2ff; }
+  .nav-icon { color: #a8c5ff; }
+  .empty-state, .filters, .table-note, thead, tfoot, .step-number, .status-closed,
+  input:not([type=checkbox], [type=radio], [type=hidden]), select, textarea { background: #152030; color: #e4edff; }
+  .button:hover, button:hover { background: #345bb4; color: white; }
+  .button-secondary, .account-panel button:hover { color: #dbe7ff; background: #263b5d; }
+  .badge-danger, .status-lost, .status-expired, .alert { color: #ffb9c2; background: #462637; }
+  .metric .errors { color: var(--danger); }
+  .skip-link { background: #18253a; }
+}

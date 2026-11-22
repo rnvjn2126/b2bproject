@@ -1,0 +1,10 @@
+# Python environment and generated files
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local SQLite data and environment secrets
+db.sqlite3
+.env
+.env.*
+!.env.example

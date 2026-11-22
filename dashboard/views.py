@@ -13,7 +13,8 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.urls import reverse
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 from django.shortcuts import get_object_or_404, redirect, render
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models import Count, F, Prefetch, Q
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
@@ -70,7 +71,29 @@ def home(request):
             ).exists(),
         },
     ]
+    # Count each quotation once at its latest revision, including legacy unnumbered quotes.
+    quotes = Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner).exclude(revisions__owner=owner)
+    counts = dict(quotes.order_by().values_list("status").annotate(total=Count("pk")))
+    pending_statuses = (Quote.Status.READY, Quote.Status.APPROVED, Quote.Status.NEEDS_REVIEW, Quote.Status.SENT)
+    pipeline_value = gross_margin = None
+    if can_manage_account(request.user):
+        lines = _visible_quote_lines(owner).filter(quote__in=quotes.filter(status__in=pending_statuses))
+        pipeline_value = Decimal("0.00")
+        landed = Decimal("0.00")
+        for line in lines.only("quantity", "selling_price_per_unit", "landed_cost_per_unit").iterator():
+            pipeline_value += line.total_selling_price
+            landed += line.total_landed_cost
+        if pipeline_value:
+            gross_margin = (pipeline_value - landed) * 100 / pipeline_value
     return render(request, "dashboard/home.html", {
+        "active_count": RFQ.objects.filter(owner=owner, customer__owner=owner).exclude(status=RFQ.Status.CLOSED).count(),
+        "comparison_count": _comparison_items(owner).count(),
+        "pending_count": sum(counts.get(status, 0) for status in pending_statuses),
+        "review_count": counts.get(Quote.Status.NEEDS_REVIEW, 0),
+        "sent_count": counts.get(Quote.Status.SENT, 0),
+        "accepted_count": counts.get(Quote.Status.ACCEPTED, 0),
+        "lost_count": counts.get(Quote.Status.LOST, 0),
+        "pipeline_value": pipeline_value, "gross_margin": gross_margin,
         "customer_count": Customer.objects.filter(owner=owner).count(),
         "supplier_count": Supplier.objects.filter(owner=owner).count(),
         "product_count": Product.objects.filter(owner=owner).count(),
@@ -361,9 +384,11 @@ def rfq_list(request):
             Q(reference__icontains=query) | Q(customer__name__icontains=query)
             | Q(customer__company_name__icontains=query) | Q(notes__icontains=query),
         )
-    if status not in RFQ.Status.values:
+    if status != "active" and status not in RFQ.Status.values:
         status = ""
-    if status:
+    if status == "active":
+        rfqs = rfqs.exclude(status=RFQ.Status.CLOSED)
+    elif status:
         rfqs = rfqs.filter(status=status)
     return render(request, "dashboard/rfq_list.html", {
         "rfqs": Paginator(rfqs, 25).get_page(request.GET.get("page")),
@@ -397,6 +422,22 @@ def rfq_create(request):
         messages.success(request, "Enquiry recorded.")
         return redirect("dashboard:rfq_detail", pk=rfq.pk)
     return render(request, "dashboard/rfq_form.html", {"form": form, "formset": formset})
+
+
+def _comparison_items(owner):
+    return RFQLine.objects.filter(
+        Q(product__isnull=True) | Q(product__owner=owner),
+        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
+    ).annotate(supplier_count=Count(
+        "supplier_offers__supplier", distinct=True,
+        filter=Q(supplier_offers__owner=owner, supplier_offers__supplier__owner=owner),
+    )).filter(supplier_count__gte=2)
+
+
+@login_required
+def comparisons(request):
+    items = _comparison_items(account_owner(request.user)).select_related("product", "rfq__customer").order_by("-rfq__received_on", "-id")
+    return render(request, "dashboard/comparisons.html", {"items": Paginator(items, 25).get_page(request.GET.get("page"))})
 
 
 @login_required
@@ -496,9 +537,11 @@ def followup_list(request):
     ).select_related("rfq", "rfq__customer").order_by("due_on", "id")
     query = request.GET.get("q", "").strip()
     status = request.GET.get("status", "open")
-    if status not in {"open", "completed", "all"}:
+    if status not in {"open", "overdue", "completed", "all"}:
         status = "open"
-    if status == "open":
+    if status == "overdue":
+        follow_ups = follow_ups.filter(completed_at__isnull=True, due_on__lt=timezone.localdate())
+    elif status == "open":
         follow_ups = follow_ups.filter(completed_at__isnull=True)
     elif status == "completed":
         follow_ups = follow_ups.filter(completed_at__isnull=False)
@@ -760,18 +803,19 @@ def _quote_create_page(request, rfq, source_quote=None):
     })
 
 
+def _visible_quote_lines(owner):
+    return QuoteLine.objects.filter(
+        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
+        owner=owner, rfq_line__owner=owner, rfq_line__rfq__owner=owner,
+        rfq_line__rfq_id=F("quote__rfq_id"), supplier_offer__owner=owner,
+        supplier_offer__supplier__owner=owner, supplier_offer__rfq_line_id=F("rfq_line_id"),
+    )
+
+
 @login_required
 def quote_detail(request, pk):
     owner = account_owner(request.user)
-    visible_lines = QuoteLine.objects.filter(
-        owner=owner,
-        rfq_line__owner=owner,
-        rfq_line__rfq__owner=owner, rfq_line__rfq_id=F("quote__rfq_id"),
-        supplier_offer__rfq_line_id=F("rfq_line_id"), supplier_offer__owner=owner,
-        supplier_offer__supplier__owner=owner,
-    ).filter(
-        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
-    ).select_related(
+    visible_lines = _visible_quote_lines(owner).select_related(
         "rfq_line", "rfq_line__product", "supplier_offer", "supplier_offer__supplier",
     )
     quote = get_object_or_404(
@@ -804,9 +848,13 @@ def quote_list(request):
             Q(number__icontains=query) | Q(rfq__reference__icontains=query)
             | Q(rfq__customer__name__icontains=query) | Q(rfq__customer__company_name__icontains=query),
         )
-    if status not in Quote.Status.values:
+    if request.GET.get("current") == "1":
+        quotes = quotes.exclude(revisions__owner=owner)
+    if status != "pending" and status not in Quote.Status.values:
         status = ""
-    if status:
+    if status == "pending":
+        quotes = quotes.exclude(status__in=(Quote.Status.ACCEPTED, Quote.Status.LOST, Quote.Status.EXPIRED))
+    elif status:
         quotes = quotes.filter(status=status)
     return render(request, "dashboard/quote_list.html", {
         "quotes": Paginator(quotes, 25).get_page(request.GET.get("page")),
@@ -863,15 +911,7 @@ def quote_update_status(request, pk):
 @require_http_methods(["GET"])
 def quote_pdf(request, pk, preview=False):
     owner = account_owner(request.user)
-    visible_lines = QuoteLine.objects.filter(
-        owner=owner,
-        rfq_line__owner=owner,
-        rfq_line__rfq__owner=owner, rfq_line__rfq_id=F("quote__rfq_id"),
-        supplier_offer__rfq_line_id=F("rfq_line_id"), supplier_offer__owner=owner,
-        supplier_offer__supplier__owner=owner,
-    ).filter(
-        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
-    ).select_related("rfq_line", "rfq_line__product")
+    visible_lines = _visible_quote_lines(owner).select_related("rfq_line", "rfq_line__product")
     quote = get_object_or_404(
         Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner)
         .select_related("rfq__customer")
@@ -924,6 +964,27 @@ def quote_approve(request, pk):
     return redirect("dashboard:quote_detail", pk=quote.pk)
 
 
+@login_required
+def contact_detail(request, pk, kind):
+    owner = account_owner(request.user)
+    model = Customer if kind == "customer" else Supplier
+    contact = get_object_or_404(model, pk=pk, owner=owner)
+    if kind == "customer":
+        quotes = Quote.objects.filter(owner=owner).order_by("-issue_date", "-revision")
+        history = RFQ.objects.filter(owner=owner, customer=contact).prefetch_related(
+            Prefetch("quotes", queryset=quotes)
+        ).order_by("-received_on", "-id")
+    else:
+        history = SupplierOffer.objects.filter(
+            Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
+            owner=owner, supplier=contact, rfq_line__owner=owner,
+            rfq_line__rfq__owner=owner, rfq_line__rfq__customer__owner=owner,
+        ).select_related("rfq_line__rfq", "rfq_line__product").order_by("-created_at", "-id")
+    return render(request, "dashboard/contact_detail.html", {
+        "contact": contact, "kind": kind, "history": Paginator(history, 25).get_page(request.GET.get("page")),
+    })
+
+
 class OwnedListView(LoginRequiredMixin, ListView):
     template_name = "dashboard/catalogue_list.html"
     context_object_name = "records"
@@ -952,15 +1013,28 @@ class OwnedListView(LoginRequiredMixin, ListView):
         return data
 
 
-class OwnedCreateView(LoginRequiredMixin, CreateView):
+class CatalogueSaveMixin:
+    def form_valid(self, form):
+        form.instance.owner = account_owner(self.request.user)
+        try:
+            with transaction.atomic():
+                response = super().form_valid(form)
+        except IntegrityError:
+            duplicate = self.model.objects.filter(owner=form.instance.owner, name=form.cleaned_data["name"])
+            if not duplicate.exclude(pk=form.instance.pk).exists():
+                raise
+            form.add_error("name", "A record with this name already exists in this workspace.")
+            return self.form_invalid(form)
+        messages.success(self.request, f"{self.singular.title()} saved.")
+        return response
+
+
+class OwnedCreateView(LoginRequiredMixin, CatalogueSaveMixin, CreateView):
     template_name = "dashboard/catalogue_form.html"
     success_message = "Saved"
     title = "Add record"
     singular = "record"
 
-    def form_valid(self, form):
-        form.instance.owner = account_owner(self.request.user)
-        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse(f"dashboard:{self.singular}_list")
@@ -971,7 +1045,9 @@ class OwnedCreateView(LoginRequiredMixin, CreateView):
         return data
 
 
-class OwnedUpdateView(LoginRequiredMixin, UpdateView):
+class OwnedUpdateView(LoginRequiredMixin, CatalogueSaveMixin, UpdateView):
+    template_name = "dashboard/catalogue_form.html"
+
     def get_queryset(self):
         return self.model.objects.filter(owner=account_owner(self.request.user))
 
@@ -985,6 +1061,13 @@ class OwnedUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class OwnedDeleteView(LoginRequiredMixin, DeleteView):
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except ProtectedError:
+            form.add_error(None, "This record is used in the trading history and must be kept.")
+            return self.form_invalid(form)
+
     template_name = "dashboard/catalogue_confirm_delete.html"
 
     def get_queryset(self):

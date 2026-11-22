@@ -20,7 +20,7 @@
   {% for record in records %}
     <article class="row record-row">
       <div>
-        <strong>{{ record.name }}</strong>
+        <strong>{% if singular == "product" %}{{ record.name }}{% else %}<a href="{% url 'dashboard:'|add:singular|add:'_detail' record.pk %}">{{ record.name }}</a>{% endif %}</strong>
         {% if record.company_name %}<div class="muted">{{ record.company_name }}</div>{% endif %}
         {% if record.grade %}<div class="muted">{{ record.grade }} · {{ record.get_shape_display }} · {{ record.dimensions|default:"Dimensions not recorded" }} · {{ record.get_unit_display }}{% if record.weight_kg %} · {{ record.weight_kg }} kg/item ({{ record.get_weight_basis_display|lower }}){% endif %}</div>{% endif %}
         {% if record.email %}<div class="muted">{{ record.email }}</div>{% endif %}{% if record.phone %}<div class="muted">{{ record.phone }}</div>{% endif %}

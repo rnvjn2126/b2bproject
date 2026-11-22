@@ -32,7 +32,7 @@
 
   <h2>Requested items and supplier comparison</h2>
   {% for line in rfq.lines.all %}
-    <section class="row">
+    <section class="row" id="item-{{ line.pk }}">
       <h3>{{ line.product|default:line.description|default:"Unspecified item" }}</h3>
       <p>{% if line.grade %}{{ line.grade }} · {% endif %}{% if line.dimensions %}{{ line.dimensions }} · {% endif %}Requested {{ line.quantity }} {{ line.get_unit_display }}</p>
       <p><a href="{% url 'dashboard:supplier_offer_create' rfq.pk line.pk %}">Add supplier offer</a></p>

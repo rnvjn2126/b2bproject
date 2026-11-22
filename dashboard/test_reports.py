@@ -75,6 +75,7 @@ class BusinessReportTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["accepted_count"], 1)
         self.assertContains(response, "1 accepted")
+        self.assertNotContains(self.client.get(reverse("dashboard:home")), "Open quotation value")
         self.assertNotContains(response, "PRIVATE-REPORT")
 
     def test_empty_report_handles_undefined_rates(self):

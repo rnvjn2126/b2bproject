@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Supplier comparisons · Steel Quotes{% endblock %}
+{% block content %}<section class="card">
+  <h1>Supplier comparisons</h1>
+  <p class="muted">Enquiry items with offers from two or more suppliers.</p>
+  {% for item in items %}<article class="row record-row">
+    <div><strong><a href="{% url 'dashboard:rfq_detail' item.rfq_id %}#item-{{ item.pk }}">{{ item.product|default:item.description|default:"Requested item" }}</a></strong>
+      <div>{{ item.rfq }} · {{ item.rfq.customer }} · {{ item.quantity }} {{ item.get_unit_display }}</div></div>
+    <span class="badge">{{ item.supplier_count }} suppliers</span>
+  </article>{% empty %}<p class="empty-state">Add a second supplier’s offer to compare an item here.</p>{% endfor %}
+  {% include "dashboard/pagination.html" with page_obj=items %}
+</section>{% endblock %}

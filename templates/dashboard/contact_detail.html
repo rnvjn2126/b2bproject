@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.name }} · Steel Quotes{% endblock %}
+{% block content %}<section class="card">
+  <div class="page-heading"><h1>{{ contact.name }}</h1><a class="button" href="{% url 'dashboard:'|add:kind|add:'_update' contact.pk %}">Edit {{ kind }}</a></div>
+  {% if contact.company_name %}<p>{{ contact.company_name }}</p>{% endif %}
+  {% if contact.phone or contact.email %}<p>{{ contact.phone }} {{ contact.email }}</p>{% endif %}
+  {% if contact.billing_address or contact.address %}<p>{{ contact.billing_address|linebreaksbr }}{{ contact.address|linebreaksbr }}</p>{% endif %}
+  {% if contact.notes %}<p>{{ contact.notes|linebreaksbr }}</p>{% endif %}
+  <h2>{% if kind == "customer" %}Enquiry and quotation history{% else %}Supplier offer history{% endif %}</h2>
+  {% for record in history %}<article class="row">
+    {% if kind == "customer" %}
+      <strong><a href="{% url 'dashboard:rfq_detail' record.pk %}">{{ record }}</a></strong> · {{ record.received_on }} · {{ record.get_status_display }}
+      {% for quote in record.quotes.all %}<div><a href="{% url 'dashboard:quote_detail' quote.pk %}">{{ quote.number }} R{{ quote.revision }}</a> · {{ quote.get_status_display }}</div>{% endfor %}
+    {% else %}
+      <strong><a href="{% url 'dashboard:rfq_detail' record.rfq_line.rfq_id %}#item-{{ record.rfq_line_id }}">{{ record.rfq_line.rfq }}</a></strong> · {{ record.created_at|date:"j M Y" }}
+      <div>{{ record.rfq_line.product|default:record.rfq_line.description }} · INR {{ record.unit_price }} / {{ record.get_unit_display }} · {{ record.delivery_days }} days</div>
+    {% endif %}</article>{% empty %}<p class="empty-state">No trading history yet.</p>{% endfor %}
+  {% include "dashboard/pagination.html" with page_obj=history %}
+</section>{% endblock %}

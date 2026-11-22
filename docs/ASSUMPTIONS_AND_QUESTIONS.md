@@ -54,3 +54,11 @@ None at setup. Record any task failure with failing command, log, and recommende
 
 ## User answers to confirm later
 - Shared company workspace with company-wide record visibility; the owner and managers approve below-margin quotations. The owner alone manages membership.
+
+## Demo workflow decisions (23 November 2026)
+- The requested overnight branch was absent from GitHub. Its starting point is the published UI commit 4dad58d. The existing topbar account and mobile navigation menus are the overlays identified in that revision.
+- Dashboard counts use the latest revision in each quotation chain. Pending covers ready, under review, approved and sent. Accepted and lost are staff-recorded outcomes. An accepted quotation is the endpoint of this MVP; sales orders and invoicing are separate future work.
+- Estimated pipeline value is the sum of pending selling line totals before tax. Margin is weighted by selling value; an empty denominator displays a dash. Only owners and managers see these dashboard figures. Estimates are unweighted by probability.
+- Rank full-coverage offers per requested item, including ties. Customer history shows enquiries and revisions; supplier history shows submitted offers. Neither represents settled payments or purchases.
+- Dark mode follows the device setting. Customer preview displays the same protected PDF as the download. Pricing preview is internal and saves no quotation.
+- Confirm whether expired-but-unclosed offers belong in forecasts and whether management needs separate won-order tracking before a commercial pilot.

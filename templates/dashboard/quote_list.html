@@ -5,7 +5,8 @@
   <h1>Quotation pipeline</h1>
   <form class="inline-form filters" method="get">
     <label for="q">Search quotations<input id="q" name="q" type="search" value="{{ query }}"></label>
-    <label for="status">Status<select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label for="status">Status<select id="status" name="status"><option value="">All statuses</option><option value="pending"{% if status == "pending" %} selected{% endif %}>Pending quotations</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label><input type="checkbox" name="current" value="1"{% if request.GET.current == "1" %} checked{% endif %}> Latest revisions only</label>
     <button type="submit">Filter</button>
     {% if query or status %}<a href="{% url 'dashboard:quote_list' %}">Clear</a>{% endif %}
   </form>

@@ -451,6 +451,26 @@ class QuotePricingTests(TestCase):
             f"discount_{self.line.pk}": discount,
         })
 
+    def test_dashboard_and_contact_histories_follow_workspace(self):
+        self.post_quote()
+        quote = Quote.objects.get()
+        home = reverse("dashboard:home")
+        dashboard = self.client.get(home)
+        self.assertEqual(dashboard.context["pipeline_value"], quote.total_selling_price)
+        self.assertEqual(dashboard.context["pending_count"], 1)
+        customer = reverse("dashboard:customer_detail", args=[self.customer.pk])
+        supplier = reverse("dashboard:supplier_detail", args=[self.supplier.pk])
+        self.assertContains(self.client.get(customer), quote.number)
+        self.assertContains(self.client.get(supplier), self.rfq.reference)
+        self.assertContains(self.client.get(reverse("dashboard:customer_update", args=[self.customer.pk])), self.customer.name)
+        duplicate = self.client.post(reverse("dashboard:customer_create"), {"name": self.customer.name})
+        self.assertContains(duplicate, "already exists")
+        self.assertContains(self.client.post(reverse("dashboard:customer_delete", args=[self.customer.pk])), "must be kept")
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(customer).status_code, 404)
+        self.assertEqual(self.client.get(supplier).status_code, 404)
+        self.assertEqual(self.client.get(home).context["pipeline_value"], 0)
+
     def test_pricing_preview_only_writes_on_save(self):
         url = reverse("dashboard:quote_create", args=[self.rfq.pk])
         data = {f"offer_{self.line.pk}": self.offer.pk, f"discount_{self.line.pk}": "5.00", "action": "preview"}

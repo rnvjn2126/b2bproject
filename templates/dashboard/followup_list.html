@@ -2,10 +2,10 @@
 {% block title %}Follow-ups · Steel Quotes{% endblock %}
 {% block content %}
 <section class="card">
-  <h1>{% if status == "completed" %}Completed follow-ups{% elif status == "all" %}All follow-ups{% else %}Open follow-ups{% endif %}</h1>
+  <h1>{% if status == "overdue" %}Overdue follow-ups{% elif status == "completed" %}Completed follow-ups{% elif status == "all" %}All follow-ups{% else %}Open follow-ups{% endif %}</h1>
   <form class="inline-form filters" method="get">
     <label for="q">Search follow-ups<input id="q" name="q" type="search" value="{{ query }}"></label>
-    <label for="status">Show<select id="status" name="status"><option value="open"{% if status == "open" %} selected{% endif %}>Open</option><option value="completed"{% if status == "completed" %} selected{% endif %}>Completed</option><option value="all"{% if status == "all" %} selected{% endif %}>All</option></select></label>
+    <label for="status">Show<select id="status" name="status"><option value="open"{% if status == "open" %} selected{% endif %}>Open</option><option value="overdue"{% if status == "overdue" %} selected{% endif %}>Overdue</option><option value="completed"{% if status == "completed" %} selected{% endif %}>Completed</option><option value="all"{% if status == "all" %} selected{% endif %}>All</option></select></label>
     <button type="submit">Filter</button>
   </form>
   {% for follow_up in follow_ups %}

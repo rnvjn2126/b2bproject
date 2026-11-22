@@ -10,16 +10,27 @@
 </section>
 
 <div class="metrics" aria-label="Workspace totals">
-  <a href="{% url 'dashboard:rfq_list' %}" class="metric card">
-    <span>Enquiries</span><strong>{{ rfq_count }}</strong>
+  <a href="{% url 'dashboard:rfq_list' %}?status=active" class="metric card">
+    <span>Active enquiries</span><strong>{{ active_count }}</strong>
   </a>
   <a href="{% url 'dashboard:followup_list' %}" class="metric card">
     <span>Open follow-ups</span><strong>{{ follow_up_count }}</strong>
   </a>
-  <a href="{% url 'dashboard:followup_list' %}" class="metric card">
+  <a href="{% url 'dashboard:followup_list' %}?status=overdue" class="metric card">
     <span>Overdue follow-ups</span><strong{% if overdue_follow_up_count %} class="errors"{% endif %}>{{ overdue_follow_up_count }}</strong>
   </a>
 </div>
+
+<section class="card"><div class="section-heading"><h2>Quotation pipeline</h2><a href="{% url 'dashboard:quote_list' %}?current=1">Latest revisions</a></div><div class="pipeline-grid">
+    <a class="metric" href="{% url 'dashboard:quote_list' %}?current=1&amp;status=pending"><span>Pending quotations</span><strong>{{ pending_count }}</strong></a>
+    <a class="metric" href="{% url 'dashboard:quote_list' %}?current=1&amp;status=needs_review"><span>Awaiting approval</span><strong>{{ review_count }}</strong></a>
+    <a class="metric" href="{% url 'dashboard:quote_list' %}?current=1&amp;status=sent"><span>Awaiting customer response</span><strong>{{ sent_count }}</strong></a>
+    <a class="metric" href="{% url 'dashboard:quote_list' %}?current=1&amp;status=accepted"><span>Accepted</span><strong>{{ accepted_count }}</strong></a>
+    <a class="metric" href="{% url 'dashboard:quote_list' %}?current=1&amp;status=lost"><span>Rejected / lost</span><strong>{{ lost_count }}</strong></a>
+    <a class="metric" href="{% url 'dashboard:comparisons' %}"><span>Items with competing offers</span><strong>{{ comparison_count }}</strong></a>
+  </div>
+  {% if pipeline_value != None %}<div class="financials"><strong>Open quotation value</strong> INR {{ pipeline_value|floatformat:"2g" }} before tax · Weighted gross margin {% if gross_margin != None %}{{ gross_margin|floatformat:2 }}%{% else %}—{% endif %}</div>{% endif %}
+</section>
 
 <div class="dashboard-grid">
   <section class="card">

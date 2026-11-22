@@ -8,7 +8,7 @@
   </div>
   <form class="inline-form filters" method="get">
     <label for="q">Search enquiries<input id="q" name="q" type="search" value="{{ query }}"></label>
-    <label for="status">Status<select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label for="status">Status<select id="status" name="status"><option value="">All statuses</option><option value="active"{% if status == "active" %} selected{% endif %}>Active enquiries</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     <button type="submit">Filter</button>
     {% if query or status %}<a href="{% url 'dashboard:rfq_list' %}">Clear</a>{% endif %}
   </form>

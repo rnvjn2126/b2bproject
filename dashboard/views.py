@@ -30,6 +30,31 @@ def home(request):
         owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
         completed_at__isnull=True,
     ).select_related("rfq", "rfq__customer").order_by("due_on", "id")
+    # Derive progress from this account's records; never seed demo data into a workspace.
+    setup_steps = [
+        {
+            "label": "Add your first customer", "url": reverse("dashboard:customer_create"),
+            "done": Customer.objects.filter(owner=request.user).exists(),
+        },
+        {
+            "label": "Add your first supplier", "url": reverse("dashboard:supplier_create"),
+            "done": Supplier.objects.filter(owner=request.user).exists(),
+        },
+        {
+            "label": "Add your first product", "url": reverse("dashboard:product_create"),
+            "done": Product.objects.filter(owner=request.user).exists(),
+        },
+        {
+            "label": "Record your first enquiry", "url": reverse("dashboard:rfq_create"),
+            "done": RFQ.objects.filter(owner=request.user, customer__owner=request.user).exists(),
+        },
+        {
+            "label": "Prepare your first quotation", "url": reverse("dashboard:rfq_list"),
+            "done": Quote.objects.filter(
+                owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+            ).exists(),
+        },
+    ]
     return render(request, "dashboard/home.html", {
         "customer_count": Customer.objects.filter(owner=request.user).count(),
         "supplier_count": Supplier.objects.filter(owner=request.user).count(),
@@ -39,6 +64,9 @@ def home(request):
         "overdue_follow_up_count": active_follow_ups.filter(due_on__lt=timezone.localdate()).count(),
         "upcoming_follow_ups": active_follow_ups[:5],
         "today": timezone.localdate(),
+        "setup_steps": setup_steps,
+        "setup_completed": sum(step["done"] for step in setup_steps),
+        "setup_total": len(setup_steps),
     })
 
 

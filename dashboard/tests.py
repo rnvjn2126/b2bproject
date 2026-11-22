@@ -30,6 +30,29 @@ class FoundationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sign in")
 
+    def test_getting_started_progress_only_counts_signed_in_users_records(self):
+        user = get_user_model().objects.create_user(username="new-account", password="local-test-password")
+        other = get_user_model().objects.create_user(username="seeded-account", password="local-test-password")
+        customer = Customer.objects.create(owner=other, name="Other account customer")
+        Supplier.objects.create(owner=other, name="Other account supplier")
+        Product.objects.create(owner=other, name="Other account product", shape="sheet", unit="kg")
+        rfq = RFQ.objects.create(owner=other, customer=customer, received_on="2026-11-22")
+        Quote.objects.create(
+            owner=other, rfq=rfq, number="QT-OTHER", target_margin_percent="12",
+            minimum_margin_percent="8", maximum_discount_percent="5",
+        )
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("dashboard:home"))
+        self.assertEqual(response.context["setup_completed"], 0)
+        self.assertEqual(response.context["setup_total"], 5)
+        self.assertTrue(all(not step["done"] for step in response.context["setup_steps"]))
+
+        Customer.objects.create(owner=user, name="This account customer")
+        response = self.client.get(reverse("dashboard:home"))
+        self.assertEqual(response.context["setup_completed"], 1)
+        self.assertTrue(response.context["setup_steps"][0]["done"])
+
 
 class CatalogueTests(TestCase):
     def setUp(self):

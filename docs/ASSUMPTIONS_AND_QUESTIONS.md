@@ -27,6 +27,8 @@
 | 2026-11-22 | Security and compliance readiness | Limit login attempts with django-axes; mark generated quotation PDFs as not tax invoices; remind users to minimize personal data; document India-specific operator obligations and unresolved release checks. | Adds practical application safeguards without claiming that software alone certifies legal compliance | Yes |
 | 2026-11-22 | Account safeguards | Expire sessions after eight hours and at browser close; use Django's password-change views and POST-only logout with CSRF protection. | Reduces exposure from unattended sessions while retaining standard Django account behavior | Yes |
 | 2026-11-22 | List usability | Add case-insensitive search across customer, supplier, product, enquiry, quote, and follow-up lists; add status filters to enquiries/quotes and open/completed/all follow-up views; paginate lists in groups of 25. All results remain owner-scoped. | Keeps larger demo accounts navigable without weakening account boundaries | Yes |
+| 2026-11-22 | First-run onboarding | Show a five-step dashboard checklist; calculate progress only from the signed-in user's own customer, supplier, product, enquiry, and quote records. | Helps a new account reach the first value moment without loading fake data into a real workspace | Yes |
+| 2026-11-22 | Growth research | Position the initial product around enquiry-to-quote workflow; document separate small, midsize, and enterprise needs. Do not set pricing or claim integrations, certification, or market outcomes without evidence. | Keeps acquisition hypotheses aligned with delivered capabilities and avoids false launch claims | Yes |
 
 ## Questions for the next morning review
 1. Should the first demo focus on stainless steel only or include MS/alloy products?

@@ -8,6 +8,11 @@
   <p><a href="{% url 'dashboard:followup_list' %}">{{ follow_up_count }} open follow-up{{ follow_up_count|pluralize }}</a> · {{ overdue_follow_up_count }} overdue.</p>
   <p><a href="{% url 'dashboard:customer_list' %}">Manage customers</a> · <a href="{% url 'dashboard:supplier_list' %}">Manage suppliers</a> · <a href="{% url 'dashboard:product_list' %}">Manage products</a></p>
   <p><a href="{% url 'dashboard:rfq_list' %}">View customer enquiries</a> · <a href="{% url 'dashboard:rfq_create' %}">Record an enquiry</a></p>
+  <h2>Getting started</h2>
+  <p>{{ setup_completed }} of {{ setup_total }} steps complete.</p>
+  <ol>
+    {% for step in setup_steps %}<li>{% if step.done %}{{ step.label }} — done{% else %}<a href="{{ step.url }}">{{ step.label }}</a>{% endif %}</li>{% endfor %}
+  </ol>
   <h2>Next follow-ups</h2>
   {% for follow_up in upcoming_follow_ups %}
     <div class="row"><a href="{% url 'dashboard:rfq_detail' follow_up.rfq.pk %}">{{ follow_up.rfq.reference|default:follow_up.rfq }} · {{ follow_up.rfq.customer }}</a> · Due {{ follow_up.due_on }}{% if follow_up.due_on < today %} · Overdue{% endif %}{% if follow_up.note %}<div>{{ follow_up.note }}</div>{% endif %}</div>

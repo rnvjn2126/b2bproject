@@ -18,6 +18,8 @@ Open <http://127.0.0.1:8000/>. Create a local account in a second terminal with:
 .\.venv\Scripts\python.exe manage.py createsuperuser
 ```
 
+The workspace dashboard includes a private, account-scoped checklist for adding the first customer, supplier, product, enquiry, and quotation.
+
 The SQLite database is created locally as `db.sqlite3`. Do not use this development configuration for deployment.
 
 Review [compliance readiness](docs/COMPLIANCE_READINESS.md) before using real customer data or hosting the service. It records the current app boundary and India-specific operator responsibilities; it is not a legal certification.
@@ -50,10 +52,11 @@ model migrations are missing, and runs the Django test suite. A clear
 `[PASS]` or `[FAIL]` message will appear. This does not require the overnight
 controller or Codex CLI.
 
-The test suite covers account isolation, unit normalization, supplier offer
-coverage, landed-cost and gross-margin arithmetic, quote PDF permissions,
-manual follow-ups, and safe catalogue CSV exports. These are automated
-regression tests, not a substitute for a buyer acceptance test.
+The test suite covers account isolation, onboarding progress, searchable and
+paginated lists, unit normalization, supplier offer coverage, landed-cost and
+gross-margin arithmetic, quote PDF permissions, manual follow-ups, and safe
+catalogue CSV exports. These are automated regression tests, not a substitute
+for a buyer acceptance test.
 
 **Current security boundary:** records are separated per login/user in the
 local demo. Shared company accounts and multi-user approval hierarchies require

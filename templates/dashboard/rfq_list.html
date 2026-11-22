@@ -2,15 +2,25 @@
 {% block title %}Enquiries · Steel Quotes{% endblock %}
 {% block content %}
 <section class="card">
-  <h1>Customer enquiries</h1>
-  <p><a href="{% url 'dashboard:rfq_create' %}">Record an enquiry</a></p>
-  <form class="inline-form" method="get">
+  <div class="page-heading">
+    <h1>Customer enquiries</h1>
+    <a class="button" href="{% url 'dashboard:rfq_create' %}">Record an enquiry</a>
+  </div>
+  <form class="inline-form filters" method="get">
     <label for="q">Search enquiries<input id="q" name="q" type="search" value="{{ query }}"></label>
     <label for="status">Status<select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     <button type="submit">Filter</button>
+    {% if query or status %}<a href="{% url 'dashboard:rfq_list' %}">Clear</a>{% endif %}
   </form>
-  {% for rfq in rfqs %}<div class="row"><a href="{% url 'dashboard:rfq_detail' rfq.pk %}">{{ rfq.reference|default:rfq }}</a> · {{ rfq.customer }} · {{ rfq.get_status_display }} · {{ rfq.received_on }}</div>
-  {% empty %}<p>No enquiries recorded yet.</p>{% endfor %}
+  {% for rfq in rfqs %}
+    <article class="row record-row">
+      <div>
+        <strong><a href="{% url 'dashboard:rfq_detail' rfq.pk %}">{{ rfq.reference|default:rfq }}</a></strong>
+        <div class="muted">{{ rfq.customer }} · Received {{ rfq.received_on|date:"j M Y" }}</div>
+      </div>
+      <span class="badge status-{{ rfq.status }}">{{ rfq.get_status_display }}</span>
+    </article>
+  {% empty %}<p class="empty-state">{% if query or status %}No enquiries match these filters.{% else %}No enquiries recorded yet.{% endif %}</p>{% endfor %}
   {% include "dashboard/pagination.html" with page_obj=rfqs query=query status=status %}
 </section>
 {% endblock %}

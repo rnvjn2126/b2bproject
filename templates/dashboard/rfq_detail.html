@@ -38,23 +38,23 @@
       <p><a href="{% url 'dashboard:supplier_offer_create' rfq.pk line.pk %}">Add supplier offer</a></p>
 
       {% if line.comparison_offers %}
-        <div style="overflow-x:auto">
-          <table style="width:100%; border-collapse:collapse; text-align:left">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Supplier comparison">
+          <table class="table-wide">
             <thead>
               <tr>
-                <th style="padding:.45rem">Supplier</th>
-                <th style="padding:.45rem">Coverage</th>
-                <th style="padding:.45rem">Entered rate</th>
-                <th style="padding:.45rem">Landed / {{ line.get_unit_display }}</th>
-                <th style="padding:.45rem">Landed total for covered quantity</th>
-                <th style="padding:.45rem">Delivery</th>
+                <th scope="col">Supplier</th>
+                <th scope="col">Coverage</th>
+                <th scope="col">Entered rate</th>
+                <th scope="col">Landed / {{ line.get_unit_display }}</th>
+                <th scope="col">Landed total for covered quantity</th>
+                <th scope="col">Delivery</th>
               </tr>
             </thead>
             <tbody>
               {% for offer in line.comparison_offers %}
-                <tr style="border-top:1px solid #e2e8ec">
-                  <td style="padding:.45rem">{{ offer.supplier }}</td>
-                  <td style="padding:.45rem">
+                <tr>
+                  <td>{{ offer.supplier }}</td>
+                  <td>
                     Supplier availability {{ offer.available_quantity|floatformat:3 }} {{ offer.get_unit_display }}
                     ({{ offer.converted_available_quantity|floatformat:3 }} {{ line.get_unit_display }} after conversion).
                     {% if offer.covers_full_quantity %}
@@ -63,13 +63,13 @@
                       Partial: covers {{ offer.covered_quantity|floatformat:3 }} of {{ line.quantity|floatformat:3 }} {{ line.get_unit_display }}
                     {% endif %}
                   </td>
-                  <td style="padding:.45rem">INR {{ offer.unit_price|floatformat:4 }} / {{ offer.get_unit_display }}</td>
-                  <td style="padding:.45rem"><strong>INR {{ offer.landed_cost_per_requested_unit|floatformat:4 }}</strong></td>
-                  <td style="padding:.45rem">INR {{ offer.total_landed_cost|floatformat:2 }}</td>
-                  <td style="padding:.45rem">{{ offer.delivery_days }} day{{ offer.delivery_days|pluralize }}</td>
+                  <td>INR {{ offer.unit_price|floatformat:4 }} / {{ offer.get_unit_display }}</td>
+                  <td><strong>INR {{ offer.landed_cost_per_requested_unit|floatformat:4 }}</strong></td>
+                  <td>INR {{ offer.total_landed_cost|floatformat:2 }}</td>
+                  <td>{{ offer.delivery_days }} day{{ offer.delivery_days|pluralize }}</td>
                 </tr>
                 <tr>
-                  <td colspan="6" style="padding:0 .45rem .8rem; color:#475866">
+                  <td colspan="6" class="table-note">
                     {{ offer.conversion_assumption }} Freight (INR {{ offer.freight_cost|floatformat:2 }}) and packaging/incidental cost (INR {{ offer.packaging_cost|floatformat:2 }}) allocated across {{ offer.covered_quantity|floatformat:3 }} {{ line.get_unit_display }} covered.
                   </td>
                 </tr>

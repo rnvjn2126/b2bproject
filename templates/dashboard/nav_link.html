@@ -1,0 +1,6 @@
+{% url route as href %}
+{% if href %}
+  <a href="{{ href }}"{% if request.resolver_match.view_name == route %} aria-current="page"{% endif %}>
+    <span class="nav-icon" aria-hidden="true">{{ icon }}</span>{{ label }}
+  </a>
+{% endif %}

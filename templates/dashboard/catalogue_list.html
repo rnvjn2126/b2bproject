@@ -2,22 +2,35 @@
 {% block title %}{{ title }} · Steel Quotes{% endblock %}
 {% block content %}
 <section class="card">
-  <h1>{{ title }}</h1>
-  <p><a href="{% url create_url %}">Add {{ singular }}</a></p>
-  <form class="inline-form" method="get">
+  <div class="page-heading">
+    <h1>{{ title }}</h1>
+    <a class="button" href="{% url create_url %}">Add {{ singular }}</a>
+  </div>
+  <form class="inline-form filters" method="get">
     <label for="q">Search {{ title|lower }}<input id="q" name="q" type="search" value="{{ query }}"></label>
     <button type="submit">Search</button>{% if query %}<a href="?">Clear</a>{% endif %}
   </form>
-  {% if import_url %}<p><a href="{% url import_url %}">Import products from CSV</a></p>{% endif %}
-  {% if export_url %}<p><a href="{% url export_url %}">Export {{ title|lower }} to CSV</a>{% if singular != "product" %}<br><small>The export includes business contact details and notes; store it securely.</small>{% endif %}</p>{% endif %}
+  {% if import_url or export_url %}
+    <div class="record-actions">
+      {% if import_url %}<a href="{% url import_url %}">Import products from CSV</a>{% endif %}
+      {% if export_url %}<a href="{% url export_url %}">Export {{ title|lower }} to CSV</a>{% endif %}
+    </div>
+    {% if export_url and singular != "product" %}<p><small>The export includes business contact details and notes; store it securely.</small></p>{% endif %}
+  {% endif %}
   {% for record in records %}
-    <article class="row"><strong>{{ record.name }}</strong>
-      {% if record.company_name %}<div>{{ record.company_name }}</div>{% endif %}
-      {% if record.grade %}<div>{{ record.grade }} · {{ record.get_shape_display }} · {{ record.dimensions|default:"Dimensions not recorded" }} · {{ record.get_unit_display }}{% if record.weight_kg %} · {{ record.weight_kg }} kg/item ({{ record.get_weight_basis_display|lower }}){% endif %}</div>{% endif %}
-      {% if record.email %}<div>{{ record.email }}</div>{% endif %}{% if record.phone %}<div>{{ record.phone }}</div>{% endif %}
-      <a href="{% url 'dashboard:'|add:singular|add:'_update' record.pk %}">Edit</a> · <a href="{% url 'dashboard:'|add:singular|add:'_delete' record.pk %}">Delete</a>
+    <article class="row record-row">
+      <div>
+        <strong>{{ record.name }}</strong>
+        {% if record.company_name %}<div class="muted">{{ record.company_name }}</div>{% endif %}
+        {% if record.grade %}<div class="muted">{{ record.grade }} · {{ record.get_shape_display }} · {{ record.dimensions|default:"Dimensions not recorded" }} · {{ record.get_unit_display }}{% if record.weight_kg %} · {{ record.weight_kg }} kg/item ({{ record.get_weight_basis_display|lower }}){% endif %}</div>{% endif %}
+        {% if record.email %}<div class="muted">{{ record.email }}</div>{% endif %}{% if record.phone %}<div class="muted">{{ record.phone }}</div>{% endif %}
+      </div>
+      <div class="record-actions">
+        <a href="{% url 'dashboard:'|add:singular|add:'_update' record.pk %}" aria-label="Edit {{ record.name }}">Edit</a>
+        <a class="delete-link" href="{% url 'dashboard:'|add:singular|add:'_delete' record.pk %}" aria-label="Delete {{ record.name }}">Delete</a>
+      </div>
     </article>
-  {% empty %}<p>No {{ title|lower }} yet.</p>{% endfor %}
+  {% empty %}<p class="empty-state">{% if query %}No matching {{ title|lower }}.{% else %}No {{ title|lower }} yet.{% endif %}</p>{% endfor %}
   {% if is_paginated %}{% include "dashboard/pagination.html" with page_obj=page_obj query=query %}{% endif %}
 </section>
 {% endblock %}

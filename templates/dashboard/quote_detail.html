@@ -34,36 +34,36 @@
     <p>Reviewed by {{ quote.approved_by }} on {{ quote.approved_at }}.</p>
   {% endif %}
   <p>Saved pricing settings: target margin {{ quote.target_margin_percent }}%, minimum margin {{ quote.minimum_margin_percent }}%, maximum discount {{ quote.maximum_discount_percent }}%.</p>
-  <div style="overflow-x:auto">
-    <table style="width:100%; border-collapse:collapse; text-align:left">
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Quotation pricing">
+    <table class="table-wide">
       <thead>
         <tr>
-          <th style="padding:.45rem">Requested item</th>
-          <th style="padding:.45rem">Supplier</th>
-          <th style="padding:.45rem">Quantity</th>
-          <th style="padding:.45rem">Landed / unit</th>
-          <th style="padding:.45rem">Target / unit</th>
-          <th style="padding:.45rem">Discount</th>
-          <th style="padding:.45rem">Selling / unit</th>
-          <th style="padding:.45rem">Gross margin</th>
-          <th style="padding:.45rem">Line total</th>
+          <th scope="col">Requested item</th>
+          <th scope="col">Supplier</th>
+          <th scope="col">Quantity</th>
+          <th scope="col">Landed / unit</th>
+          <th scope="col">Target / unit</th>
+          <th scope="col">Discount</th>
+          <th scope="col">Selling / unit</th>
+          <th scope="col">Gross margin</th>
+          <th scope="col">Line total</th>
         </tr>
       </thead>
       <tbody>
         {% for line in quote.lines.all %}
-          <tr style="border-top:1px solid #e2e8ec">
-            <td style="padding:.45rem">{{ line.rfq_line.product|default:line.rfq_line.description|default:"Requested item" }}</td>
-            <td style="padding:.45rem">{{ line.supplier_offer.supplier }}</td>
-            <td style="padding:.45rem">{{ line.quantity|floatformat:3 }} {{ line.get_unit_display }}</td>
-            <td style="padding:.45rem">INR {{ line.landed_cost_per_unit|floatformat:4 }}</td>
-            <td style="padding:.45rem">INR {{ line.target_price_per_unit|floatformat:4 }}</td>
-            <td style="padding:.45rem">{{ line.discount_percent }}%</td>
-            <td style="padding:.45rem">INR {{ line.selling_price_per_unit|floatformat:4 }}</td>
-            <td style="padding:.45rem">{{ line.gross_margin_percent }}%{% if line.needs_review %} · Review{% endif %}</td>
-            <td style="padding:.45rem">INR {{ line.total_selling_price|floatformat:2 }}</td>
+          <tr>
+            <td>{{ line.rfq_line.product|default:line.rfq_line.description|default:"Requested item" }}</td>
+            <td>{{ line.supplier_offer.supplier }}</td>
+            <td>{{ line.quantity|floatformat:3 }} {{ line.get_unit_display }}</td>
+            <td>INR {{ line.landed_cost_per_unit|floatformat:4 }}</td>
+            <td>INR {{ line.target_price_per_unit|floatformat:4 }}</td>
+            <td>{{ line.discount_percent }}%</td>
+            <td>INR {{ line.selling_price_per_unit|floatformat:4 }}</td>
+            <td>{{ line.gross_margin_percent }}%{% if line.needs_review %} · Review{% endif %}</td>
+            <td>INR {{ line.total_selling_price|floatformat:2 }}</td>
           </tr>
           <tr>
-            <td colspan="9" style="padding:0 .45rem .8rem; color:#475866">
+            <td colspan="9" class="table-note">
               Landed cost total INR {{ line.total_landed_cost|floatformat:2 }}. Margin = (selling price - landed cost) / selling price × 100.
               {% if line.gross_margin_percent < 0 %}<strong class="errors">Negative margin: manager review is required.</strong>{% endif %}
             </td>
@@ -71,11 +71,11 @@
         {% endfor %}
       </tbody>
       <tfoot>
-        <tr style="border-top:2px solid #aebbc5">
-          <th colspan="3" style="padding:.45rem">Quote totals</th>
-          <td colspan="2" style="padding:.45rem">Landed cost INR {{ quote.total_landed_cost|floatformat:2 }}</td>
-          <td colspan="3" style="padding:.45rem">Gross margin {{ quote.gross_margin_percent }}%</td>
-          <th style="padding:.45rem">INR {{ quote.total_selling_price|floatformat:2 }}</th>
+        <tr>
+          <th scope="row" colspan="3">Quote totals</th>
+          <td colspan="2">Landed cost INR {{ quote.total_landed_cost|floatformat:2 }}</td>
+          <td colspan="3">Gross margin {{ quote.gross_margin_percent }}%</td>
+          <td><strong>INR {{ quote.total_selling_price|floatformat:2 }}</strong></td>
         </tr>
       </tfoot>
     </table>

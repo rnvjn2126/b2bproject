@@ -1,0 +1,21 @@
+<nav class="primary-nav" aria-label="Main navigation">
+  <div class="nav-group">
+    <p class="nav-label">Work</p>
+    {% include "dashboard/nav_link.html" with route="dashboard:home" label="Overview" icon="⌂" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:rfq_list" label="Enquiries" icon="≡" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:quote_list" label="Quotations" icon="▤" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:followup_list" label="Follow-ups" icon="◷" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:reports" label="Reports" icon="▥" %}
+  </div>
+  <div class="nav-group">
+    <p class="nav-label">Catalogue</p>
+    {% include "dashboard/nav_link.html" with route="dashboard:customer_list" label="Customers" icon="♙" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:supplier_list" label="Suppliers" icon="◇" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:product_list" label="Products" icon="▱" %}
+  </div>
+  <div class="nav-group">
+    <p class="nav-label">Settings</p>
+    {% include "dashboard/nav_link.html" with route="dashboard:quote_pricing_settings" label="Quote pricing" icon="₹" %}
+    {% include "dashboard/nav_link.html" with route="dashboard:team_list" label="Team" icon="⊞" %}
+  </div>
+</nav>

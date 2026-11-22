@@ -1,22 +1,69 @@
 {% extends "base.html" %}
 {% block title %}Workspace · Steel Quotes{% endblock %}
 {% block content %}
-<section class="card">
-  <h1>Steel quotation workspace</h1>
-  <p>Signed in as {{ request.user.get_username }}.</p>
-  <p>Catalogue overview: {{ customer_count }} customers, {{ supplier_count }} suppliers and {{ product_count }} products. {{ rfq_count }} enquiries.</p>
-  <p><a href="{% url 'dashboard:followup_list' %}">{{ follow_up_count }} open follow-up{{ follow_up_count|pluralize }}</a> · {{ overdue_follow_up_count }} overdue.</p>
-  <p><a href="{% url 'dashboard:customer_list' %}">Manage customers</a> · <a href="{% url 'dashboard:supplier_list' %}">Manage suppliers</a> · <a href="{% url 'dashboard:product_list' %}">Manage products</a></p>
-  <p><a href="{% url 'dashboard:rfq_list' %}">View customer enquiries</a> · <a href="{% url 'dashboard:rfq_create' %}">Record an enquiry</a></p>
-  <h2>Getting started</h2>
-  <p>{{ setup_completed }} of {{ setup_total }} steps complete.</p>
-  <ol>
-    {% for step in setup_steps %}<li>{% if step.done %}{{ step.label }} — done{% else %}<a href="{{ step.url }}">{{ step.label }}</a>{% endif %}</li>{% endfor %}
-  </ol>
-  <h2>Next follow-ups</h2>
-  {% for follow_up in upcoming_follow_ups %}
-    <div class="row"><a href="{% url 'dashboard:rfq_detail' follow_up.rfq.pk %}">{{ follow_up.rfq.reference|default:follow_up.rfq }} · {{ follow_up.rfq.customer }}</a> · Due {{ follow_up.due_on }}{% if follow_up.due_on < today %} · Overdue{% endif %}{% if follow_up.note %}<div>{{ follow_up.note }}</div>{% endif %}</div>
-  {% empty %}<p>No open follow-ups.</p>{% endfor %}
-  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+<section class="hero">
+  <div>
+    <h1>Steel quotation workspace</h1>
+    <p>Compare supplier offers, prepare quotations, and keep track of follow-ups.</p>
+  </div>
+  <a class="button" href="{% url 'dashboard:rfq_create' %}"><span aria-hidden="true">+</span> Record an enquiry</a>
+</section>
+
+<div class="metrics" aria-label="Workspace totals">
+  <a href="{% url 'dashboard:rfq_list' %}" class="metric card">
+    <span>Enquiries</span><strong>{{ rfq_count }}</strong>
+  </a>
+  <a href="{% url 'dashboard:followup_list' %}" class="metric card">
+    <span>Open follow-ups</span><strong>{{ follow_up_count }}</strong>
+  </a>
+  <a href="{% url 'dashboard:followup_list' %}" class="metric card">
+    <span>Overdue follow-ups</span><strong{% if overdue_follow_up_count %} class="errors"{% endif %}>{{ overdue_follow_up_count }}</strong>
+  </a>
+</div>
+
+<div class="dashboard-grid">
+  <section class="card">
+    <div class="section-heading">
+      <h2>Next follow-ups</h2>
+      <a href="{% url 'dashboard:followup_list' %}">View all</a>
+    </div>
+    {% for follow_up in upcoming_follow_ups %}
+      <article class="row">
+        <strong><a href="{% url 'dashboard:rfq_detail' follow_up.rfq.pk %}">{{ follow_up.rfq.reference|default:follow_up.rfq }} · {{ follow_up.rfq.customer }}</a></strong>
+        <div class="muted">Due {{ follow_up.due_on|date:"j M Y" }}{% if follow_up.due_on < today %} <span class="badge badge-danger">Overdue</span>{% endif %}</div>
+        {% if follow_up.note %}<p>{{ follow_up.note }}</p>{% endif %}
+      </article>
+    {% empty %}
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">◷</span>
+        <strong>No open follow-ups.</strong>
+        <p>Reminders you schedule from an enquiry will appear here.</p>
+      </div>
+    {% endfor %}
+  </section>
+  <section class="card">
+    <div class="section-heading">
+      <h2>Getting started</h2>
+      <span class="badge">{{ setup_completed }} of {{ setup_total }} complete</span>
+    </div>
+    <progress value="{{ setup_completed }}" max="{{ setup_total }}" aria-label="Workspace setup progress"></progress>
+    <ol class="checklist">
+      {% for step in setup_steps %}
+        <li>
+          <span class="step-number{% if step.done %} is-done{% endif %}" aria-hidden="true">{% if step.done %}✓{% else %}{{ forloop.counter }}{% endif %}</span>
+          {% if step.done %}{{ step.label }} <span class="visually-hidden">complete</span>{% else %}<a href="{{ step.url }}">{{ step.label }}</a>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+
+<section class="card catalogue-summary">
+  <h2>Catalogue</h2>
+  <div>
+    <a href="{% url 'dashboard:customer_list' %}">Customers <span class="badge">{{ customer_count }}</span></a>
+    <a href="{% url 'dashboard:supplier_list' %}">Suppliers <span class="badge">{{ supplier_count }}</span></a>
+    <a href="{% url 'dashboard:product_list' %}">Products <span class="badge">{{ product_count }}</span></a>
+  </div>
 </section>
 {% endblock %}

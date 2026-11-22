@@ -3,19 +3,23 @@
 {% block content %}
 <section class="card">
   <h1>Quotation pipeline</h1>
-  <form class="inline-form" method="get">
+  <form class="inline-form filters" method="get">
     <label for="q">Search quotations<input id="q" name="q" type="search" value="{{ query }}"></label>
     <label for="status">Status<select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     <button type="submit">Filter</button>
+    {% if query or status %}<a href="{% url 'dashboard:quote_list' %}">Clear</a>{% endif %}
   </form>
   {% for quote in quotes %}
-    <article class="row">
-      <strong><a href="{% url 'dashboard:quote_detail' quote.pk %}">{{ quote.number }} · Revision {{ quote.revision }}</a></strong>
-      <div>{{ quote.rfq.reference|default:quote.rfq }} · {{ quote.rfq.customer }}</div>
-      <div>{{ quote.get_status_display }} · Issued {{ quote.issue_date }} · Valid until {{ quote.valid_until }}</div>
-      {% if quote.valid_until < today and quote.status == "sent" %}<div class="errors">Validity date passed; mark expired when confirmed.</div>{% endif %}
+    <article class="row record-row">
+      <div>
+        <strong><a href="{% url 'dashboard:quote_detail' quote.pk %}">{{ quote.number }} · Revision {{ quote.revision }}</a></strong>
+        <div>{{ quote.rfq.reference|default:quote.rfq }} · {{ quote.rfq.customer }}</div>
+        <div class="muted">Issued {{ quote.issue_date|date:"j M Y" }} · Valid until {{ quote.valid_until|date:"j M Y" }}</div>
+        {% if quote.valid_until < today and quote.status == "sent" %}<div class="errors">Validity date passed; mark expired when confirmed.</div>{% endif %}
+      </div>
+      <span class="badge status-{{ quote.status }}">{{ quote.get_status_display }}</span>
     </article>
-  {% empty %}<p>No quotations prepared yet.</p>{% endfor %}
+  {% empty %}<p class="empty-state">{% if query or status %}No quotations match these filters.{% else %}No quotations prepared yet.{% endif %}</p>{% endfor %}
   <p><a href="{% url 'dashboard:rfq_list' %}">Back to enquiries</a></p>
   {% include "dashboard/pagination.html" with page_obj=quotes query=query status=status %}
 </section>

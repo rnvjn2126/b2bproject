@@ -8,6 +8,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from .models import BusinessAccount
+
 
 def _safe(value):
     return escape(str(value or "—")).replace("\n", "<br/>")
@@ -21,6 +23,8 @@ def build_quote_pdf(quote):
         topMargin=15 * mm, bottomMargin=17 * mm, pageCompression=0,
     )
     styles = getSampleStyleSheet()
+    business_name = BusinessAccount.objects.filter(owner_id=quote.owner_id).values_list("name", flat=True).first()
+    business_name = business_name or "Steel Quotes"
     title = ParagraphStyle(
         "QuoteTitle", parent=styles["Title"], fontName="Helvetica-Bold",
         fontSize=18, leading=22, textColor=colors.HexColor("#17324d"), alignment=0,
@@ -28,7 +32,8 @@ def build_quote_pdf(quote):
     small = ParagraphStyle("QuoteSmall", parent=styles["BodyText"], fontSize=8, leading=10)
     right = ParagraphStyle("QuoteRight", parent=small, alignment=TA_RIGHT)
     story = [
-        Paragraph("STEEL QUOTATION", title),
+        Paragraph(_safe(business_name), title),
+        Paragraph("STEEL QUOTATION", small),
         Spacer(1, 5 * mm),
     ]
 
@@ -118,7 +123,7 @@ def build_quote_pdf(quote):
         canvas.line(13 * mm, 12 * mm, A4[0] - 13 * mm, 12 * mm)
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.HexColor("#52616d"))
-        canvas.drawString(13 * mm, 7 * mm, "Steel Quotes")
+        canvas.drawString(13 * mm, 7 * mm, business_name)
         canvas.drawRightString(A4[0] - 13 * mm, 7 * mm, f"Page {doc.page}")
         canvas.restoreState()
 

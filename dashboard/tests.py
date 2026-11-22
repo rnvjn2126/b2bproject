@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import (
-    AuditEvent, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings, RFQ,
+    AuditEvent, BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings, RFQ,
     RFQLine, Supplier, SupplierOffer,
 )
 
@@ -691,6 +691,7 @@ class QuotePipelineAndPDFBoundaryTests(TestCase):
 
     def test_customer_pdf_has_terms_and_sales_totals_without_procurement_data(self):
         quote = self.create_quote()
+        BusinessAccount.objects.create(owner=self.user, name="Northern Steel Traders")
         quote.payment_terms = "<script>Pay within 30 days</script>"
         quote.tax_rate_percent = Decimal("18.00")
         quote.save(update_fields=["payment_terms", "tax_rate_percent", "updated_at"])
@@ -699,6 +700,7 @@ class QuotePipelineAndPDFBoundaryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF-"))
+        self.assertIn(b"Northern Steel Traders", response.content)
         self.assertIn(b"NOT A TAX INVOICE", response.content)
         self.assertIn(b"Pipeline customer", response.content)
         self.assertIn(b"Pay within 30 days", response.content)

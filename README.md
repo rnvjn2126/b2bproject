@@ -26,6 +26,8 @@ The business owner can name the workspace and create a one-time invitation link 
 
 Owners and managers can review selected workspace activity, including quote approvals and status changes, pricing changes, and membership changes. Entries do not store rates, margins, invitation emails, or user-entered notes. This application history is not tamper-evident.
 
+Quotation PDFs use the shared workspace name as the seller heading and footer after the owner sets it on the Team page; otherwise they use the demo name, Steel Quotes. Uploadable logos and seller address, contact, and GST registration fields still need business input.
+
 The **Reports** page shows the shared quote pipeline, accepted-versus-lost win rate, open overdue reminders, and 30-day follow-up/enquiry counts. It excludes sales values, supplier costs, and margins. The win rate uses only accepted and lost quotations.
 
 The SQLite database is created locally as `db.sqlite3`. Do not use this development configuration for deployment.

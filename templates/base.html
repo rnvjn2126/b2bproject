@@ -27,6 +27,7 @@
       <a href="{% url 'dashboard:followup_list' %}">Follow-ups</a>
       <a href="{% url 'dashboard:quote_list' %}">Quotations</a>
       <a href="{% url 'dashboard:quote_pricing_settings' %}">Quote pricing</a>
+      <a href="{% url 'dashboard:team_list' %}">Team</a>
       <a href="{% url 'password_change' %}">Change password</a>
       <form class="nav-form" method="post" action="{% url 'logout' %}">
         {% csrf_token %}<button class="nav-button" type="submit">Sign out</button>

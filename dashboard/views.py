@@ -1,5 +1,8 @@
 import csv
+import hashlib
+import secrets
 from datetime import timedelta
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -14,52 +17,56 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (
-    CustomerForm, FollowUpForm, ProductCSVImportForm, ProductForm, QuoteCreateForm,
-    QuotePricingSettingsForm, QuoteStatusForm, RFQForm, RFQLineFormSet, RFQStatusForm,
-    SupplierForm, SupplierOfferForm,
+    BusinessAccountForm, CustomerForm, FollowUpForm, ProductCSVImportForm, ProductForm,
+    QuoteCreateForm, QuotePricingSettingsForm, QuoteStatusForm, RFQForm, RFQLineFormSet,
+    RFQStatusForm, SupplierForm, SupplierOfferForm, TeamInvitationAcceptForm, TeamInvitationForm,
+)
+from .accounts import (
+    account_owner, business_account_for, can_manage_account, can_manage_team, user_can_join_account,
 )
 from .models import (
-    Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings, RFQ,
-    RFQLine, Supplier, SupplierOffer,
+    BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings,
+    RFQ, RFQLine, Supplier, SupplierOffer, TeamInvitation, TeamMembership,
 )
 
 
 @login_required
 def home(request):
+    owner = account_owner(request.user)
     active_follow_ups = FollowUp.objects.filter(
-        owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
         completed_at__isnull=True,
     ).select_related("rfq", "rfq__customer").order_by("due_on", "id")
     # Derive progress from this account's records; never seed demo data into a workspace.
     setup_steps = [
         {
             "label": "Add your first customer", "url": reverse("dashboard:customer_create"),
-            "done": Customer.objects.filter(owner=request.user).exists(),
+            "done": Customer.objects.filter(owner=owner).exists(),
         },
         {
             "label": "Add your first supplier", "url": reverse("dashboard:supplier_create"),
-            "done": Supplier.objects.filter(owner=request.user).exists(),
+            "done": Supplier.objects.filter(owner=owner).exists(),
         },
         {
             "label": "Add your first product", "url": reverse("dashboard:product_create"),
-            "done": Product.objects.filter(owner=request.user).exists(),
+            "done": Product.objects.filter(owner=owner).exists(),
         },
         {
             "label": "Record your first enquiry", "url": reverse("dashboard:rfq_create"),
-            "done": RFQ.objects.filter(owner=request.user, customer__owner=request.user).exists(),
+            "done": RFQ.objects.filter(owner=owner, customer__owner=owner).exists(),
         },
         {
             "label": "Prepare your first quotation", "url": reverse("dashboard:rfq_list"),
             "done": Quote.objects.filter(
-                owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+                owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
             ).exists(),
         },
     ]
     return render(request, "dashboard/home.html", {
-        "customer_count": Customer.objects.filter(owner=request.user).count(),
-        "supplier_count": Supplier.objects.filter(owner=request.user).count(),
-        "product_count": Product.objects.filter(owner=request.user).count(),
-        "rfq_count": RFQ.objects.filter(owner=request.user, customer__owner=request.user).count(),
+        "customer_count": Customer.objects.filter(owner=owner).count(),
+        "supplier_count": Supplier.objects.filter(owner=owner).count(),
+        "product_count": Product.objects.filter(owner=owner).count(),
+        "rfq_count": RFQ.objects.filter(owner=owner, customer__owner=owner).count(),
         "follow_up_count": active_follow_ups.count(),
         "overdue_follow_up_count": active_follow_ups.filter(due_on__lt=timezone.localdate()).count(),
         "upcoming_follow_ups": active_follow_ups[:5],
@@ -71,8 +78,169 @@ def home(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+def team_list(request):
+    account = business_account_for(request.user, create=True)
+    is_owner = can_manage_team(request.user, account)
+    account_form = BusinessAccountForm(instance=account)
+    invitation_form = TeamInvitationForm(account=account)
+
+    if request.method == "POST":
+        if not is_owner:
+            raise PermissionDenied("Only the business owner can manage team membership.")
+
+        action = request.POST.get("action")
+        if action == "rename":
+            account_form = BusinessAccountForm(request.POST, instance=account)
+            if account_form.is_valid():
+                account_form.save()
+                return redirect("dashboard:team_list")
+        elif action == "invite":
+            invitation_form = TeamInvitationForm(request.POST, account=account)
+            if invitation_form.is_valid():
+                email = invitation_form.cleaned_data["email"]
+                existing_user = get_user_model().objects.filter(email__iexact=email).first()
+                if existing_user and not user_can_join_account(existing_user):
+                    invitation_form.add_error("email", "This user already has a workspace or company membership.")
+                else:
+                    token = secrets.token_urlsafe(32)
+                    # A database leak must not reveal a usable invitation link.
+                    invitation = TeamInvitation(
+                        account=account,
+                        email=email,
+                        role=invitation_form.cleaned_data["role"],
+                        token_digest=hashlib.sha256(token.encode()).hexdigest(),
+                        created_by=request.user,
+                        expires_at=timezone.now() + timedelta(hours=72),
+                    )
+                    invitation.full_clean()
+                    invitation.save()
+                    request.session["team_invite_url"] = request.build_absolute_uri(
+                        reverse("dashboard:team_invite_accept", args=[token]),
+                    )
+                    return redirect("dashboard:team_list")
+        else:
+            return HttpResponseBadRequest("Choose a valid team action.")
+
+    return render(request, "dashboard/team.html", {
+        "account": account,
+        "account_form": account_form,
+        "invitation_form": invitation_form,
+        "members": account.memberships.select_related("user"),
+        "invitations": account.invitations.filter(
+            accepted_at__isnull=True, revoked_at__isnull=True,
+        ),
+        "role_choices": TeamMembership.Role.choices,
+        "is_owner": is_owner,
+        "invite_url": request.session.pop("team_invite_url", "") if is_owner else "",
+    })
+
+
+@login_required
+@require_POST
+def team_member_remove(request, pk):
+    account = business_account_for(request.user)
+    if not account or not can_manage_team(request.user, account):
+        raise PermissionDenied("Only the business owner can remove team members.")
+    member = get_object_or_404(account.memberships, pk=pk)
+    member.delete()
+    return redirect("dashboard:team_list")
+
+
+@login_required
+@require_POST
+def team_member_role(request, pk):
+    account = business_account_for(request.user)
+    if not account or not can_manage_team(request.user, account):
+        raise PermissionDenied("Only the business owner can change team roles.")
+    member = get_object_or_404(account.memberships, pk=pk)
+    role = request.POST.get("role")
+    if role not in TeamMembership.Role.values:
+        return HttpResponseBadRequest("Choose a valid team role.")
+    member.role = role
+    member.full_clean()
+    member.save(update_fields=["role"])
+    return redirect("dashboard:team_list")
+
+
+@login_required
+@require_POST
+def team_invitation_revoke(request, pk):
+    account = business_account_for(request.user)
+    if not account or not can_manage_team(request.user, account):
+        raise PermissionDenied("Only the business owner can revoke invitations.")
+    invitation = get_object_or_404(
+        account.invitations.filter(accepted_at__isnull=True, revoked_at__isnull=True), pk=pk,
+    )
+    invitation.revoked_at = timezone.now()
+    invitation.save(update_fields=["revoked_at"])
+    return redirect("dashboard:team_list")
+
+
+@require_http_methods(["GET", "POST"])
+def team_invite_accept(request, token):
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    pending = TeamInvitation.objects.filter(
+        token_digest=digest, accepted_at__isnull=True, revoked_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    )
+    invitation = get_object_or_404(pending.select_related("account", "account__owner"))
+    form = None if request.user.is_authenticated else TeamInvitationAcceptForm(request.POST or None)
+    error = ""
+    accepted_user = None
+
+    if request.method == "POST":
+        with transaction.atomic():
+            invitation = get_object_or_404(
+                TeamInvitation.objects.select_for_update().filter(
+                    accepted_at__isnull=True, revoked_at__isnull=True,
+                    expires_at__gt=timezone.now(),
+                ),
+                pk=invitation.pk,
+            )
+            if request.user.is_authenticated:
+                accepted_user = request.user
+                if accepted_user.email.casefold() != invitation.email.casefold():
+                    error = "Sign in with the email address this invitation was sent to."
+                elif not user_can_join_account(accepted_user):
+                    error = "This user already has a workspace or company membership."
+            elif form.is_valid():
+                if get_user_model().objects.filter(email__iexact=invitation.email).exists():
+                    form.add_error(None, "This email already has an account. Sign in to accept the invitation.")
+                else:
+                    accepted_user = form.save(commit=False)
+                    accepted_user.email = invitation.email
+                    accepted_user.save()
+
+            if accepted_user and not error:
+                membership = TeamMembership(
+                    account=invitation.account, user=accepted_user, role=invitation.role,
+                )
+                membership.full_clean()
+                membership.save()
+                invitation.accepted_at = timezone.now()
+                invitation.save(update_fields=["accepted_at"])
+            else:
+                accepted_user = None
+
+        if accepted_user:
+            login(request, accepted_user, backend="django.contrib.auth.backends.ModelBackend")
+            return redirect("dashboard:home")
+
+    can_accept = bool(
+        request.user.is_authenticated
+        and request.user.email.casefold() == invitation.email.casefold()
+        and user_can_join_account(request.user)
+    )
+    return render(request, "registration/team_invite_accept.html", {
+        "invitation": invitation, "form": form, "error": error, "can_accept": can_accept,
+    })
+
+
+@login_required
 def rfq_list(request):
-    rfqs = RFQ.objects.filter(owner=request.user, customer__owner=request.user).select_related("customer")
+    owner = account_owner(request.user)
+    rfqs = RFQ.objects.filter(owner=owner, customer__owner=owner).select_related("customer")
     query = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
     if query:
@@ -94,19 +262,20 @@ def rfq_list(request):
 @require_http_methods(["GET", "POST"])
 def rfq_create(request):
     from .models import RFQLine
-    rfq = RFQ(owner=request.user)
-    form = RFQForm(request.POST or None, owner=request.user)
-    formset = RFQLineFormSet(request.POST or None, instance=rfq, form_kwargs={"owner": request.user}, prefix="lines")
+    owner = account_owner(request.user)
+    rfq = RFQ(owner=owner)
+    form = RFQForm(request.POST or None, owner=owner)
+    formset = RFQLineFormSet(request.POST or None, instance=rfq, form_kwargs={"owner": owner}, prefix="lines")
     if request.method == "POST" and form.is_valid() and formset.is_valid():
         with transaction.atomic():
             rfq = form.save(commit=False)
-            rfq.owner = request.user
+            rfq.owner = owner
             rfq.full_clean()
             rfq.save()
             formset.instance = rfq
             lines = formset.save(commit=False)
             for line in lines:
-                line.owner = request.user
+                line.owner = owner
                 line.rfq = rfq
                 line.full_clean()
                 line.save()
@@ -118,17 +287,18 @@ def rfq_create(request):
 
 @login_required
 def rfq_detail(request, pk):
+    owner = account_owner(request.user)
     offers = SupplierOffer.objects.filter(
-        owner=request.user, supplier__owner=request.user, rfq_line__owner=request.user,
+        owner=owner, supplier__owner=owner, rfq_line__owner=owner,
     ).select_related("supplier", "rfq_line__product")
-    lines = RFQLine.objects.filter(owner=request.user).select_related("product").prefetch_related(
+    lines = RFQLine.objects.filter(owner=owner).select_related("product").prefetch_related(
         Prefetch("supplier_offers", queryset=offers)
     )
     follow_ups = FollowUp.objects.filter(
-        owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
     ).order_by("due_on", "id")
     rfq = get_object_or_404(
-        RFQ.objects.filter(owner=request.user, customer__owner=request.user).select_related("customer").prefetch_related(
+            RFQ.objects.filter(owner=owner, customer__owner=owner).select_related("customer").prefetch_related(
             Prefetch("lines", queryset=lines), Prefetch("follow_ups", queryset=follow_ups),
         ),
         pk=pk,
@@ -151,8 +321,9 @@ def rfq_detail(request, pk):
 @login_required
 @require_POST
 def rfq_update_status(request, pk):
+    owner = account_owner(request.user)
     rfq = get_object_or_404(
-        RFQ.objects.filter(owner=request.user, customer__owner=request.user), pk=pk,
+        RFQ.objects.filter(owner=owner, customer__owner=owner), pk=pk,
     )
     form = RFQStatusForm(request.POST)
     if form.is_valid():
@@ -165,14 +336,15 @@ def rfq_update_status(request, pk):
 @login_required
 @require_http_methods(["GET", "POST"])
 def followup_create(request, pk):
+    owner = account_owner(request.user)
     rfq = get_object_or_404(
-        RFQ.objects.filter(owner=request.user, customer__owner=request.user).select_related("customer"),
+        RFQ.objects.filter(owner=owner, customer__owner=owner).select_related("customer"),
         pk=pk,
     )
     form = FollowUpForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         follow_up = form.save(commit=False)
-        follow_up.owner = request.user
+        follow_up.owner = owner
         follow_up.rfq = rfq
         follow_up.full_clean()
         follow_up.save()
@@ -183,9 +355,10 @@ def followup_create(request, pk):
 @login_required
 @require_POST
 def followup_complete(request, pk):
+    owner = account_owner(request.user)
     follow_up = get_object_or_404(
         FollowUp.objects.filter(
-            owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+            owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
             completed_at__isnull=True,
         ).select_related("rfq"),
         pk=pk,
@@ -198,8 +371,9 @@ def followup_complete(request, pk):
 
 @login_required
 def followup_list(request):
+    owner = account_owner(request.user)
     follow_ups = FollowUp.objects.filter(
-        owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
     ).select_related("rfq", "rfq__customer").order_by("due_on", "id")
     query = request.GET.get("q", "").strip()
     status = request.GET.get("status", "open")
@@ -229,7 +403,7 @@ def product_csv_export(request):
     response.write("\ufeff")
     writer = csv.writer(response)
     writer.writerow(ProductCSVImportForm.EXPECTED_HEADERS)
-    products = Product.objects.filter(owner=request.user).order_by("name", "id")
+    products = Product.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
 
     def safe_cell(value):
         text = "" if value is None else str(value)
@@ -249,7 +423,8 @@ def product_csv_export(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def product_csv_import(request):
-    form = ProductCSVImportForm(request.POST or None, request.FILES or None, owner=request.user)
+    owner = account_owner(request.user)
+    form = ProductCSVImportForm(request.POST or None, request.FILES or None, owner=owner)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             for product in form.products:
@@ -261,18 +436,19 @@ def product_csv_import(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def supplier_offer_create(request, pk, line_pk):
-    rfq = get_object_or_404(RFQ.objects.filter(owner=request.user), pk=pk)
+    owner = account_owner(request.user)
+    rfq = get_object_or_404(RFQ.objects.filter(owner=owner), pk=pk)
     line = get_object_or_404(
-        RFQLine.objects.filter(owner=request.user, rfq=rfq).select_related("product"),
+        RFQLine.objects.filter(owner=owner, rfq=rfq).select_related("product"),
         pk=line_pk,
     )
     form = SupplierOfferForm(
-        request.POST or None, owner=request.user, rfq_line=line,
+        request.POST or None, owner=owner, rfq_line=line,
     )
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             offer = form.save(commit=False)
-            offer.owner = request.user
+            offer.owner = owner
             offer.rfq_line = line
             offer.full_clean()
             offer.save()
@@ -283,19 +459,24 @@ def supplier_offer_create(request, pk, line_pk):
 @login_required
 @require_http_methods(["GET", "POST"])
 def quote_pricing_settings(request):
-    settings, _ = QuotePricingSettings.objects.get_or_create(owner=request.user)
+    owner = account_owner(request.user)
+    settings, _ = QuotePricingSettings.objects.get_or_create(owner=owner)
+    can_edit = can_manage_account(request.user)
+    if request.method == "POST" and not can_edit:
+        raise PermissionDenied("Only the owner or a manager can change quote pricing guardrails.")
     form = QuotePricingSettingsForm(request.POST or None, instance=settings)
     if request.method == "POST" and form.is_valid():
         form.save()
         return redirect("dashboard:quote_pricing_settings")
-    return render(request, "dashboard/quote_pricing_settings.html", {"form": form})
+    return render(request, "dashboard/quote_pricing_settings.html", {"form": form, "can_edit": can_edit})
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def quote_create(request, pk):
+    owner = account_owner(request.user)
     rfq = get_object_or_404(
-        RFQ.objects.filter(owner=request.user, customer__owner=request.user).select_related("customer"), pk=pk,
+        RFQ.objects.filter(owner=owner, customer__owner=owner).select_related("customer"), pk=pk,
     )
     return _quote_create_page(request, rfq)
 
@@ -303,8 +484,9 @@ def quote_create(request, pk):
 @login_required
 @require_http_methods(["GET", "POST"])
 def quote_revision_create(request, pk):
+    owner = account_owner(request.user)
     source_quote = get_object_or_404(
-        Quote.objects.filter(owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user)
+        Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner)
         .select_related("rfq", "rfq__customer"),
         pk=pk,
     )
@@ -312,9 +494,10 @@ def quote_revision_create(request, pk):
 
 
 def _quote_create_page(request, rfq, source_quote=None):
-    all_lines = RFQLine.objects.filter(owner=request.user, rfq=rfq)
+    owner = account_owner(request.user)
+    all_lines = RFQLine.objects.filter(owner=owner, rfq=rfq)
     lines = list(all_lines.filter(
-        Q(product__isnull=True) | Q(product__owner=request.user),
+        Q(product__isnull=True) | Q(product__owner=owner),
     ).select_related("product"))
     has_foreign_product_line = len(lines) != all_lines.count()
     if source_quote:
@@ -327,7 +510,7 @@ def _quote_create_page(request, rfq, source_quote=None):
             "delivery_terms": source_quote.delivery_terms,
         }
     else:
-        pricing_settings, _ = QuotePricingSettings.objects.get_or_create(owner=request.user)
+        pricing_settings, _ = QuotePricingSettings.objects.get_or_create(owner=owner)
         today = timezone.localdate()
         initial = {
             "issue_date": today,
@@ -343,7 +526,7 @@ def _quote_create_page(request, rfq, source_quote=None):
             initial[f"offer_{line.pk}"] = prior.supplier_offer_id
             initial[f"discount_{line.pk}"] = prior.discount_percent
     form = QuoteCreateForm(
-        request.POST or None, owner=request.user, lines=lines,
+        request.POST or None, owner=owner, lines=lines,
         pricing_settings=pricing_settings, initial=initial,
     )
     line_rows = []
@@ -360,7 +543,7 @@ def _quote_create_page(request, rfq, source_quote=None):
     if request.method == "POST" and can_create and form.is_valid():
         with transaction.atomic():
             quote = Quote(
-                owner=request.user,
+                owner=owner,
                 rfq=rfq,
                 revision_of=source_quote,
                 number=source_quote.number if source_quote else "",
@@ -386,7 +569,7 @@ def _quote_create_page(request, rfq, source_quote=None):
                 quote.save(update_fields=["number", "updated_at"])
             for row in form.pricing_rows:
                 quote_line = QuoteLine(
-                    owner=request.user,
+                    owner=owner,
                     quote=quote,
                     rfq_line=row["rfq_line"],
                     supplier_offer=row["supplier_offer"],
@@ -413,26 +596,27 @@ def _quote_create_page(request, rfq, source_quote=None):
 
 @login_required
 def quote_detail(request, pk):
+    owner = account_owner(request.user)
     visible_lines = QuoteLine.objects.filter(
-        owner=request.user,
-        rfq_line__owner=request.user,
-        rfq_line__rfq__owner=request.user,
-        supplier_offer__owner=request.user,
-        supplier_offer__supplier__owner=request.user,
+        owner=owner,
+        rfq_line__owner=owner,
+        rfq_line__rfq__owner=owner,
+        supplier_offer__owner=owner,
+        supplier_offer__supplier__owner=owner,
     ).filter(
-        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=request.user),
+        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
     ).select_related(
         "rfq_line", "rfq_line__product", "supplier_offer", "supplier_offer__supplier",
     )
     quote = get_object_or_404(
         Quote.objects.filter(
-            owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+            owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
         )
         .select_related("rfq", "rfq__customer", "approved_by")
         .prefetch_related(Prefetch("lines", queryset=visible_lines)),
         pk=pk,
     )
-    quote.revision_history = Quote.objects.filter(owner=request.user, number=quote.number).order_by("revision")
+    quote.revision_history = Quote.objects.filter(owner=owner, number=quote.number).order_by("revision")
     status_form = QuoteStatusForm(quote=quote)
     return render(request, "dashboard/quote_detail.html", {
         "quote": quote, "status_form": status_form,
@@ -442,8 +626,9 @@ def quote_detail(request, pk):
 
 @login_required
 def quote_list(request):
+    owner = account_owner(request.user)
     quotes = Quote.objects.filter(
-        owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user,
+        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
     ).select_related("rfq", "rfq__customer").order_by("-created_at", "-id")
     query = request.GET.get("q", "").strip()
     status = request.GET.get("status", "").strip()
@@ -466,8 +651,9 @@ def quote_list(request):
 @login_required
 @require_POST
 def quote_update_status(request, pk):
+    owner = account_owner(request.user)
     quote = get_object_or_404(
-        Quote.objects.filter(owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user),
+        Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner),
         pk=pk,
     )
     form = QuoteStatusForm(request.POST, quote=quote)
@@ -503,17 +689,18 @@ def quote_update_status(request, pk):
 @login_required
 @require_http_methods(["GET"])
 def quote_pdf(request, pk):
+    owner = account_owner(request.user)
     visible_lines = QuoteLine.objects.filter(
-        owner=request.user,
-        rfq_line__owner=request.user,
-        rfq_line__rfq__owner=request.user,
-        supplier_offer__owner=request.user,
-        supplier_offer__supplier__owner=request.user,
+        owner=owner,
+        rfq_line__owner=owner,
+        rfq_line__rfq__owner=owner,
+        supplier_offer__owner=owner,
+        supplier_offer__supplier__owner=owner,
     ).filter(
-        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=request.user),
+        Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
     ).select_related("rfq_line", "rfq_line__product")
     quote = get_object_or_404(
-        Quote.objects.filter(owner=request.user, rfq__owner=request.user, rfq__customer__owner=request.user)
+        Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner)
         .select_related("rfq__customer")
         .prefetch_related(Prefetch("lines", queryset=visible_lines)),
         pk=pk,
@@ -536,17 +723,18 @@ def quote_pdf(request, pk):
 @login_required
 @require_POST
 def quote_approve(request, pk):
+    owner = account_owner(request.user)
     quote = get_object_or_404(
         Quote.objects.filter(
-            owner=request.user,
-            rfq__owner=request.user,
-            rfq__customer__owner=request.user,
+            owner=owner,
+            rfq__owner=owner,
+            rfq__customer__owner=owner,
             status=Quote.Status.NEEDS_REVIEW,
         ),
         pk=pk,
     )
-    if not request.user.is_staff:
-        raise PermissionDenied("Only staff can approve quotations that require manager review.")
+    if not can_manage_account(request.user):
+        raise PermissionDenied("Only the owner or a manager can approve quotations that need review.")
     quote.status = Quote.Status.APPROVED
     quote.approved_by = request.user
     quote.approved_at = timezone.now()
@@ -564,7 +752,7 @@ class OwnedListView(LoginRequiredMixin, ListView):
     singular = "record"
 
     def get_queryset(self):
-        records = self.model.objects.filter(owner=self.request.user)
+        records = self.model.objects.filter(owner=account_owner(self.request.user))
         query = self.request.GET.get("q", "").strip()
         if query and self.search_fields:
             matches = Q()
@@ -590,7 +778,7 @@ class OwnedCreateView(LoginRequiredMixin, CreateView):
     singular = "record"
 
     def form_valid(self, form):
-        form.instance.owner = self.request.user
+        form.instance.owner = account_owner(self.request.user)
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -604,7 +792,7 @@ class OwnedCreateView(LoginRequiredMixin, CreateView):
 
 class OwnedUpdateView(LoginRequiredMixin, UpdateView):
     def get_queryset(self):
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(owner=account_owner(self.request.user))
 
     def get_success_url(self):
         return reverse(f"dashboard:{self.singular}_list")
@@ -619,7 +807,7 @@ class OwnedDeleteView(LoginRequiredMixin, DeleteView):
     template_name = "dashboard/catalogue_confirm_delete.html"
 
     def get_queryset(self):
-        return self.model.objects.filter(owner=self.request.user)
+        return self.model.objects.filter(owner=account_owner(self.request.user))
 
     def get_success_url(self):
         return reverse(f"dashboard:{self.singular}_list")

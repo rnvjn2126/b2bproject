@@ -17,6 +17,69 @@ def default_quote_expiry():
     return timezone.localdate() + timedelta(days=7)
 
 
+class BusinessAccount(models.Model):
+    owner = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="business_account",
+    )
+    name = models.CharField(max_length=160)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class TeamMembership(models.Model):
+    class Role(models.TextChoices):
+        MANAGER = "manager", "Manager"
+        SALES = "sales", "Sales"
+
+    account = models.ForeignKey(BusinessAccount, on_delete=models.CASCADE, related_name="memberships")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_membership",
+    )
+    role = models.CharField(max_length=12, choices=Role.choices, default=Role.SALES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.account_id and self.user_id and self.account.owner_id == self.user_id:
+            raise ValidationError({"user": "A business owner cannot join their own team as a member."})
+
+
+class TeamInvitation(models.Model):
+    account = models.ForeignKey(BusinessAccount, on_delete=models.CASCADE, related_name="invitations")
+    email = models.EmailField()
+    role = models.CharField(max_length=12, choices=TeamMembership.Role.choices)
+    token_digest = models.CharField(max_length=64, unique=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [models.UniqueConstraint(
+            fields=["account", "email"],
+            condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True),
+            name="unique_pending_team_invitation",
+        )]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.account_id and self.created_by_id and self.account.owner_id != self.created_by_id:
+            raise ValidationError({"created_by": "Only the business owner can invite team members."})
+
+    @property
+    def is_expired(self):
+        return self.expires_at <= timezone.now()
+
+
 class OwnedRecord(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -463,7 +526,11 @@ class Quote(OwnedRecord):
             if value is not None and (value < 0 or value >= 100):
                 errors[field] = "Enter a percentage from 0 up to (but not including) 100."
         if self.approved_by_id and self.owner_id and self.approved_by_id != self.owner_id:
-            errors["approved_by"] = "The reviewer must belong to this account."
+            if not TeamMembership.objects.filter(
+                account__owner_id=self.owner_id, user_id=self.approved_by_id,
+                role=TeamMembership.Role.MANAGER,
+            ).exists():
+                errors["approved_by"] = "The reviewer must be the owner or a manager in this account."
         if self.status == self.Status.APPROVED and (not self.approved_by_id or not self.approved_at):
             errors["status"] = "A reviewed quotation must record its reviewer and review time."
         if self.status in (self.Status.SENT, self.Status.ACCEPTED, self.Status.LOST) and not self.sent_at:

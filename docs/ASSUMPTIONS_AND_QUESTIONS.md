@@ -7,7 +7,7 @@
 - Default target gross margin 12%; **demonstration assumption only**, configurable per business. Quotes below threshold require explicit manager review.
 - Show entered weights and calculated weights separately; never infer missing grade/density without a visible assumption.
 - Never send customer communication automatically. All WhatsApp links require a user click.
-- One business/account boundary at first, but design ownership checks for future multi-business use.
+- A shared company workspace is available to the owner and invited teammates; sales and managers see the same company records, while owner-only controls manage membership.
 - Keep purchase rates, margins and internal remarks off customer-facing documents.
 
 ## Record each new decision
@@ -29,13 +29,14 @@
 | 2026-11-22 | List usability | Add case-insensitive search across customer, supplier, product, enquiry, quote, and follow-up lists; add status filters to enquiries/quotes and open/completed/all follow-up views; paginate lists in groups of 25. All results remain owner-scoped. | Keeps larger demo accounts navigable without weakening account boundaries | Yes |
 | 2026-11-22 | First-run onboarding | Show a five-step dashboard checklist; calculate progress only from the signed-in user's own customer, supplier, product, enquiry, and quote records. | Helps a new account reach the first value moment without loading fake data into a real workspace | Yes |
 | 2026-11-22 | Growth research | Position the initial product around enquiry-to-quote workflow; document separate small, midsize, and enterprise needs. Do not set pricing or claim integrations, certification, or market outcomes without evidence. | Keeps acquisition hypotheses aligned with delivered capabilities and avoids false launch claims | Yes |
+| 2026-11-22 | Shared company workspace | Keep domain records owned by the company's owner account; invited users share all company records. Owners alone invite, remove, or change team roles; owners and managers approve below-floor quotations and edit pricing guardrails. Invitations are one-time, expire after 72 hours, store only a token digest, and require the invited email. | Adds practical team access and approval controls without rewriting existing ownership data or granting sales users pricing authority | Yes |
 
 ## Questions for the next morning review
 1. Should the first demo focus on stainless steel only or include MS/alloy products?
 2. Are supplier offers for stock on hand or procurement after an order?
 3. What target and minimum gross margins, maximum discount, and manager-approval hierarchy should be used?
 4. Which quotation terms and GST treatments apply to your business?
-5. Should each sales representative see their own accounts or all company leads?
+5. Should future branches or sales representatives have more restricted visibility than the shared company workspace?
 6. Do supplier offer prices include GST, and should any non-creditable GST enter landed procurement cost?
 7. Should unprefixed ten-digit phone numbers always be treated as Indian numbers when opening WhatsApp?
 8. Are the selected quotation outcomes and follow-up reminder fields sufficient for the pilot pipeline?
@@ -47,3 +48,6 @@ Questions do not block unrelated safe implementation. Never fabricate an answer;
 
 ## Blockers
 None at setup. Record any task failure with failing command, log, and recommended next action.
+
+## User answers to confirm later
+- Shared company workspace with company-wide record visibility; the owner and managers approve below-margin quotations. The owner alone manages membership.

@@ -542,7 +542,7 @@ class QuotePricingTests(TestCase):
         self.assertFalse(Quote.objects.exists())
         self.assertTrue(RFQLine.objects.filter(pk=another_line.pk).exists())
 
-    def test_staff_action_is_required_and_records_reviewer(self):
+    def test_business_owner_can_approve_and_records_reviewer(self):
         QuotePricingSettings.objects.create(
             owner=self.user, target_margin_percent="12.00", minimum_margin_percent="8.00",
             maximum_discount_percent="10.00",
@@ -550,12 +550,6 @@ class QuotePricingTests(TestCase):
         quote = self.post_quote(discount="5.00")
         quote = Quote.objects.get()
         approve_url = reverse("dashboard:quote_approve", args=[quote.pk])
-        forbidden = self.client.post(approve_url)
-        self.assertEqual(forbidden.status_code, 403)
-        quote.refresh_from_db()
-        self.assertEqual(quote.status, Quote.Status.NEEDS_REVIEW)
-        self.user.is_staff = True
-        self.user.save(update_fields=["is_staff"])
         approved = self.client.post(approve_url)
         self.assertRedirects(approved, reverse("dashboard:quote_detail", args=[quote.pk]))
         quote.refresh_from_db()

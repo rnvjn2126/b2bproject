@@ -2,13 +2,16 @@ import csv
 import io
 from datetime import timedelta
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.forms import inlineformset_factory
 from decimal import Decimal, ROUND_HALF_UP
 
 from .models import (
-    Customer, FollowUp, Product, Quote, QuotePricingSettings, RFQ, RFQLine, Supplier, SupplierOffer,
+    BusinessAccount, Customer, FollowUp, Product, Quote, QuotePricingSettings, RFQ, RFQLine,
+    Supplier, SupplierOffer, TeamInvitation, TeamMembership,
 )
 
 
@@ -17,6 +20,36 @@ class StyledModelForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = "field"
+
+
+class BusinessAccountForm(StyledModelForm):
+    class Meta:
+        model = BusinessAccount
+        fields = ["name"]
+
+
+class TeamInvitationForm(forms.Form):
+    email = forms.EmailField()
+    role = forms.ChoiceField(choices=TeamMembership.Role.choices)
+
+    def __init__(self, *args, account, **kwargs):
+        self.account = account
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if TeamInvitation.objects.filter(
+            account=self.account, email__iexact=email,
+            accepted_at__isnull=True, revoked_at__isnull=True,
+        ).exists():
+            raise ValidationError("A pending invitation already exists for this email.")
+        return email
+
+
+class TeamInvitationAcceptForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ["username"]
 
 
 class CustomerForm(StyledModelForm):

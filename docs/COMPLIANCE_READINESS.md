@@ -5,6 +5,7 @@
 ## Controls in this build
 
 - Customer and supplier records are scoped to the signed-in account. Forms remind staff to store only authorised business contact details and avoid sensitive personal information.
+- Business workspaces can store teammate account names and invitation email addresses. Invited sales and manager accounts share company-wide business records; only owners manage team membership. Invitations are manual, one-time, email-bound, revocable, and expire after 72 hours.
 - Passwords use Django's similarity, common-password, numeric-password, and 12-character minimum checks. django-axes locks a username/IP pair after five failed attempts in a rolling 15-minute window and returns HTTP 429 with `Retry-After`.
 - CSRF protection, secure production cookies, HTTPS redirect, host validation, content-type and framing headers, protected quotation PDFs, and owner-scoped exports are enabled or tested.
 - Quotation PDFs say **QUOTATION ONLY - NOT A TAX INVOICE**. The app captures a user-entered tax percentage for a sales quotation; it does not determine tax classification, issue GST invoices, submit returns, or generate e-invoices.
@@ -31,6 +32,7 @@ The product prepares quotations only. CGST Act section 31 and CGST Rule 46 gover
 - Publish a reviewed privacy notice and rights/grievance contact; decide lawful purposes, retention/erasure exceptions, access requests, and processor/subprocessor contracts.
 - Assign a CERT-In point of contact and incident-response owner who can report applicable incidents within six hours and handle applicable DPDP notices.
 - Obtain CA approval for quotation tax assumptions. Do not use this quotation PDF as a tax invoice.
+- Decide whether the shared workspace's company-wide access is appropriate for each customer, supplier, and employee record before entering real data; per-branch and per-salesperson restrictions are not available.
 - Re-check official laws, commencement notifications, GST notifications, and service-provider terms before launch; they can change.
 
 ## Official sources

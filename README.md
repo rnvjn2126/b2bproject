@@ -20,6 +20,10 @@ Open <http://127.0.0.1:8000/>. Create a local account in a second terminal with:
 
 The workspace dashboard includes a private, account-scoped checklist for adding the first customer, supplier, product, enquiry, and quotation.
 
+## Shared team workspace
+
+The business owner can name the workspace and create a one-time invitation link for a teammate. Links expire in 72 hours; the app stores only a digest and does not email invitations. Teammates must use the invited email. Owners alone manage member roles and access. Owners and managers can approve below-floor quotations and edit pricing guardrails; sales members can work in the shared company records but cannot perform those actions. This is a local MVP control, not a production identity or compliance certification.
+
 The SQLite database is created locally as `db.sqlite3`. Do not use this development configuration for deployment.
 
 Review [compliance readiness](docs/COMPLIANCE_READINESS.md) before using real customer data or hosting the service. It records the current app boundary and India-specific operator responsibilities; it is not a legal certification.
@@ -52,12 +56,10 @@ model migrations are missing, and runs the Django test suite. A clear
 `[PASS]` or `[FAIL]` message will appear. This does not require the overnight
 controller or Codex CLI.
 
-The test suite covers account isolation, onboarding progress, searchable and
-paginated lists, unit normalization, supplier offer coverage, landed-cost and
-gross-margin arithmetic, quote PDF permissions, manual follow-ups, and safe
-catalogue CSV exports. These are automated regression tests, not a substitute
-for a buyer acceptance test.
+The test suite covers workspace isolation and role permissions, invitations,
+onboarding progress, searchable and paginated lists, unit normalization,
+supplier offer coverage, landed-cost and gross-margin arithmetic, quote PDF
+permissions, manual follow-ups, and safe catalogue CSV exports. These are
+automated regression tests, not a substitute for a buyer acceptance test.
 
-**Current security boundary:** records are separated per login/user in the
-local demo. Shared company accounts and multi-user approval hierarchies require
-additional design before any production rollout.
+**Current security boundary:** record access is scoped to the account owner, with invited teammates using the same company workspace. Sales and managers currently see company-wide records; branch and representative-level restrictions are not implemented. Production rollout still requires the operational and legal controls in the linked readiness documents.

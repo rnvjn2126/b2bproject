@@ -4,16 +4,25 @@
 <section class="card">
   <h1>Quote pricing settings</h1>
   <p>These settings apply to new quotations for this account. Gross margin is calculated on selling price: (selling price - landed cost) / selling price × 100.</p>
-  <form method="post">
-    {% csrf_token %}
-    {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}
-    {% for field in form %}
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field }}
-      {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-      {% if field.errors %}<div class="errors">{{ field.errors }}</div>{% endif %}
-    {% endfor %}
-    <button type="submit">Save pricing settings</button>
-  </form>
+  {% if can_edit %}
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="errors">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% if field.errors %}<div class="errors">{{ field.errors }}</div>{% endif %}
+      {% endfor %}
+      <button type="submit">Save pricing settings</button>
+    </form>
+  {% else %}
+    <p>Only the owner or a manager can change shared pricing guardrails.</p>
+    <dl>
+      <dt>Target gross margin</dt><dd>{{ form.instance.target_margin_percent }}%</dd>
+      <dt>Minimum gross margin</dt><dd>{{ form.instance.minimum_margin_percent }}%</dd>
+      <dt>Maximum discount</dt><dd>{{ form.instance.maximum_discount_percent }}%</dd>
+    </dl>
+  {% endif %}
 </section>
 {% endblock %}

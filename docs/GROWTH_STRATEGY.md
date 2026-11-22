@@ -13,10 +13,10 @@ Public vendor pages show a range of expectations in this market. QuoteMitra emph
 | Segment | Likely buying job | Product experience to prioritize | Evidence of fit |
 |---|---|---|---|
 | Small owner-led trader | Replace repeated spreadsheet and chat work without a long setup | One-user setup, product CSV import, synthetic guided example, fast quote workflow, simple mobile pages, clear data export | First enquiry-to-quote completion, time to first quote, repeat use |
-| Midsize distributor | Coordinate salespeople and protect commercial guardrails | Shared company workspace, roles, approval queue, activity history, team reporting, import/export, configurable quote terms | Invited teammates, approval usage, repeat quotes, retained accounts |
+| Midsize distributor | Coordinate salespeople and protect commercial guardrails | Shared company workspace, owner/manager/sales roles, owner-and-manager approval queue, import/export, configurable quote terms | Invited teammates, approval usage, repeat quotes, retained accounts |
 | Large or multi-branch group | Integrate with established finance and operational systems | Strong tenant isolation, multiple branches, detailed audit, SSO, API/webhooks, ERP/accounting integration, configurable retention and support | Security review completion, integration usage, branch adoption, renewal |
 
-These are roadmap hypotheses. The current application separates each user's records and does not yet provide shared-company membership, branch scoping, SSO, or ERP integration. Do not sell those capabilities until they are built and tested.
+These are roadmap hypotheses. The local application now supports a shared company workspace, invitations, owner-managed roles, and owner/manager quote approvals. It still has no branch scoping, SSO, activity audit history, or ERP integration. Do not sell those capabilities until built and tested.
 
 ## Acquisition path without paid spend
 
@@ -24,14 +24,14 @@ These are roadmap hypotheses. The current application separates each user's reco
 2. Reduce setup time with the existing product CSV import and a first-run checklist. Measure whether a new user completes a quote without staff assistance.
 3. Publish practical educational material after owner review: landed-cost comparison worksheet, gross-margin versus markup example, and a quotation follow-up checklist. Avoid legal, GST-certification, savings, or performance guarantees.
 4. Explore opt-in distribution through steel trade associations, accountants, ERP implementers, and MSME digitization partners. Do not send messages or represent a partnership before it exists.
-5. For midsize/large fit, invite qualified businesses to a consent-based pilot only after the team-account and audit-control roadmap is delivered. Capture product feedback; do not import real business data into this local development instance.
+5. For midsize/large fit, invite qualified businesses to a consent-based pilot only after the audit-control roadmap and hosting review are delivered. Capture product feedback; do not import real business data into this local development instance.
 
 The Ministry of MSME's TEAM initiative aims to help micro and small enterprises reach markets through ONDC and describes awareness, onboarding, and account-management support. This may be a channel to research with the owner; it does not establish that this SaaS or any user is eligible for support.
 
 ## Product sequence
 
 1. Improve first-run activation with a guided checklist and synthetic demo workflow.
-2. Build company accounts, invitations, roles, and independent approval permissions before targeting teams.
+2. Build company accounts, invitations, roles, and independent approval permissions before targeting teams. (Implemented in the local development build.)
 3. Add auditable changes to pricing, approvals, quote status, and membership.
 4. Add operational reports: quote response time, wins/losses, follow-up completion, and margin distribution with owner scoping.
 5. Add integrations only after pilots identify the systems that matter most. Likely candidates to validate include Tally/ERP exports and a customer-facing quote share flow.

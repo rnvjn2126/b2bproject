@@ -49,7 +49,7 @@ Production deployments, spending money, sending real customer messages, public m
 - Is the business predominantly a stockist/trader or an order-based procurement broker?
 - Do quotes require company-specific terms, minimum margin floors or approval tiers?
 - Do customers usually buy in kg, tonnes, pieces, metres, or multiple units?
-- Do multiple salespeople need account separation in the pilot?
+- Do you need branch-level or salesperson-level restrictions beyond the chosen shared company workspace?
 
 These questions should **not prevent** building the MVP with documented default assumptions. Ask them in the next morning report.
 

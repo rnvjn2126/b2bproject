@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Team | Steel Quotes{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Business workspace</h1>
+  <p>Shared workspace for {{ account.name }}. Owner: {{ account.owner.get_username }}.</p>
+  {% if is_owner %}
+    <h2>Workspace name</h2>
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="action" value="rename">
+      {% for field in account_form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<p class="errors">{{ error }}</p>{% endfor %}{% endfor %}
+      <button type="submit">Save workspace name</button>
+    </form>
+    <h2>Invite a teammate</h2>
+    <p>Invitations expire after 72 hours. The app does not send email; copy the one-time link and share it through your approved company channel.</p>
+    {% if invite_url %}<label for="invite-link">One-time invitation link</label><input id="invite-link" type="text" value="{{ invite_url }}" readonly>{% endif %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="action" value="invite">
+      {% for field in invitation_form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<p class="errors">{{ error }}</p>{% endfor %}{% endfor %}
+      {% for error in invitation_form.non_field_errors %}<p class="errors">{{ error }}</p>{% endfor %}
+      <button type="submit">Create invitation</button>
+    </form>
+    <h2>Pending invitations</h2>
+    {% for invitation in invitations %}
+      <article class="row">{{ invitation.email }} · {{ invitation.get_role_display }} · {% if invitation.is_expired %}Expired{% else %}Expires {{ invitation.expires_at|date:"j M Y, H:i" }}{% endif %}
+        <form method="post" action="{% url 'dashboard:team_invitation_revoke' invitation.pk %}">{% csrf_token %}<button type="submit">Revoke</button></form>
+      </article>
+    {% empty %}<p>No pending invitations.</p>{% endfor %}
+  {% else %}
+    <p>Only the owner can invite or remove members. Owners and managers can approve quotations that need review.</p>
+  {% endif %}
+  <h2>Members</h2>
+  <ul><li>{{ account.owner.get_username }} · Owner</li>
+  {% for member in members %}
+    <li>{{ member.user.get_username }} · {{ member.get_role_display }}
+      {% if is_owner %}
+        <form class="inline-form" method="post" action="{% url 'dashboard:team_member_role' member.pk %}">
+          {% csrf_token %}<label for="role-{{ member.pk }}">Role<select id="role-{{ member.pk }}" name="role">{% for value, label in role_choices %}<option value="{{ value }}"{% if member.role == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button type="submit">Update role</button>
+        </form>
+        <form method="post" action="{% url 'dashboard:team_member_remove' member.pk %}">{% csrf_token %}<button type="submit">Remove member</button></form>
+      {% endif %}
+    </li>
+  {% empty %}<li>No team members yet.</li>{% endfor %}</ul>
+</section>
+{% endblock %}

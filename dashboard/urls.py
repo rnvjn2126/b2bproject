@@ -5,6 +5,11 @@ from . import views
 app_name = "dashboard"
 urlpatterns = [
     path("", views.home, name="home"),
+    path("team/", views.team_list, name="team_list"),
+    path("team/invitations/<slug:token>/accept/", views.team_invite_accept, name="team_invite_accept"),
+    path("team/members/<int:pk>/role/", views.team_member_role, name="team_member_role"),
+    path("team/members/<int:pk>/remove/", views.team_member_remove, name="team_member_remove"),
+    path("team/invitations/<int:pk>/revoke/", views.team_invitation_revoke, name="team_invitation_revoke"),
     path("rfqs/", views.rfq_list, name="rfq_list"),
     path("rfqs/new/", views.rfq_create, name="rfq_create"),
     path("rfqs/<int:pk>/", views.rfq_detail, name="rfq_detail"),

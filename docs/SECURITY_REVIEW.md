@@ -26,7 +26,8 @@
 - `manage.py makemigrations --check --dry-run`: passed; no missing model migrations.
 - `manage.py test dashboard.test_security --noinput`: passed, 8 tests.
 - `manage.py test dashboard.test_teams --noinput`: passed, 8 tests covering invitations, membership, shared data, activity history, and role boundaries.
-- `manage.py test --noinput`: passed, 70 tests across multiple synthetic users and records.
+- `manage.py test dashboard.test_reports --noinput`: passed, 3 tests covering company scoping, calculated rates, and empty states.
+- `manage.py test --noinput`: passed, 73 tests across multiple synthetic users and records.
 - Production-mode `manage.py check --deploy` reported only `security.W005` and `security.W021`, because HSTS subdomain coverage and browser preload are intentionally disabled pending domain confirmation.
 
 ## Remaining launch work

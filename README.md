@@ -26,6 +26,8 @@ The business owner can name the workspace and create a one-time invitation link 
 
 Owners and managers can review selected workspace activity, including quote approvals and status changes, pricing changes, and membership changes. Entries do not store rates, margins, invitation emails, or user-entered notes. This application history is not tamper-evident.
 
+The **Reports** page shows the shared quote pipeline, accepted-versus-lost win rate, open overdue reminders, and 30-day follow-up/enquiry counts. It excludes sales values, supplier costs, and margins. The win rate uses only accepted and lost quotations.
+
 The SQLite database is created locally as `db.sqlite3`. Do not use this development configuration for deployment.
 
 Review [compliance readiness](docs/COMPLIANCE_READINESS.md) before using real customer data or hosting the service. It records the current app boundary and India-specific operator responsibilities; it is not a legal certification.

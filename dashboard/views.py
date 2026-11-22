@@ -2,6 +2,7 @@ import csv
 import hashlib
 import secrets
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -12,7 +13,7 @@ from django.urls import reverse
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 from django.shortcuts import get_object_or_404, redirect, render
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -284,6 +285,62 @@ def activity_log(request):
     events = AuditEvent.objects.filter(owner=owner).select_related("actor")
     page = Paginator(events, 50).get_page(request.GET.get("page"))
     return render(request, "dashboard/activity_log.html", {"page": page})
+
+
+@login_required
+def reports(request):
+    owner = account_owner(request.user)
+    today = timezone.localdate()
+    period_start = today - timedelta(days=29)
+    quotes = Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner)
+    counts = {
+        row["status"]: row["total"]
+        for row in quotes.values("status").annotate(total=Count("id"))
+    }
+    accepted = counts.get(Quote.Status.ACCEPTED, 0)
+    lost = counts.get(Quote.Status.LOST, 0)
+    decided = accepted + lost
+    win_rate = (
+        (Decimal(accepted) * 100 / decided).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        if decided else None
+    )
+    due_follow_ups = FollowUp.objects.filter(
+        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
+        due_on__range=(period_start, today),
+    )
+    due_count = due_follow_ups.count()
+    completed_count = due_follow_ups.filter(completed_at__isnull=False).count()
+    follow_up_completion_rate = (
+        (Decimal(completed_count) * 100 / due_count).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        if due_count else None
+    )
+    return render(request, "dashboard/reports.html", {
+        "pipeline": [
+            {"label": label, "count": counts.get(status, 0)}
+            for status, label in Quote.Status.choices
+        ],
+        "open_quote_count": sum(counts.get(status, 0) for status in (
+            Quote.Status.READY, Quote.Status.NEEDS_REVIEW, Quote.Status.APPROVED, Quote.Status.SENT,
+        )),
+        "accepted_count": accepted,
+        "lost_count": lost,
+        "decided_count": decided,
+        "win_rate": win_rate,
+        "has_win_rate": win_rate is not None,
+        "period_start": period_start,
+        "today": today,
+        "overdue_follow_up_count": FollowUp.objects.filter(
+            owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
+            completed_at__isnull=True, due_on__lt=today,
+        ).count(),
+        "due_follow_up_count": due_count,
+        "completed_follow_up_count": completed_count,
+        "follow_up_completion_rate": follow_up_completion_rate,
+        "has_follow_up_completion_rate": follow_up_completion_rate is not None,
+        "new_enquiry_count": RFQ.objects.filter(
+            owner=owner, customer__owner=owner, received_on__range=(period_start, today),
+        ).count(),
+    })
 
 
 @login_required

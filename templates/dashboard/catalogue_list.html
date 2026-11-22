@@ -8,7 +8,8 @@
     <label for="q">Search {{ title|lower }}<input id="q" name="q" type="search" value="{{ query }}"></label>
     <button type="submit">Search</button>{% if query %}<a href="?">Clear</a>{% endif %}
   </form>
-  {% if import_url %}<p><a href="{% url import_url %}">Import products from CSV</a> · <a href="{% url export_url %}">Export products to CSV</a></p>{% endif %}
+  {% if import_url %}<p><a href="{% url import_url %}">Import products from CSV</a></p>{% endif %}
+  {% if export_url %}<p><a href="{% url export_url %}">Export {{ title|lower }} to CSV</a>{% if singular != "product" %}<br><small>The export includes business contact details and notes; store it securely.</small>{% endif %}</p>{% endif %}
   {% for record in records %}
     <article class="row"><strong>{{ record.name }}</strong>
       {% if record.company_name %}<div>{{ record.company_name }}</div>{% endif %}

@@ -30,6 +30,8 @@ urlpatterns = [
     path("quotes/<int:pk>/approve/", views.quote_approve, name="quote_approve"),
     path("products/import/", views.product_csv_import, name="product_csv_import"),
     path("products/export.csv", views.product_csv_export, name="product_csv_export"),
+    path("customers/export.csv", views.customer_csv_export, name="customer_csv_export"),
+    path("suppliers/export.csv", views.supplier_csv_export, name="supplier_csv_export"),
 ]
 for slug, label in (("customer", "customers"), ("supplier", "suppliers"), ("product", "products")):
     urlpatterns += [

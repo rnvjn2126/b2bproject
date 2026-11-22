@@ -42,7 +42,9 @@ Use **Follow-ups** to review open reminders. Each enquiry can have dated reminde
 
 Customer, supplier, product, enquiry, quote, and follow-up lists support case-insensitive search and paginate in groups of 25. Enquiries and quotes can be filtered by status; follow-ups can show open, completed, or all reminders.
 
-The **Products** page supports importing and exporting the product catalogue. CSV uses the headers `name, grade, shape, dimensions, unit, weight_basis, weight_kg, notes`; imports are validated as a whole before saving and exports include only the signed-in user's products. Customer contacts and supplier rates are not included.
+Customers and suppliers can be exported to UTF-8 CSV from their list pages. Those exports include business contact details and notes, so the page warns users to store them securely. Exports are limited to the shared company workspace, escape spreadsheet formula-like values, and are marked `no-store`. Quote exports are not provided, so supplier rates and margin details are not exposed.
+
+The **Products** page supports importing and exporting the product catalogue. CSV uses the headers `name, grade, shape, dimensions, unit, weight_basis, weight_kg, notes`; imports are validated as a whole before saving. Product, customer, and supplier exports include only the signed-in user's shared workspace.
 
 ## Development checks
 
@@ -61,9 +63,10 @@ model migrations are missing, and runs the Django test suite. A clear
 controller or Codex CLI.
 
 The test suite covers workspace isolation and role permissions, invitations,
-onboarding progress, searchable and paginated lists, unit normalization,
-supplier offer coverage, landed-cost and gross-margin arithmetic, quote PDF
-permissions, manual follow-ups, and safe catalogue CSV exports. These are
+activity history, pipeline reports, contact-data export safeguards, onboarding
+progress, searchable and paginated lists, unit normalization, supplier offer
+coverage, landed-cost and gross-margin arithmetic, quote PDF permissions,
+manual follow-ups, and safe catalogue CSV exports. These are
 automated regression tests, not a substitute for a buyer acceptance test.
 
 **Current security boundary:** record access is scoped to the account owner, with invited teammates using the same company workspace. Sales and managers currently see company-wide records; branch and representative-level restrictions are not implemented. Production rollout still requires the operational and legal controls in the linked readiness documents.

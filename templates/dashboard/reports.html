@@ -3,7 +3,7 @@
 {% block content %}
 <section class="card">
   <h1>Business reports</h1>
-  <p>Shared workspace overview for {{ period_start }} to {{ today }}. Quote values, supplier rates, and margins are not included.</p>
+  <p>Quotation pipeline and win rate cover all dates. Follow-up completion and new enquiries cover {{ period_start }} to {{ today }}. Quote values, supplier rates, and margins are not included.</p>
   <h2>Quotation pipeline</h2>
   <p>{{ open_quote_count }} open quotations · {{ accepted_count }} accepted · {{ lost_count }} lost.</p>
   {% if has_win_rate %}<p>Win rate of decided quotations: {{ win_rate }}% ({{ accepted_count }} accepted out of {{ decided_count }} accepted or lost).</p>{% else %}<p>Win rate appears after at least one quotation is accepted or lost.</p>{% endif %}
@@ -12,7 +12,7 @@
     <tbody>{% for row in pipeline %}<tr><th scope="row">{{ row.label }}</th><td>{{ row.count }}</td></tr>{% endfor %}</tbody>
   </table></div>
   <h2>Follow-up health</h2>
-  <p>{{ overdue_follow_up_count }} open follow-up{{ overdue_follow_up_count|pluralize }} overdue.</p>
+  <p>{{ overdue_follow_up_count }} open follow-up{{ overdue_follow_up_count|pluralize }} currently overdue.</p>
   {% if has_follow_up_completion_rate %}<p>Completion for reminders due in this period: {{ follow_up_completion_rate }}% ({{ completed_follow_up_count }} of {{ due_follow_up_count }}).</p>{% else %}<p>No follow-ups were due during this period.</p>{% endif %}
   <h2>Enquiries</h2>
   <p>{{ new_enquiry_count }} enquiry{{ new_enquiry_count|pluralize }} received during this period.</p>

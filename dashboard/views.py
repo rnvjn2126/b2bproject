@@ -31,6 +31,12 @@ from .models import (
 )
 
 
+def _safe_csv_cell(value):
+    text = "" if value is None else str(value)
+    # Spreadsheet programs may execute cells that begin with formula characters.
+    return "'" + text if text.lstrip(" \t\r\n").startswith(("=", "+", "-", "@")) else text
+
+
 @login_required
 def home(request):
     owner = account_owner(request.user)
@@ -502,26 +508,56 @@ def followup_list(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def product_csv_export(request):
     """Export only the signed-in user's non-sensitive product catalogue fields."""
     response = HttpResponse(content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="steel-products.csv"'
+    response["Cache-Control"] = "no-store"
     response.write("\ufeff")
     writer = csv.writer(response)
     writer.writerow(ProductCSVImportForm.EXPECTED_HEADERS)
     products = Product.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
-
-    def safe_cell(value):
-        text = "" if value is None else str(value)
-        # Spreadsheet programs can execute formula-like cell values when a CSV is opened.
-        if text.lstrip(" \t\r\n").startswith(("=", "+", "-", "@")):
-            return "'" + text
-        return text
-
     for product in products:
-        writer.writerow(safe_cell(value) for value in (
+        writer.writerow(_safe_csv_cell(value) for value in (
             product.name, product.grade, product.shape, product.dimensions,
             product.unit, product.weight_basis, product.weight_kg, product.notes,
+        ))
+    return response
+
+
+@login_required
+@require_http_methods(["GET"])
+def customer_csv_export(request):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="steel-customers.csv"'
+    response["Cache-Control"] = "no-store"
+    response.write("\ufeff")
+    writer = csv.writer(response)
+    writer.writerow(("name", "company_name", "email", "phone", "billing_address", "notes"))
+    customers = Customer.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
+    for customer in customers:
+        writer.writerow(_safe_csv_cell(value) for value in (
+            customer.name, customer.company_name, customer.email, customer.phone,
+            customer.billing_address, customer.notes,
+        ))
+    return response
+
+
+@login_required
+@require_http_methods(["GET"])
+def supplier_csv_export(request):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="steel-suppliers.csv"'
+    response["Cache-Control"] = "no-store"
+    response.write("\ufeff")
+    writer = csv.writer(response)
+    writer.writerow(("name", "company_name", "email", "phone", "address", "notes"))
+    suppliers = Supplier.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
+    for supplier in suppliers:
+        writer.writerow(_safe_csv_cell(value) for value in (
+            supplier.name, supplier.company_name, supplier.email, supplier.phone,
+            supplier.address, supplier.notes,
         ))
     return response
 
@@ -947,6 +983,11 @@ class CustomerListView(OwnedListView):
     model, title, singular = Customer, "Customers", "customer"
     search_fields = ("name", "company_name", "email", "phone")
 
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        data["export_url"] = "dashboard:customer_csv_export"
+        return data
+
 
 class CustomerCreateView(OwnedCreateView):
     model, form_class, title, singular = Customer, CustomerForm, "Add customer", "customer"
@@ -963,6 +1004,11 @@ class CustomerDeleteView(OwnedDeleteView):
 class SupplierListView(OwnedListView):
     model, title, singular = Supplier, "Suppliers", "supplier"
     search_fields = ("name", "company_name", "email", "phone")
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        data["export_url"] = "dashboard:supplier_csv_export"
+        return data
 
 
 class SupplierCreateView(OwnedCreateView):

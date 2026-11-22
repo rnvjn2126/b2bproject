@@ -21,13 +21,13 @@
   {% if quote.status == "needs_review" %}
     <div class="errors">
       <p>This quotation is below the configured {{ quote.minimum_margin_percent }}% gross-margin floor. It is not approved for customer issue.</p>
-      {% if user.is_staff %}
+      {% if can_approve %}
         <form method="post" action="{% url 'dashboard:quote_approve' quote.pk %}">
           {% csrf_token %}
           <button type="submit">Approve after manager review</button>
         </form>
       {% else %}
-        <p>A staff reviewer must record approval before this quotation can proceed.</p>
+        <p>The workspace owner or a manager must record approval before this quotation can proceed.</p>
       {% endif %}
     </div>
   {% elif quote.status == "approved" %}
@@ -83,7 +83,8 @@
   <p>Subtotal INR {{ quote.total_selling_price|floatformat:2 }} · GST / tax INR {{ quote.tax_amount|floatformat:2 }} · Total INR {{ quote.grand_total|floatformat:2 }}</p>
   {% if quote.payment_terms %}<p><strong>Payment terms:</strong> {{ quote.payment_terms|linebreaksbr }}</p>{% endif %}
   {% if quote.delivery_terms %}<p><strong>Delivery terms:</strong> {{ quote.delivery_terms|linebreaksbr }}</p>{% endif %}
-  {% if not quote.needs_review %}<p><a href="{% url 'dashboard:quote_pdf' quote.pk %}">Download customer quotation PDF</a></p>{% endif %}
+  {% if not quote.needs_review %}<p><a class="button" href="{% url 'dashboard:quote_preview' quote.pk %}">Preview customer quotation</a></p>
+  <p><a href="{% url 'dashboard:quote_pdf' quote.pk %}">Download customer quotation PDF</a></p>{% endif %}
   <p><a href="{% url 'dashboard:quote_revision_create' quote.pk %}">Prepare a new quotation revision</a></p>
   <p><a href="{% url 'dashboard:quote_list' %}">Back to quotations</a></p>
   <p><a href="{% url 'dashboard:rfq_detail' quote.rfq.pk %}">Back to enquiry</a></p>

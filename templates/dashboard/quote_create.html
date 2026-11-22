@@ -6,7 +6,7 @@
   {% if source_quote %}<p>Revision of {{ source_quote.number }} R{{ source_quote.revision }}. Pricing guardrails stay fixed to the original quotation.</p>{% endif %}
   <p>{{ rfq.reference|default:rfq }} · {{ rfq.customer }}</p>
   <p>Target gross margin: {{ pricing_settings.target_margin_percent }}%. Selling price before discount = landed cost / (1 - target margin). Discounts apply to that price, up to {{ pricing_settings.maximum_discount_percent }}%.</p>
-  <p>Quotes below the {{ pricing_settings.minimum_margin_percent }}% minimum margin, including any negative-margin quote, are held for explicit staff review. Supplier cost and margin are internal pricing details.</p>
+  <p>Quotes below the {{ pricing_settings.minimum_margin_percent }}% minimum margin, including any negative-margin quote, are held for owner or manager review. Supplier cost and margin are internal pricing details.</p>
   {% if has_foreign_product_line %}
     <div class="errors"><p>This enquiry includes an item linked to a product outside this account, so it cannot be quoted.</p></div>
   {% elif not lines %}
@@ -49,7 +49,20 @@
         {% endfor %}
         <small>Tax rate is a separate sales-quote setting. Confirm the applicable treatment before issue.</small>
       </section>
-      {% if can_create %}<button type="submit">Calculate quotation</button>{% endif %}
+      {% if preview %}
+        <section class="card" aria-label="Internal pricing preview">
+          <h2>Internal pricing preview</h2>
+          {% for row in preview %}<div class="row">
+            <strong>{{ row.rfq_line.product|default:row.rfq_line.description }} · {{ row.supplier_offer.supplier }}</strong>
+            <p>Recommended INR {{ row.target_price|floatformat:4 }} per unit · After discount INR {{ row.selling_price_per_unit|floatformat:4 }} · Gross margin {{ row.gross_margin_percent }}%</p>
+            {% if row.needs_review %}<span class="badge status-needs_review">Manager approval required</span>{% endif %}
+          </div>{% endfor %}
+        </section>
+      {% endif %}
+      {% if can_create %}
+        <button class="button-secondary" type="submit" name="action" value="preview">Preview pricing</button>
+        <button type="submit" name="action" value="save">Save quotation</button>
+      {% endif %}
     </form>
   {% endif %}
   <p><a href="{% url 'dashboard:rfq_detail' rfq.pk %}">Back to enquiry</a> · <a href="{% url 'dashboard:quote_pricing_settings' %}">Edit pricing settings</a></p>

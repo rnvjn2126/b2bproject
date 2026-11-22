@@ -78,6 +78,8 @@ class TeamWorkspaceTests(TestCase):
         approve_url = reverse("dashboard:quote_approve", args=[self.quote.pk])
 
         self.client.force_login(sales)
+        detail = reverse("dashboard:quote_detail", args=[self.quote.pk])
+        self.assertNotContains(self.client.get(detail), "Approve after manager review")
         self.assertEqual(self.client.post(approve_url).status_code, 403)
         settings_url = reverse("dashboard:quote_pricing_settings")
         self.assertContains(self.client.get(settings_url), "Only the owner or a manager can change")
@@ -87,6 +89,7 @@ class TeamWorkspaceTests(TestCase):
         self.assertEqual(self.client.post(reverse("dashboard:team_member_remove", args=[sales.team_membership.pk])).status_code, 403)
 
         self.client.force_login(manager)
+        self.assertContains(self.client.get(detail), "Approve after manager review")
         approved = self.client.post(approve_url)
         self.assertRedirects(approved, reverse("dashboard:quote_detail", args=[self.quote.pk]))
         self.quote.refresh_from_db()

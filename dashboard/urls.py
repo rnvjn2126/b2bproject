@@ -26,6 +26,7 @@ urlpatterns = [
     path("quotes/settings/", views.quote_pricing_settings, name="quote_pricing_settings"),
     path("quotes/<int:pk>/", views.quote_detail, name="quote_detail"),
     path("quotes/<int:pk>/status/", views.quote_update_status, name="quote_update_status"),
+    path("quotes/<int:pk>/preview/", views.quote_pdf, {"preview": True}, name="quote_preview"),
     path("quotes/<int:pk>/pdf/", views.quote_pdf, name="quote_pdf"),
     path("quotes/<int:pk>/approve/", views.quote_approve, name="quote_approve"),
     path("products/import/", views.product_csv_import, name="product_csv_import"),

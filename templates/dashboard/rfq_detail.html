@@ -38,6 +38,7 @@
       <p><a href="{% url 'dashboard:supplier_offer_create' rfq.pk line.pk %}">Add supplier offer</a></p>
 
       {% if line.comparison_offers %}
+        <p class="muted">Rankings compare offers that cover the entire item. Partial offers show costs for the quantity they cover.</p>
         <div class="table-scroll" tabindex="0" role="region" aria-label="Supplier comparison">
           <table class="table-wide">
             <thead>
@@ -53,7 +54,12 @@
             <tbody>
               {% for offer in line.comparison_offers %}
                 <tr>
-                  <td>{{ offer.supplier }}</td>
+                  <td><strong>{{ offer.supplier }}</strong>
+                    {% if offer.covers_full_quantity and offer.landed_cost_per_requested_unit != None %}
+                      {% if offer.landed_cost_per_requested_unit == line.lowest_rate %}<span class="badge status-ready">Lowest landed cost</span>{% endif %}
+                      {% if offer.delivery_days == line.fastest_days %}<span class="badge">Fastest full delivery</span>{% endif %}
+                    {% endif %}
+                  </td>
                   <td>
                     Supplier availability {{ offer.available_quantity|floatformat:3 }} {{ offer.get_unit_display }}
                     ({{ offer.converted_available_quantity|floatformat:3 }} {{ line.get_unit_display }} after conversion).
@@ -63,7 +69,9 @@
                       Partial: covers {{ offer.covered_quantity|floatformat:3 }} of {{ line.quantity|floatformat:3 }} {{ line.get_unit_display }}
                     {% endif %}
                   </td>
-                  <td>INR {{ offer.unit_price|floatformat:4 }} / {{ offer.get_unit_display }}</td>
+                  <td>INR {{ offer.unit_price|floatformat:4 }} / {{ offer.get_unit_display }}
+                    {% if offer.normalized_unit_price != None %}<div class="muted">INR {{ offer.normalized_unit_price|floatformat:4 }} / {{ line.get_unit_display }} before freight</div>{% endif %}
+                  </td>
                   <td><strong>INR {{ offer.landed_cost_per_requested_unit|floatformat:4 }}</strong></td>
                   <td>INR {{ offer.total_landed_cost|floatformat:2 }}</td>
                   <td>{{ offer.delivery_days }} day{{ offer.delivery_days|pluralize }}</td>

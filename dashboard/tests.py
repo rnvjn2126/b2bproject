@@ -334,6 +334,17 @@ class SupplierOfferTests(TestCase):
         self.assertContains(response, "0.100 Metric tonne")
         self.assertContains(response, "100.000 Kilogram (kg) after conversion")
 
+    def test_alternatives_require_full_coverage(self):
+        self.make_offer(available_quantity="5", unit_price="1", delivery_days=0)
+        self.make_offer(unit_price="90", delivery_days=4)
+        self.make_offer(unit_price="110", delivery_days=1)
+        response = self.client.get(reverse("dashboard:rfq_detail", args=[self.rfq.pk]))
+        line = response.context["rfq"].lines.all()[0]
+        self.assertEqual(line.lowest_rate, Decimal("96"))
+        self.assertEqual(line.fastest_days, 1)
+        self.assertContains(response, "Lowest landed cost", count=1)
+        self.assertContains(response, "Fastest full delivery", count=1)
+
     def test_partial_offer_cost_allocates_freight_over_covered_quantity(self):
         offer = self.make_offer(available_quantity="50", freight_cost="100.00", packaging_cost="50.00")
         self.assertEqual(offer.covered_quantity, 50)
@@ -439,6 +450,24 @@ class QuotePricingTests(TestCase):
             f"offer_{self.line.pk}": self.offer.pk,
             f"discount_{self.line.pk}": discount,
         })
+
+    def test_pricing_preview_only_writes_on_save(self):
+        url = reverse("dashboard:quote_create", args=[self.rfq.pk])
+        data = {f"offer_{self.line.pk}": self.offer.pk, f"discount_{self.line.pk}": "5.00", "action": "preview"}
+        response = self.client.post(url, data)
+        self.assertContains(response, "Manager approval required")
+        self.assertFalse(Quote.objects.exists())
+        self.assertEqual(self.post_quote("5.00").status_code, 302)
+        quote = Quote.objects.get()
+        preview = reverse("dashboard:quote_preview", args=[quote.pk])
+        self.assertEqual(self.client.get(preview).status_code, 403)
+        self.client.post(reverse("dashboard:quote_approve", args=[quote.pk]))
+        self.client.post(reverse("dashboard:quote_update_status", args=[quote.pk]), {"status": "sent"})
+        response = self.client.get(preview)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("inline", response["Content-Disposition"])
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotIn(b"Quote supplier", response.content)
 
     def test_quote_search_and_status_filter_keep_account_boundary(self):
         self.post_quote()

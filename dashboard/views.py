@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 from django.shortcuts import get_object_or_404, redirect, render
 from django.db import transaction
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -405,7 +405,7 @@ def rfq_detail(request, pk):
     offers = SupplierOffer.objects.filter(
         owner=owner, supplier__owner=owner, rfq_line__owner=owner,
     ).select_related("supplier", "rfq_line__product")
-    lines = RFQLine.objects.filter(owner=owner).select_related("product").prefetch_related(
+    lines = RFQLine.objects.filter(Q(product__isnull=True) | Q(product__owner=owner), owner=owner).select_related("product").prefetch_related(
         Prefetch("supplier_offers", queryset=offers)
     )
     follow_ups = FollowUp.objects.filter(
@@ -426,6 +426,10 @@ def rfq_detail(request, pk):
                 offer.pk,
             ),
         )
+        full = [offer for offer in line.comparison_offers if offer.covers_full_quantity and offer.landed_cost_per_requested_unit is not None]
+        if full:
+            line.lowest_rate = full[0].landed_cost_per_requested_unit
+            line.fastest_days = min(offer.delivery_days for offer in full)
     return render(request, "dashboard/rfq_detail.html", {
         "rfq": rfq, "status_form": RFQStatusForm(initial={"status": rfq.status}),
         "today": timezone.localdate(),
@@ -582,9 +586,9 @@ def product_csv_import(request):
 @require_http_methods(["GET", "POST"])
 def supplier_offer_create(request, pk, line_pk):
     owner = account_owner(request.user)
-    rfq = get_object_or_404(RFQ.objects.filter(owner=owner), pk=pk)
+    rfq = get_object_or_404(RFQ.objects.filter(owner=owner, customer__owner=owner), pk=pk)
     line = get_object_or_404(
-        RFQLine.objects.filter(owner=owner, rfq=rfq).select_related("product"),
+        RFQLine.objects.filter(Q(product__isnull=True) | Q(product__owner=owner), owner=owner, rfq=rfq).select_related("product"),
         pk=line_pk,
     )
     form = SupplierOfferForm(
@@ -692,8 +696,16 @@ def _quote_create_page(request, rfq, source_quote=None):
             "has_offer": has_offer,
         })
     can_create = bool(lines) and not has_foreign_product_line and all(row["has_offer"] for row in line_rows)
-    if request.method == "POST" and can_create and form.is_valid():
+    valid_pricing = request.method == "POST" and can_create and form.is_valid()
+    preview = form.pricing_rows if valid_pricing and request.POST.get("action") == "preview" else []
+    if valid_pricing and not preview:
         with transaction.atomic():
+            if source_quote:
+                previous = Quote.objects.select_for_update().get(pk=source_quote.pk, owner=owner)
+                newer = previous.revisions.filter(owner=owner).first()
+                if newer:
+                    messages.info(request, "A newer revision exists. Open it to prepare another revision.")
+                    return redirect("dashboard:quote_detail", pk=newer.pk)
             quote = Quote(
                 owner=owner,
                 rfq=rfq,
@@ -740,6 +752,7 @@ def _quote_create_page(request, rfq, source_quote=None):
         "form": form,
         "lines": lines,
         "line_rows": line_rows,
+        "preview": preview,
         "can_create": can_create,
         "has_foreign_product_line": has_foreign_product_line,
         "pricing_settings": pricing_settings,
@@ -753,8 +766,8 @@ def quote_detail(request, pk):
     visible_lines = QuoteLine.objects.filter(
         owner=owner,
         rfq_line__owner=owner,
-        rfq_line__rfq__owner=owner,
-        supplier_offer__owner=owner,
+        rfq_line__rfq__owner=owner, rfq_line__rfq_id=F("quote__rfq_id"),
+        supplier_offer__rfq_line_id=F("rfq_line_id"), supplier_offer__owner=owner,
         supplier_offer__supplier__owner=owner,
     ).filter(
         Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
@@ -773,6 +786,7 @@ def quote_detail(request, pk):
     status_form = QuoteStatusForm(quote=quote)
     return render(request, "dashboard/quote_detail.html", {
         "quote": quote, "status_form": status_form,
+        "can_approve": can_manage_account(request.user),
         "can_update_status": bool(status_form.fields["status"].choices),
     })
 
@@ -847,13 +861,13 @@ def quote_update_status(request, pk):
 
 @login_required
 @require_http_methods(["GET"])
-def quote_pdf(request, pk):
+def quote_pdf(request, pk, preview=False):
     owner = account_owner(request.user)
     visible_lines = QuoteLine.objects.filter(
         owner=owner,
         rfq_line__owner=owner,
-        rfq_line__rfq__owner=owner,
-        supplier_offer__owner=owner,
+        rfq_line__rfq__owner=owner, rfq_line__rfq_id=F("quote__rfq_id"),
+        supplier_offer__rfq_line_id=F("rfq_line_id"), supplier_offer__owner=owner,
         supplier_offer__supplier__owner=owner,
     ).filter(
         Q(rfq_line__product__isnull=True) | Q(rfq_line__product__owner=owner),
@@ -870,12 +884,14 @@ def quote_pdf(request, pk):
     if not visible:
         return HttpResponseBadRequest("A quotation must contain at least one item.")
     if quote.needs_review or (
-        quote.status != Quote.Status.APPROVED and any(line.needs_review for line in visible)
+        not (quote.approved_by_id and quote.approved_at) and any(line.needs_review for line in visible)
     ):
         raise PermissionDenied("A quotation awaiting manager review cannot be issued to a customer.")
     from .documents import build_quote_pdf
     response = HttpResponse(build_quote_pdf(quote), content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{quote.number}-R{quote.revision}.pdf"'
+    response["Cache-Control"] = "private, no-store"
+    disposition = "inline" if preview else "attachment"
+    response["Content-Disposition"] = f'{disposition}; filename="{quote.number}-R{quote.revision}.pdf"'
     return response
 
 

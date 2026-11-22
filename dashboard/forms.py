@@ -350,6 +350,11 @@ class QuoteCreateForm(forms.Form):
                 self.add_error(offer_name, "This offer cannot produce a valid positive selling price.")
                 continue
             # Gross margin is based on the selling price, so solve cost / (1 - margin), not cost * (1 + margin).
+            # Store and price the same four-decimal landed rate.
+            cost = cost.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+            if not Decimal("0") < cost <= Decimal("9999999999.9999"):
+                self.add_error(offer_name, "The normalized landed rate is outside the supported price range.")
+                continue
             target_price = cost / divisor
             price = (target_price * (Decimal("1") - discount / Decimal("100"))).quantize(
                 Decimal("0.0001"), rounding=ROUND_HALF_UP,
@@ -369,6 +374,7 @@ class QuoteCreateForm(forms.Form):
                 "supplier_offer": offer,
                 "discount_percent": discount,
                 "landed_cost_per_unit": cost,
+                "target_price": target_price,
                 "selling_price_per_unit": price,
                 "gross_margin_percent": margin,
                 "needs_review": margin < self.pricing_settings.minimum_margin_percent,

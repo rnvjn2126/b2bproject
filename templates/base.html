@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="{{ display_preferences.theme|default:'system' }}" data-text-size="{{ display_preferences.text_size|default:'standard' }}" data-spacing="{{ display_preferences.spacing|default:'roomy' }}" data-reduce-motion="{{ display_preferences.reduce_motion|yesno:'true,false' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,7 +22,7 @@
           {% include "dashboard/navigation.html" %}
         </details>
         <div class="mobile-brand">{% include "dashboard/brand.html" %}</div>
-        <span class="workspace-label">Workspace</span>
+        <span class="workspace-label">{{ workspace_name }}</span>
       </div>
       <details class="account-menu">
         <summary>
@@ -30,6 +30,7 @@
           <span class="account-name">{{ request.user.get_username }}</span>
         </summary>
         <div class="account-panel">
+          <a href="{% url 'dashboard:preferences' %}">My preferences</a>
           <a href="{% url 'password_change' %}">Change password</a>
           <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}

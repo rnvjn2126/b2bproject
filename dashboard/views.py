@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (
-    BusinessAccountForm, CustomerForm, FollowUpForm, ProductCSVImportForm, ProductForm,
+    UserPreferencesForm, QuotationDefaultsForm, BusinessAccountForm, CustomerForm, FollowUpForm, ProductCSVImportForm, ProductForm,
     QuoteCreateForm, QuotePricingSettingsForm, QuoteStatusForm, RFQForm, RFQLineFormSet,
     RFQStatusForm, SupplierForm, SupplierOfferForm, TeamInvitationAcceptForm, TeamInvitationForm,
 )
@@ -29,7 +29,7 @@ from .accounts import (
 )
 from .models import (
     AuditEvent, BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings,
-    RFQ, RFQLine, Supplier, SupplierOffer, TeamInvitation, TeamMembership,
+    UserPreferences, QuotationDefaults, RFQ, RFQLine, Supplier, SupplierOffer, TeamInvitation, TeamMembership,
 )
 
 
@@ -37,6 +37,44 @@ def _safe_csv_cell(value):
     text = "" if value is None else str(value)
     # Spreadsheet programs may execute cells that begin with formula characters.
     return "'" + text if text.lstrip(" \t\r\n").startswith(("=", "+", "-", "@")) else text
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def preferences(request):
+    # Resolve the identity from the session; never accept a posted user or account ID.
+    saved = UserPreferences.objects.filter(user=request.user).first()
+    form = UserPreferencesForm(instance=saved or UserPreferences(user=request.user))
+    if request.method == "POST":
+        if request.POST.get("action") == "reset":
+            UserPreferences.objects.filter(user=request.user).delete()
+            messages.success(request, "Your display preferences were reset.")
+            return redirect("dashboard:preferences")
+        form = UserPreferencesForm(request.POST, instance=saved or UserPreferences(user=request.user))
+        if form.is_valid():
+            UserPreferences.objects.update_or_create(user=request.user, defaults=form.cleaned_data)
+            messages.success(request, "Your display preferences were saved.")
+            return redirect("dashboard:preferences")
+    return render(request, "dashboard/preferences.html", {"form": form})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def company_defaults(request):
+    account = business_account_for(request.user, create=True)
+    if not can_manage_account(request.user, account):
+        raise PermissionDenied("Only the owner or a manager can change company defaults.")
+    saved = QuotationDefaults.objects.filter(account=account).first()
+    form = QuotationDefaultsForm(request.POST if request.method == "POST" else None,
+                                instance=saved or QuotationDefaults(account=account))
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            QuotationDefaults.objects.update_or_create(account=account, defaults=form.cleaned_data)
+            AuditEvent.objects.create(owner=account.owner, actor=request.user,
+                                      action=AuditEvent.Action.DEFAULTS_UPDATED, object_type="workspace", object_id=str(account.pk))
+        messages.success(request, "Company quotation defaults were saved.")
+        return redirect("dashboard:company_defaults")
+    return render(request, "dashboard/company_defaults.html", {"form": form, "account": account})
 
 
 @login_required
@@ -699,6 +737,7 @@ def _quote_create_page(request, rfq, source_quote=None):
         Q(product__isnull=True) | Q(product__owner=owner),
     ).select_related("product"))
     has_foreign_product_line = len(lines) != all_lines.count()
+    defaults = None
     if source_quote:
         pricing_settings = source_quote
         initial = {
@@ -711,10 +750,13 @@ def _quote_create_page(request, rfq, source_quote=None):
     else:
         pricing_settings, _ = QuotePricingSettings.objects.get_or_create(owner=owner)
         today = timezone.localdate()
+        defaults = QuotationDefaults.objects.filter(account__owner=owner).first()
         initial = {
             "issue_date": today,
-            "valid_until": today + timedelta(days=7),
+            "valid_until": today + timedelta(days=defaults.validity_days if defaults else 7),
             "tax_rate_percent": 0,
+            "payment_terms": defaults.payment_terms if defaults else "",
+            "delivery_terms": defaults.delivery_terms if defaults else "",
         }
     prior_lines = {
         line.rfq_line_id: line for line in source_quote.lines.select_related("supplier_offer")
@@ -727,6 +769,7 @@ def _quote_create_page(request, rfq, source_quote=None):
     form = QuoteCreateForm(
         request.POST or None, owner=owner, lines=lines,
         pricing_settings=pricing_settings, initial=initial,
+        validity_days=defaults.validity_days if defaults else 7,
     )
     line_rows = []
     for line in lines:

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Company defaults · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card">
+  <h1>Company defaults</h1>
+  <p>{{ account.name }} · Owners and managers can set these defaults for new quotations.</p>
+  <p>Each new quotation starts with these values, which staff can edit before saving. Revisions start with the original quotation’s terms.</p>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}<div class="preference-field">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+    <button type="submit">Save company defaults</button>
+  </form>
+  <div class="row"><a href="{% url 'dashboard:quote_pricing_settings' %}">Margin and discount settings</a></div>
+  <div class="row"><a href="{% url 'dashboard:team_list' %}">Company name and team access</a></div>
+</section>
+{% endblock %}

@@ -28,6 +28,21 @@ class BusinessAccount(models.Model):
         return self.name
 
 
+class UserPreferences(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="display_preferences")
+    theme = models.CharField(max_length=8, default="system", choices=[("system", "Use device setting"), ("light", "Light"), ("dark", "Dark")])
+    text_size = models.CharField(max_length=8, default="standard", choices=[("standard", "Standard"), ("large", "Large"), ("larger", "Extra large")])
+    spacing = models.CharField(max_length=8, default="roomy", choices=[("roomy", "Comfortable"), ("compact", "Compact")])
+    reduce_motion = models.BooleanField(default=False, verbose_name="Turn off interface animations")
+
+
+class QuotationDefaults(models.Model):
+    account = models.OneToOneField(BusinessAccount, on_delete=models.CASCADE, related_name="quotation_defaults")
+    validity_days = models.PositiveSmallIntegerField(default=7, validators=[MinValueValidator(1), MaxValueValidator(365)], verbose_name="Quotation validity (days)")
+    payment_terms = models.TextField(blank=True, max_length=2000, verbose_name="Default payment terms")
+    delivery_terms = models.TextField(blank=True, max_length=2000, verbose_name="Default delivery terms")
+
+
 class TeamMembership(models.Model):
     class Role(models.TextChoices):
         MANAGER = "manager", "Manager"
@@ -84,6 +99,7 @@ class AuditEvent(models.Model):
     """Record sensitive workspace changes without copying commercial values or notes."""
 
     class Action(models.TextChoices):
+        DEFAULTS_UPDATED = "defaults_updated", "Company quotation defaults changed"
         WORKSPACE_RENAMED = "workspace_renamed", "Workspace renamed"
         INVITATION_CREATED = "invitation_created", "Team invitation created"
         INVITATION_ACCEPTED = "invitation_accepted", "Team invitation accepted"

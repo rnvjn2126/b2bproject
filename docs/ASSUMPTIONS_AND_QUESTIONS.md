@@ -62,3 +62,10 @@ None at setup. Record any task failure with failing command, log, and recommende
 - Rank full-coverage offers per requested item, including ties. Customer history shows enquiries and revisions; supplier history shows submitted offers. Neither represents settled payments or purchases.
 - Dark mode follows the device setting. Customer preview displays the same protected PDF as the download. Pricing preview is internal and saves no quotation.
 - Confirm whether expired-but-unclosed offers belong in forecasts and whether management needs separate won-order tracking before a commercial pilot.
+
+## Personal and company customisation (23 November 2026)
+- My preferences stores theme (device/light/dark), text size (16/18/20 px), comfortable/compact spacing and reduced motion against the signed-in user. Reset restores defaults for that user. Browser zoom remains available. Device reduced motion always wins.
+- Company defaults are shared within the workspace and editable by owners and managers. Validity is limited to 1–365 days, and terms to 2,000 characters each. Their changes are recorded in workspace activity without copying the text.
+- New quotation forms start with the company's validity and payment/delivery terms. Staff may edit these before saving. Existing quotation terms remain stored on the quote, and revisions inherit their source terms. Revision validity keeps the existing seven-day default.
+- No company tax default was added because applicable GST depends on the transaction. The existing quote-specific tax input and pricing guardrails remain the controls for that workflow.
+- Future options to review with the owner include company logos and seller details, preferred catalogue units, and configurable dashboard shortcuts.

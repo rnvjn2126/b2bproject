@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}My preferences · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card">
+  <h1>My preferences</h1>
+  <p>Choose how your workspace looks. Your choices follow your account across devices.</p>
+  <form method="post">{% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="preference-field">{{ field.label_tag }}{{ field }}
+        {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <p class="muted">Your device’s reduced-motion setting is always respected. Text can also be enlarged with your browser’s zoom controls.</p>
+    <button type="submit">Save preferences</button>
+  </form>
+  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="reset">
+    <button class="button-secondary" type="submit">Reset my display preferences</button>
+  </form>
+</section>
+{% endblock %}

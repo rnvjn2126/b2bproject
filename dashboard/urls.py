@@ -5,6 +5,8 @@ from . import views
 app_name = "dashboard"
 urlpatterns = [
     path("", views.home, name="home"),
+    path("preferences/", views.preferences, name="preferences"),
+    path("company-defaults/", views.company_defaults, name="company_defaults"),
     path("team/", views.team_list, name="team_list"),
     path("team/activity/", views.activity_log, name="activity_log"),
     path("reports/", views.reports, name="reports"),

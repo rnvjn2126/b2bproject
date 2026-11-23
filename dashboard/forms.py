@@ -11,7 +11,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from .models import (
     BusinessAccount, Customer, FollowUp, Product, Quote, QuotePricingSettings, RFQ, RFQLine,
-    Supplier, SupplierOffer, TeamInvitation, TeamMembership,
+    Supplier, SupplierOffer, TeamInvitation, TeamMembership, UserPreferences, QuotationDefaults,
 )
 
 
@@ -20,6 +20,19 @@ class StyledModelForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = "field"
+
+
+class UserPreferencesForm(StyledModelForm):
+    class Meta:
+        model = UserPreferences
+        fields = ["theme", "text_size", "spacing", "reduce_motion"]
+
+
+class QuotationDefaultsForm(StyledModelForm):
+    class Meta:
+        model = QuotationDefaults
+        fields = ["validity_days", "payment_terms", "delivery_terms"]
+        widgets = {"payment_terms": forms.Textarea(attrs={"rows": 3}), "delivery_terms": forms.Textarea(attrs={"rows": 3})}
 
 
 class BusinessAccountForm(StyledModelForm):
@@ -283,9 +296,10 @@ class QuoteCreateForm(forms.Form):
     payment_terms = forms.CharField(required=False, label="Payment terms", widget=forms.Textarea(attrs={"rows": 2}))
     delivery_terms = forms.CharField(required=False, label="Delivery terms", widget=forms.Textarea(attrs={"rows": 2}))
 
-    def __init__(self, *args, owner, lines, pricing_settings, **kwargs):
+    def __init__(self, *args, owner, lines, pricing_settings, validity_days=7, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
+        self.validity_days = validity_days
         self.lines = list(lines)
         self.pricing_settings = pricing_settings
         self.pricing_rows = []
@@ -328,7 +342,7 @@ class QuoteCreateForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         issue_date = cleaned.get("issue_date") or timezone.localdate()
-        valid_until = cleaned.get("valid_until") or issue_date + timedelta(days=7)
+        valid_until = cleaned.get("valid_until") or issue_date + timedelta(days=self.validity_days)
         cleaned["issue_date"] = issue_date
         cleaned["valid_until"] = valid_until
         cleaned["tax_rate_percent"] = cleaned.get("tax_rate_percent") or Decimal("0.00")

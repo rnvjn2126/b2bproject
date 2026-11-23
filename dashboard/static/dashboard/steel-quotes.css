@@ -228,21 +228,27 @@ form[aria-busy="true"] button[type=submit] { cursor: progress; opacity: .75; }
   .button:active, button:active { transform: translateY(1px); box-shadow: 0 0 0 .28rem #5786ff38; }
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark; color: #edf2ff; background: #101827;
-    --surface: #18253a; --border: #384964; --muted: #bccae0;
-    --blue: #335ebd; --blue-dark: #a8c5ff; --blue-soft: #263b5d; --danger: #ffb1ba;
-  }
-  .primary-nav a, .empty-state strong, .metric strong { color: #edf2ff; }
-  .nav-icon { color: #a8c5ff; }
-  .empty-state, .filters, .table-note, thead, tfoot, .step-number, .status-closed,
-  input:not([type=checkbox], [type=radio], [type=hidden]), select, textarea { background: #152030; color: #e4edff; }
-  .button:hover, button:hover { background: #345bb4; color: white; }
-  .button-secondary, .account-panel button:hover { color: #dbe7ff; background: #263b5d; }
-  .badge-danger, .status-lost, .status-expired, .alert { color: #ffb9c2; background: #462637; }
-  .metric .errors { color: var(--danger); }
-  .skip-link { background: #18253a; }
+
+:root:not([data-theme="light"]) { color-scheme: dark; color: #edf2ff; background: #101827; --surface: #18253a; --border: #384964; --muted: #bccae0; --blue: #335ebd; --blue-dark: #a8c5ff; --blue-soft: #263b5d; --danger: #ffb1ba; }
+:root:not([data-theme="light"]) :is(.primary-nav a, .empty-state strong, .metric strong) { color: #edf2ff; }
+:root:not([data-theme="light"]) .nav-icon { color: #a8c5ff; }
+:root:not([data-theme="light"]) :is(.empty-state, .filters, .table-note, thead, tfoot, .step-number, .status-closed, input, select, textarea) { background: #152030; color: #e4edff; }
+:root:not([data-theme="light"]) :is(.button:hover, button:hover) { background: #345bb4; color: white; }
+:root:not([data-theme="light"]) :is(.button-secondary, .account-panel button:hover) { color: #dbe7ff; background: #263b5d; }
+:root:not([data-theme="light"]) :is(.badge-danger, .status-lost, .status-expired, .alert) { color: #ffb9c2; background: #462637; }
+:root:not([data-theme="light"]) .metric .errors { color: var(--danger); }
+:root:not([data-theme="light"]) .skip-link { background: #18253a; }
 }
+
+:root[data-theme="dark"] { color-scheme: dark; color: #edf2ff; background: #101827; --surface: #18253a; --border: #384964; --muted: #bccae0; --blue: #335ebd; --blue-dark: #a8c5ff; --blue-soft: #263b5d; --danger: #ffb1ba; }
+:root[data-theme="dark"] :is(.primary-nav a, .empty-state strong, .metric strong) { color: #edf2ff; }
+:root[data-theme="dark"] .nav-icon { color: #a8c5ff; }
+:root[data-theme="dark"] :is(.empty-state, .filters, .table-note, thead, tfoot, .step-number, .status-closed, input, select, textarea) { background: #152030; color: #e4edff; }
+:root[data-theme="dark"] :is(.button:hover, button:hover) { background: #345bb4; color: white; }
+:root[data-theme="dark"] :is(.button-secondary, .account-panel button:hover) { color: #dbe7ff; background: #263b5d; }
+:root[data-theme="dark"] :is(.badge-danger, .status-lost, .status-expired, .alert) { color: #ffb9c2; background: #462637; }
+:root[data-theme="dark"] .metric .errors { color: var(--danger); }
+:root[data-theme="dark"] .skip-link { background: #18253a; }
 
 .pipeline-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: .65rem; }
 .pipeline-grid .metric { padding: .7rem; border-inline-start: 3px solid var(--border); }
@@ -263,4 +269,21 @@ form[aria-busy="true"] button[type=submit] { cursor: progress; opacity: .75; }
     from { transform: translate(-50%, -50%) scale(.5); opacity: .3; }
     to { transform: translate(-50%, -50%) scale(3); opacity: 0; }
   }
+}
+
+:root[data-text-size="large"] { font-size: 18px; }
+:root[data-text-size="larger"] { font-size: 20px; }
+:root[data-spacing="compact"] .card { padding: 1rem; }
+:root[data-spacing="compact"] :is(th, td, .row) { padding-block: .45rem; }
+:root[data-reduce-motion="true"] *, :root[data-reduce-motion="true"] *::after { animation: none !important; transition: none !important; }
+.settings-card { max-width: 52rem; }
+.preference-field { margin-block: 1rem; }
+.preference-field input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+.workspace-label { overflow-wrap: anywhere; min-width: 0; }
+
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; }
+  .account-name { display: none; }
+  .topbar-start { min-width: 0; flex-wrap: wrap; }
+  .mobile-brand .brand { white-space: normal; }
 }

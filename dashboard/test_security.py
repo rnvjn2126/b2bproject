@@ -116,4 +116,4 @@ class SecurityRegressionTests(TestCase):
         response = self.client.get(reverse("login"))
         self.assertEqual(response["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response["X-Frame-Options"], "DENY")
-        self.assertEqual(response["Referrer-Policy"], "same-origin")
+        self.assertEqual(response["Referrer-Policy"], "no-referrer")

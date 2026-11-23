@@ -69,3 +69,10 @@ None at setup. Record any task failure with failing command, log, and recommende
 - New quotation forms start with the company's validity and payment/delivery terms. Staff may edit these before saving. Existing quotation terms remain stored on the quote, and revisions inherit their source terms. Revision validity keeps the existing seven-day default.
 - No company tax default was added because applicable GST depends on the transaction. The existing quote-specific tax input and pricing guardrails remain the controls for that workflow.
 - Future options to review with the owner include company logos and seller details, preferred catalogue units, and configurable dashboard shortcuts.
+
+## Production hardening (23 November 2026)
+- Production startup rejects missing/weak secret keys, missing host allowlists and host patterns/URLs. The key checks match Django's minimum length/diversity criteria; they cannot prove randomness. Generate a new secret with a cryptographic generator for the future deployment.
+- Corrected Axes configuration from username OR IP to the documented username/IP pair. Trust only REMOTE_ADDR; ignore forwarded headers until a real proxy topology is configured and tested. Distributed attacks still need infrastructure rate limits.
+- All application responses prohibit caching and send no-referrer. Static assets are served separately. This reduces shared-browser/cache and invitation-link disclosure.
+- Production login enforces existing Django password validators even for credentials created through scripts. The local demo login remains available; it must be reset with manage.py changepassword before production use. No password was silently changed and no production data was accessed.
+- First hardening milestone: 14 security/configuration tests passed; Django reported no system-check issues.

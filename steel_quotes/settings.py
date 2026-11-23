@@ -1,5 +1,6 @@
 """Settings for the local steel quotation MVP."""
 import os
+import re
 import secrets
 from datetime import timedelta
 from pathlib import Path
@@ -7,12 +8,20 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes"}
+debug_value = os.environ.get("DJANGO_DEBUG", "true").strip().lower()
+if debug_value not in {"1", "true", "yes", "0", "false", "no"}:
+    raise ImproperlyConfigured("DJANGO_DEBUG must be true or false.")
+DEBUG = debug_value in {"1", "true", "yes"}
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     if not DEBUG:
         raise ImproperlyConfigured("Set DJANGO_SECRET_KEY when DJANGO_DEBUG is disabled.")
     SECRET_KEY = secrets.token_urlsafe(50)
+if not DEBUG and (
+    len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5
+    or SECRET_KEY.startswith("django-insecure-") or SECRET_KEY != SECRET_KEY.strip()
+):
+    raise ImproperlyConfigured("Use a randomly generated DJANGO_SECRET_KEY of at least 50 characters.")
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -23,6 +32,13 @@ ALLOWED_HOSTS = [
 ]
 if "*" in ALLOWED_HOSTS:
     raise ImproperlyConfigured("Wildcard ALLOWED_HOSTS is not allowed.")
+if not DEBUG:
+    if not os.environ.get("DJANGO_ALLOWED_HOSTS") or not ALLOWED_HOSTS:
+        raise ImproperlyConfigured("Set explicit DJANGO_ALLOWED_HOSTS in production.")
+    # Exact DNS hostnames only: no URLs, ports, wildcard or subdomain patterns.
+    if any(not re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*", host)
+           or len(host) > 253 for host in ALLOWED_HOSTS):
+        raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must contain exact DNS hostnames without schemes or ports.")
 
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
@@ -33,8 +49,10 @@ CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_HSTS_SECONDS = 3600 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_REFERRER_POLICY = "same-origin"
+SECURE_REFERRER_POLICY = "no-referrer"
 X_FRAME_OPTIONS = "DENY"
 
 INSTALLED_APPS = [
@@ -54,6 +72,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "dashboard.middleware.PrivateResponseMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",
@@ -61,13 +80,17 @@ MIDDLEWARE = [
 
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
-    "django.contrib.auth.backends.ModelBackend",
+    "dashboard.backends.PasswordPolicyBackend",
 ]
+REQUIRE_STRONG_LOGIN_PASSWORDS = not DEBUG
 # Apply lockout to each username/IP pair; production workers need a shared database.
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(minutes=15)
 AXES_USE_ATTEMPT_EXPIRATION = True
-AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_LOCKOUT_PARAMETERS = [["ip_address", "username"]]
+# Do not trust client-supplied forwarding headers. A future proxy must supply
+# a verified REMOTE_ADDR through the application server, not arbitrary headers.
+AXES_IPWARE_META_PRECEDENCE_ORDER = ("REMOTE_ADDR",)
 AXES_RESET_ON_SUCCESS = True
 AXES_ENABLE_RETRY_AFTER_HEADER = True
 

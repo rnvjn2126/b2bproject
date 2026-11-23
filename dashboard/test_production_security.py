@@ -134,7 +134,7 @@ class ProductionRequestTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn("no-store", response["Cache-Control"])
             self.assertIn("private", response["Cache-Control"])
-            self.assertEqual(response["Referrer-Policy"], "no-referrer")
+            self.assertEqual(response["Referrer-Policy"], "same-origin")
             policy = response["Content-Security-Policy"]
             self.assertIn("script-src 'self';", policy)
             self.assertIn("form-action 'self'", policy)

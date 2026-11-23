@@ -73,7 +73,7 @@ None at setup. Record any task failure with failing command, log, and recommende
 ## Production hardening (23 November 2026)
 - Production startup rejects missing/weak secret keys, missing host allowlists and host patterns/URLs. The key checks match Django's minimum length/diversity criteria; they cannot prove randomness. Generate a new secret with a cryptographic generator for the future deployment.
 - Corrected Axes configuration from username OR IP to the documented username/IP pair. Trust only REMOTE_ADDR; ignore forwarded headers until a real proxy topology is configured and tested. Distributed attacks still need infrastructure rate limits.
-- All application responses prohibit caching and send no-referrer. Static assets are served separately. This reduces shared-browser/cache and invitation-link disclosure.
+- Application responses prohibit caching and send same-origin referrers. The original no-referrer policy caused native browser sign-in forms to send a null origin, which Django rejected. Referrers remain suppressed on external requests.
 - Production login enforces existing Django password validators even for credentials created through scripts. The local demo login remains available; it must be reset with manage.py changepassword before production use. No password was silently changed and no production data was accessed.
 - First hardening milestone: 14 security/configuration tests passed; Django reported no system-check issues.
 - Production requires PostgreSQL with verify-full TLS and a trusted CA file. The future infrastructure's certificates, connectivity, least-privilege roles and concurrent transactions are not validated by local SQLite tests.

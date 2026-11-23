@@ -7,7 +7,7 @@ The application has not been deployed. These are preparation instructions, not a
 - Startup rejects missing/short/low-diversity/insecure-prefix production keys, missing host allowlists, wildcard/subdomain patterns, URLs and ports in production host entries. Key checks cannot prove entropy: generate a fresh random key with `secrets.token_urlsafe(50)` in the approved secret-management workflow.
 - Production requires PostgreSQL with a database hostname, user, password, database name and CA certificate file. Connections use `sslmode=verify-full`; SQLite remains for local development only.
 - WSGI and ASGI default to `steel_quotes.production`, which refuses debug mode. The local CLI continues to use `steel_quotes.settings`. Setting an alternative settings module explicitly is an operator responsibility.
-- HTTPS redirect, secure session/CSRF cookies, HTTP-only sessions, SameSite=Lax, one-hour HSTS, no-referrer, frame denial and MIME sniffing protection.
+- HTTPS redirect, secure session/CSRF cookies, HTTP-only sessions, SameSite=Lax, one-hour HSTS, same-origin referrers, frame denial and MIME sniffing protection.
 - All application responses prohibit storage in caches, including HTML, exports, PDF, login and logout. Static files are separate.
 - HTML Content Security Policy permits scripts from the same origin, blocks inline scripts/event handlers, external scripts, framing, plugins and cross-origin form submissions. Inline styles remain allowed for Django admin widget compatibility. PDFs retain their normal browser preview behavior.
 - Login throttles username/IP pairs after five failures. Only `REMOTE_ADDR` is used; changing `X-Forwarded-For` cannot reset the counter. This is not protection against all distributed attacks.

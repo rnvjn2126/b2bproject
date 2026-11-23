@@ -3,7 +3,7 @@
 ## Controls implemented
 
 - Require an environment-provided high-entropy `DJANGO_SECRET_KEY` and explicit allowed hosts when `DEBUG` is disabled. Development uses a random key per process and no wildcard host.
-- Production settings enable HTTPS redirects, secure and HTTP-only session cookies, secure CSRF cookies, one-hour HSTS, content-type sniffing protection, a no-referrer policy, and frame denial. HSTS subdomain and preload remain off until the actual domain is confirmed.
+- Production settings enable HTTPS redirects, secure and HTTP-only session cookies, secure CSRF cookies, one-hour HSTS, content-type sniffing protection, a same-origin referrer policy, and frame denial. HSTS subdomain and preload remain off until the actual domain is confirmed.
 - Django password validators enforce similarity, common-password, numeric-password, and 12-character minimum checks. Authenticated users can change their passwords; sessions are limited to eight hours and expire when the browser closes. Logout is a CSRF-protected POST.
 - django-axes blocks a username/IP pair after five failed logins, with a 15-minute cooldown extended by further failures and returns `429` with `Retry-After`.
 - CSRF protects state changes. The app scopes customer, supplier, product, enquiry, offer, quote, follow-up, pricing, PDF, and CSV access to the company owner account. Invited teammates share that account's records; owner and manager roles control pricing changes and quote approvals, while only owners manage membership.

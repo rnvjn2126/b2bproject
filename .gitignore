@@ -5,6 +5,7 @@ __pycache__/
 
 # Local SQLite data and environment secrets
 db.sqlite3
+staticfiles/
 .env
 .env.*
 !.env.example

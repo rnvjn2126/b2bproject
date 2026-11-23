@@ -14,13 +14,4 @@
     <button type="submit">Save enquiry</button>
   </form>
 </section>
-<script>
-  document.getElementById("add-line").addEventListener("click", function () {
-    const total = document.getElementById("id_lines-TOTAL_FORMS");
-    const index = Number(total.value);
-    const html = document.getElementById("empty-line").innerHTML.replaceAll("__prefix__", index);
-    document.getElementById("rfq-lines").insertAdjacentHTML("beforeend", html);
-    total.value = index + 1;
-  });
-</script>
 {% endblock %}

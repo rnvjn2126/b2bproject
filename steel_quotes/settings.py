@@ -110,6 +110,27 @@ WSGI_APPLICATION = "steel_quotes.wsgi.application"
 ASGI_APPLICATION = "steel_quotes.asgi.application"
 
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
+if not DEBUG:
+    required_database_variables = (
+        "DJANGO_DB_NAME", "DJANGO_DB_USER", "DJANGO_DB_PASSWORD", "DJANGO_DB_HOST", "DJANGO_DB_SSLROOTCERT",
+    )
+    missing = [name for name in required_database_variables if not os.environ.get(name, "").strip()]
+    if missing:
+        raise ImproperlyConfigured("Production PostgreSQL configuration is missing: " + ", ".join(missing))
+    if not Path(os.environ["DJANGO_DB_SSLROOTCERT"]).is_file():
+        raise ImproperlyConfigured("DJANGO_DB_SSLROOTCERT must point to the database CA certificate file.")
+    database_port = os.environ.get("DJANGO_DB_PORT", "5432")
+    if not database_port.isascii() or not database_port.isdecimal() or not 1 <= int(database_port) <= 65535:
+        raise ImproperlyConfigured("DJANGO_DB_PORT must be between 1 and 65535.")
+    DATABASES = {"default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["DJANGO_DB_NAME"],
+        "USER": os.environ["DJANGO_DB_USER"],
+        "PASSWORD": os.environ["DJANGO_DB_PASSWORD"],
+        "HOST": os.environ["DJANGO_DB_HOST"],
+        "PORT": database_port,
+        "OPTIONS": {"sslmode": "verify-full", "sslrootcert": os.environ["DJANGO_DB_SSLROOTCERT"]},
+    }}
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {
@@ -124,6 +145,7 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard:home"

@@ -23,3 +23,11 @@ document.addEventListener("submit", event => {
 window.addEventListener("pageshow", () => {
   document.querySelectorAll('form[aria-busy]').forEach(form => form.removeAttribute("aria-busy"));
 });
+
+document.getElementById("add-line")?.addEventListener("click", () => {
+  const total = document.getElementById("id_lines-TOTAL_FORMS");
+  const index = Number(total.value);
+  const html = document.getElementById("empty-line").innerHTML.replaceAll("__prefix__", index);
+  document.getElementById("rfq-lines").insertAdjacentHTML("beforeend", html);
+  total.value = index + 1;
+});

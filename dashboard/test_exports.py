@@ -29,7 +29,8 @@ class RelationshipCSVExportTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Disposition"], 'attachment; filename="steel-customers.csv"')
-        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertIn("private", response.headers["Cache-Control"])
         rows = self.rows(response)
         self.assertEqual(rows[0], ["name", "company_name", "email", "phone", "billing_address", "notes"])
         self.assertEqual(rows[1][0], "'=HYPERLINK(\"https://example.invalid\")")

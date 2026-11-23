@@ -1,0 +1,14 @@
+# Audited runtime snapshot, Windows Python 3.13, 23 November 2026.
+# Re-audit and verify on the target operating system before release.
+asgiref==3.13.0
+charset-normalizer==3.5.2
+Django==5.2.19
+django-axes==9.0.0
+django-ipware==8.0.0
+pillow==13.0.0
+psycopg==3.3.9
+psycopg-binary==3.3.9
+python-ipware==4.1.1
+reportlab==5.1.0
+sqlparse==0.6.1
+tzdata==2026.6

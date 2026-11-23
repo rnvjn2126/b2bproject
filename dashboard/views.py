@@ -332,7 +332,7 @@ def team_invite_accept(request, token):
                 accepted_user = None
 
         if accepted_user:
-            login(request, accepted_user, backend="django.contrib.auth.backends.ModelBackend")
+            login(request, accepted_user, backend="dashboard.backends.PasswordPolicyBackend")
             return redirect("dashboard:home")
 
     can_accept = bool(

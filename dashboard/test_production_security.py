@@ -1,6 +1,9 @@
 import os
 import runpy
 import secrets
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,13 +15,26 @@ from django.urls import reverse
 
 
 class ProductionConfigurationTests(SimpleTestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.ca_file = Path(directory.name) / "test-ca.pem"
+        # Configuration tests do not connect to a database or validate a CA.
+        self.ca_file.write_text("synthetic certificate placeholder", encoding="utf-8")
+
     def load_settings(self, **changes):
         environment = {
             "DJANGO_DEBUG": "false",
             "DJANGO_SECRET_KEY": secrets.token_urlsafe(50),
             "DJANGO_ALLOWED_HOSTS": "quotes.example.com",
+            "DJANGO_DB_NAME": "synthetic_quotes",
+            "DJANGO_DB_USER": "synthetic_user",
+            "DJANGO_DB_PASSWORD": "synthetic-test-only-password",
+            "DJANGO_DB_HOST": "database.example.com",
+            "DJANGO_DB_SSLROOTCERT": str(self.ca_file),
         }
         environment.update(changes)
+        environment = {key: value for key, value in environment.items() if value is not None}
         with patch.dict(os.environ, environment, clear=True):
             return runpy.run_path(str(Path(settings.BASE_DIR) / "steel_quotes/settings.py"))
 
@@ -36,6 +52,15 @@ class ProductionConfigurationTests(SimpleTestCase):
             {"DJANGO_ALLOWED_HOSTS": "https://quotes.example.com"},
             {"DJANGO_ALLOWED_HOSTS": "quotes.example.com:443"},
             {"DJANGO_ALLOWED_HOSTS": "good.example,bad_host"},
+            {"DJANGO_ALLOWED_HOSTS": None},
+            {"DJANGO_DB_NAME": ""},
+            {"DJANGO_DB_PASSWORD": ""},
+            {"DJANGO_DB_HOST": ""},
+            {"DJANGO_DB_SSLROOTCERT": ""},
+            {"DJANGO_DB_SSLROOTCERT": str(self.ca_file) + ".missing"},
+            {"DJANGO_DB_PORT": "0"},
+            {"DJANGO_DB_PORT": "65536"},
+            {"DJANGO_DB_PORT": "not-a-port"},
         ):
             with self.subTest(fields=list(changes)), self.assertRaises(ImproperlyConfigured):
                 self.load_settings(**changes)
@@ -50,6 +75,21 @@ class ProductionConfigurationTests(SimpleTestCase):
         self.assertEqual(config["SECURE_HSTS_SECONDS"], 3600)
         self.assertFalse(config["SECURE_HSTS_INCLUDE_SUBDOMAINS"])
         self.assertNotIn("SECURE_PROXY_SSL_HEADER", config)
+        database = config["DATABASES"]["default"]
+        self.assertEqual(database["ENGINE"], "django.db.backends.postgresql")
+        self.assertEqual(database["OPTIONS"]["sslmode"], "verify-full")
+        self.assertEqual(database["OPTIONS"]["sslrootcert"], str(self.ca_file))
+
+    def test_server_entry_points_do_not_default_to_debug_mode(self):
+        environment = {key: value for key, value in os.environ.items()
+                       if not key.startswith("DJANGO_")}
+        for module in ("steel_quotes.wsgi", "steel_quotes.asgi"):
+            with self.subTest(module=module):
+                result = subprocess.run([sys.executable, "-c", f"import {module}"],
+                                        cwd=settings.BASE_DIR, env=environment,
+                                        capture_output=True, text=True, timeout=15)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Production requires DJANGO_DEBUG=false", result.stderr)
 
 
 class ProductionRequestTests(TestCase):
@@ -95,6 +135,10 @@ class ProductionRequestTests(TestCase):
             self.assertIn("no-store", response["Cache-Control"])
             self.assertIn("private", response["Cache-Control"])
             self.assertEqual(response["Referrer-Policy"], "no-referrer")
+            policy = response["Content-Security-Policy"]
+            self.assertIn("script-src 'self';", policy)
+            self.assertIn("form-action 'self'", policy)
+            self.assertIn("frame-ancestors 'none'", policy)
         response = self.client.post(reverse("logout"))
         self.assertIn("no-store", response["Cache-Control"])
         response = self.client.get(reverse("dashboard:home"))

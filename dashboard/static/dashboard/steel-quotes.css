@@ -280,6 +280,21 @@ form[aria-busy="true"] button[type=submit] { cursor: progress; opacity: .75; }
 .preference-field { margin-block: 1rem; }
 .preference-field input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
 .workspace-label { overflow-wrap: anywhere; min-width: 0; }
+.plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
+.plan-card { display: flex; flex-direction: column; min-width: 0; }
+.plan-current { border: 2px solid var(--accent, #5579e8); }
+.plan-price, .usage-number { font-size: 1.6rem; font-weight: 700; }
+.plan-price span, .usage-number span { font-size: 1rem; font-weight: 400; }
+.plan-features { padding-left: 1.25rem; line-height: 1.8; }
+.plan-action { margin-top: auto; }
+.plan-action button, .plan-action select { width: 100%; }
+.billing-notes { margin-top: 1.5rem; }
+.workspace-plan { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; font-size: .9rem; }
+progress { width: 100%; accent-color: #5579e8; }
+@media (min-width: 1500px) { .plan-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .plan-grid { grid-template-columns: 1fr; } }
+.billing-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-block: 1rem; }
+@media (max-width: 760px) { .billing-metrics { grid-template-columns: 1fr; } }
 
 @media (max-width: 640px) {
   .topbar { flex-wrap: wrap; }

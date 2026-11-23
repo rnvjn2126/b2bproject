@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Plan allowance · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card"><h1>Your workspace plan</h1><p role="alert">{{ reason }}</p><p>Your existing data is still available. No records have been deleted.</p><a class="button" href="{% url 'dashboard:plans' %}">Compare plans</a> <a href="{% url 'dashboard:billing' %}">View usage</a></section>
+{% endblock %}

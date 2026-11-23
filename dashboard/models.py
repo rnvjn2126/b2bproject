@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
+import uuid
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -26,6 +27,59 @@ class BusinessAccount(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SubscriptionPeriod(models.Model):
+    """A purchased access period; sandbox records never grant production access."""
+
+    class Tier(models.TextChoices):
+        SMALL = "small", "Small Business"
+        MEDIUM = "medium", "Medium Business"
+        LARGE = "large", "Large Business"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Awaiting payment"
+        PAID = "paid", "Confirmed"
+        FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
+        REFUNDED = "refunded", "Refunded"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(BusinessAccount, on_delete=models.PROTECT, related_name="subscription_periods")
+    tier = models.CharField(max_length=12, choices=Tier.choices)
+    months = models.PositiveSmallIntegerField(choices=[(1, "Monthly"), (12, "Annual")])
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    is_test = models.BooleanField(default=True)
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(condition=Q(months__in=[1, 12]), name="billing_valid_term"),
+            models.CheckConstraint(condition=~Q(status="paid") | (
+                Q(starts_at__isnull=False, ends_at__isnull=False) & Q(ends_at__gt=models.F("starts_at"))
+            ), name="billing_paid_has_period"),
+            models.UniqueConstraint(fields=["account"], condition=Q(status="pending"), name="billing_one_pending_checkout"),
+        ]
+
+
+class BillingEvent(models.Model):
+    event_id = models.CharField(max_length=100, unique=True)
+    purchase = models.ForeignKey(SubscriptionPeriod, on_delete=models.PROTECT, related_name="events")
+    outcome = models.CharField(max_length=12)
+    payload_digest = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class MonthlyUsage(models.Model):
+    account = models.ForeignKey(BusinessAccount, on_delete=models.CASCADE, related_name="monthly_usage")
+    month = models.DateField()
+    quotations = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["account", "month"], name="unique_workspace_usage_month")]
 
 
 class UserPreferences(models.Model):

@@ -1,4 +1,24 @@
 from django.utils.cache import add_never_cache_headers
+from django.shortcuts import render
+from django.utils.deprecation import MiddlewareMixin
+
+from .accounts import business_account_for
+from .billing import current_plan, user_has_seat
+
+
+class PlanAccessMiddleware(MiddlewareMixin):
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        match = request.resolver_match
+        if not request.user.is_authenticated or not match or match.namespace != "dashboard":
+            return None
+        account = business_account_for(request.user)
+        reason = ""
+        if match.url_name in {"reports", "company_defaults", "product_csv_import"} and current_plan(account)["tier"] == "free":
+            reason = "This feature is included in Small, Medium and Large Business plans."
+        elif request.method not in {"GET", "HEAD", "OPTIONS"} and match.url_name != "preferences" and not user_has_seat(request.user, account):
+            reason = "Your workspace is over its user allowance. You can still view and export records; ask the owner to upgrade or adjust the team."
+        if reason:
+            return render(request, "billing/limit.html", {"reason": reason}, status=403)
 
 
 class PrivateResponseMiddleware:

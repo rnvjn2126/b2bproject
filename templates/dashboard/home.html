@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Workspace · Steel Quotes{% endblock %}
 {% block content %}
+<div class="workspace-plan"><span>{{ workspace_plan.name }}{% if workspace_plan.period.is_test %} · Test plan{% endif %}</span><a href="{% url 'dashboard:billing' %}">View usage &amp; upgrade</a></div>
 <section class="hero">
   <div>
     <h1>Steel quotation workspace</h1>

@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
+from .test_helpers import grant_test_plan
 from .models import BusinessAccount, TeamMembership, UserPreferences, QuotationDefaults, Customer, RFQ, AuditEvent
 
 
@@ -12,6 +13,8 @@ class CustomisationTests(TestCase):
         self.sales = get_user_model().objects.create_user(username="prefs-sales")
         self.other = get_user_model().objects.create_user(username="prefs-other")
         self.account = BusinessAccount.objects.create(owner=self.owner, name="Sample Company")
+        grant_test_plan(self.owner)
+        grant_test_plan(self.other)
         self.member = TeamMembership.objects.create(user=self.sales, account=self.account, role="sales")
         self.url = reverse("dashboard:preferences")
         self.company = reverse("dashboard:company_defaults")

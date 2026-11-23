@@ -16,6 +16,7 @@
   </div>
   <div class="nav-group">
     <p class="nav-label">Settings</p>
+    {% include "dashboard/nav_link.html" with route="dashboard:billing" label="Plan & billing" icon="◇" %}
     {% include "dashboard/nav_link.html" with route="dashboard:preferences" label="My preferences" icon="◐" %}
     {% if can_edit_company_defaults %}{% include "dashboard/nav_link.html" with route="dashboard:company_defaults" label="Company defaults" icon="⚙" %}{% endif %}
     {% include "dashboard/nav_link.html" with route="dashboard:quote_pricing_settings" label="Quote pricing" icon="₹" %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Plan &amp; billing · Steel Quotes{% endblock %}
+{% block content %}
+<section class="hero"><div><p class="eyebrow">YOUR WORKSPACE</p><h1>Plan &amp; billing</h1><p>{{ account.name|default:"Your company" }} · {{ plan.name }}{% if plan.period.is_test %} · Test access{% endif %}</p></div><a class="button" href="{% url 'dashboard:plans' %}">Compare plans</a></section>
+{% if sandbox %}<p class="notice">Local simulation only. No real payments are enabled. Prices are awaiting confirmation.</p>{% endif %}
+<div class="billing-metrics">
+  <section class="card"><h2>Quotation usage</h2><p class="usage-number">{{ used }} <span>/ {{ plan.quotations }}</span></p><progress max="{{ plan.quotations }}" value="{{ used }}" aria-label="Monthly quotation usage"></progress><p>Shared by your company. Resets on the first of next month (India time).</p></section>
+  <section class="card"><h2>Team capacity</h2><p class="usage-number">{{ seats }} <span>/ {{ plan.seats }} users</span></p><p>{{ reserved_seats }} seats used or reserved, including pending invitations.</p><a href="{% url 'dashboard:team_list' %}">Manage your team</a></section>
+  <section class="card"><h2>Access period</h2>{% if plan.period %}<p>Until <strong>{{ plan.period.ends_at|date:"j M Y, H:i" }}</strong> India time.</p>{% else %}<p>Your Free plan has no expiry.</p>{% endif %}<p>No automatic renewal or charges. Existing data is retained when a paid period ends.</p></section>
+</div>
+{% if upcoming %}<section class="card"><h2>Upcoming access</h2>{% for period in upcoming %}<p>{{ period.get_tier_display }}: {{ period.starts_at|date:"j M Y" }} – {{ period.ends_at|date:"j M Y" }}{% if period.is_test %} (test){% endif %}</p>{% endfor %}</section>{% endif %}
+{% if is_billing_owner %}
+<section class="card"><h2>Billing history</h2><p>Test records are not payment receipts or tax invoices. Only the company owner can manage billing.</p>
+<div class="table-scroll" tabindex="0"><table><thead><tr><th>Created</th><th>Plan</th><th>Term</th><th>Status</th><th>Action</th></tr></thead><tbody>
+{% for purchase in history %}<tr><td>{{ purchase.created_at|date:"j M Y" }}</td><td>{{ purchase.get_tier_display }}{% if purchase.is_test %}<span class="badge">Test</span>{% endif %}</td><td>{{ purchase.get_months_display }}</td><td>{{ purchase.get_status_display }}</td><td><a href="{% url 'dashboard:checkout' purchase.pk %}">View details</a>{% if purchase.status == "pending" %}<form method="post" action="{% url 'dashboard:cancel_checkout' purchase.pk %}">{% csrf_token %}<button type="submit" class="secondary">Cancel checkout</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="5">No billing activity yet. Your Free workspace is ready to use.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% else %}<section class="card"><p>Your owner manages payments and plan changes. Everyone in the company shares the allowance.</p></section>{% endif %}
+{% endblock %}

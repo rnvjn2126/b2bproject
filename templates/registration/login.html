@@ -13,6 +13,7 @@
       <label for="id_password">Password</label>{{ form.password }}
       <button type="submit">Sign in</button>
     </form>
+    <p><a href="{% url 'dashboard:signup' %}">Create a Free workspace</a> · <a href="{% url 'dashboard:plans' %}">Compare plans</a></p>
   </div>
   <div class="login-art" aria-hidden="true"></div>
 </section>

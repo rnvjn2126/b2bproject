@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Test checkout · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card"><p class="eyebrow">BILLING PREVIEW</p><h1>{{ purchase.get_tier_display }}</h1>
+<p>{{ purchase.get_months_display }} access · {{ purchase.get_status_display }}</p>
+<p class="notice">This is a local payment simulation. No money is collected or refunded, and no payment information is requested. Business fees have not been set.</p>
+{% if purchase.starts_at %}<p>Access: {{ purchase.starts_at|date:"j M Y, H:i" }} – {{ purchase.ends_at|date:"j M Y, H:i" }} India time.</p>{% endif %}
+<p>New paid access starts now if you are on Free. Renewals and changes to an existing paid plan start after all prepaid access ends. No automatic billing is scheduled.</p>
+{% if sandbox and purchase.is_test %}
+  {% if purchase.status == "pending" or purchase.status == "failed" %}
+  <form method="post">{% csrf_token %}<button name="outcome" value="paid" type="submit">Simulate successful payment</button> <button class="secondary" name="outcome" value="failed" type="submit">Simulate failed payment</button></form>
+  {% elif purchase.status == "paid" %}
+  <form method="post">{% csrf_token %}<button class="secondary" name="outcome" value="refunded" type="submit">Simulate full refund of this period</button></form>
+  {% else %}<p>This checkout is closed. Replaying a payment cannot reactivate it.</p>{% endif %}
+{% else %}<p>Payment simulation is disabled.</p>{% endif %}
+<p><a href="{% url 'dashboard:billing' %}">Back to plan &amp; billing</a></p>
+</section>
+{% endblock %}

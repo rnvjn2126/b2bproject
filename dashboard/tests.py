@@ -740,7 +740,9 @@ class QuotePipelineAndPDFBoundaryTests(TestCase):
 
     def test_customer_pdf_has_terms_and_sales_totals_without_procurement_data(self):
         quote = self.create_quote()
-        BusinessAccount.objects.create(owner=self.user, name="Northern Steel Traders")
+        account = BusinessAccount.objects.get(owner=self.user)
+        account.name = "Northern Steel Traders"
+        account.save(update_fields=["name"])
         quote.payment_terms = "<script>Pay within 30 days</script>"
         quote.tax_rate_percent = Decimal("18.00")
         quote.save(update_fields=["payment_terms", "tax_rate_percent", "updated_at"])
@@ -912,6 +914,8 @@ class ProductCSVTests(TestCase):
 
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="csv-owner", password="local-test-password")
+        from .test_helpers import grant_test_plan
+        grant_test_plan(self.user)
         self.other = get_user_model().objects.create_user(username="csv-other", password="local-test-password")
         self.client.force_login(self.user)
 

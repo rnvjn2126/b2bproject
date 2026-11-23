@@ -15,6 +15,21 @@ from .models import (
 )
 
 
+class WorkspaceSignupForm(UserCreationForm):
+    company_name = forms.CharField(max_length=160, label="Company name")
+    email = forms.EmailField(label="Your work email")
+
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ["username", "email", "company_name"]
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if get_user_model().objects.filter(email__iexact=email).exists():
+            raise ValidationError("Use your existing account or choose a different email.")
+        return email
+
+
 class StyledModelForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

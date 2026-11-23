@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from .test_helpers import grant_test_plan
 
 from .models import BusinessAccount, Customer, FollowUp, Quote, RFQ, TeamMembership
 
@@ -14,6 +15,7 @@ class BusinessReportTests(TestCase):
         user_model = get_user_model()
         self.owner = user_model.objects.create_user(username="report-owner", password="Report-Owner-Password-98!")
         self.account = BusinessAccount.objects.create(owner=self.owner, name="Report Steel Co")
+        grant_test_plan(self.owner)
         self.customer = Customer.objects.create(owner=self.owner, name="Report Customer")
         self.rfq = RFQ.objects.create(
             owner=self.owner, customer=self.customer, reference="REPORT-001", received_on=timezone.localdate(),

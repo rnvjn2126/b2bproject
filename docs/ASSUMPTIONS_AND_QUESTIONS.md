@@ -82,3 +82,13 @@ None at setup. Record any task failure with failing command, log, and recommende
 - The first full run found three failures: an export test assumed an exact header string, and two invitation tests exposed an old backend reference. Corrected the assertion to require no-store/private and fixed the actual invitation sign-in reference; all 90 tests passed on rerun.
 - The 12 installed runtime packages passed pip-audit with no known advisories on 23 November 2026. The audited versions are recorded in requirements-production.lock; target-OS verification, future re-audits and OS/server patching remain release duties.
 - Release questions remain in docs/PRODUCTION_SECURITY.md: production domain/proxy, PostgreSQL provider, administrative MFA/SSO, infrastructure limits, backup/restore and monitoring owners. No unsupported answers were invented.
+
+## Tiered plans (23 November 2026)
+- Add Free, Small Business, Medium Business and Large Business as company-wide plans. Provisional user limits are 1/3/10/30; monthly quotation-save limits are 5/100/500/2,000. All paid tiers expose the same existing business features with different capacity.
+- Prices remain unset. No real payment keys, provider registration, charges, customer messages or deployments are used. The local simulation is prominently labelled and cannot grant access in production.
+- Monthly quota counts all successful quotation saves including revisions, not previews. Usage resets at the India calendar-month boundary and is not reset by changing plan.
+- Pending invitations reserve seats. After expiry, excess members become read-only; the owner and existing data/exports remain available. Security and accessible display settings are not paid features.
+- Renewals and tier switches begin after prepaid access ends. Monthly/annual terms are calendar-based. Immediate upgrades, proration, automatic renewals and partial refunds await business rules.
+- Initial targeted billing tests exposed two fixture errors (protected event cleanup and a consumed invitation session token), then three new quote tests exposed a missing required supplier lead time in their fixture. Corrected the fixtures; all 17 billing/quotation-limit tests passed.
+- Outstanding commercial questions: prices/taxes, final quotas, immediate upgrade policy, fair-use/storage limits, refunds and the actual payment provider. Production signup additionally needs verified identity and abuse controls.
+- See docs/BILLING.md for precise feature boundaries and the local test webhook contract.

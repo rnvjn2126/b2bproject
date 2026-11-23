@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Plans · Steel Quotes{% endblock %}
+{% block content %}
+<section class="hero"><div><p class="eyebrow">BUILT FOR YOUR BUSINESS</p><h1>A plan for every stage</h1><p>Start free, then add capacity as your company grows. One plan covers your workspace.</p></div>{% if request.user.is_authenticated %}<a class="button secondary" href="{% url 'dashboard:billing' %}">Your plan &amp; usage</a>{% else %}<a href="{% url 'login' %}">Already have an account? Sign in</a>{% endif %}</section>
+{% if sandbox %}<p class="notice" role="status">Local billing preview — all payments are simulated. No card details, charges or automatic renewals. Business prices have not been set.</p>{% else %}<p class="notice">Business pricing is being finalised. Paid checkout is not available yet.</p>{% endif %}
+<div class="plan-grid">
+{% for item in plans %}
+  <article class="card plan-card{% if item.tier == plan.tier %} plan-current{% endif %}">
+    {% if item.tier == plan.tier %}<span class="badge">Current plan</span>{% endif %}
+    <h2>{{ item.name }}</h2>
+    <p class="plan-price">{% if item.tier == "free" %}₹0 <span>/ always free</span>{% else %}Pricing pending{% endif %}</p>
+    <ul class="plan-features">
+      <li><strong>{{ item.seats }}</strong> user{{ item.seats|pluralize }}, including the owner</li>
+      <li><strong>{{ item.quotations }}</strong> quotation saves each month</li>
+      <li>Customers, suppliers &amp; product catalogue</li>
+      <li>Enquiries, comparisons &amp; safe quotation PDFs</li>
+      <li>Follow-ups &amp; personal display preferences</li>
+      {% if item.tier != "free" %}<li>Shared team workspace &amp; approval roles</li><li>Reports, company defaults &amp; CSV import</li>{% else %}<li>Data export &amp; essential security included</li>{% endif %}
+    </ul>
+    <div class="plan-action">
+    {% if not request.user.is_authenticated %}
+      <a class="button" href="{% url 'dashboard:signup' %}">Start with Free</a>
+    {% elif item.tier == "free" %}
+      <a class="button secondary" href="{% url 'dashboard:billing' %}">View your workspace plan</a>
+    {% elif not is_billing_owner %}
+      <p class="muted">Ask your company owner to change plans.</p>
+    {% elif sandbox %}
+      <form method="post" action="{% url 'dashboard:checkout_create' %}">
+        {% csrf_token %}<input type="hidden" name="tier" value="{{ item.tier }}">
+        <label for="term-{{ item.tier }}">Access period</label>
+        <select id="term-{{ item.tier }}" name="months"><option value="1">Monthly</option><option value="12">Annual</option></select>
+        <button type="submit">Preview {{ item.name }}</button>
+      </form>
+    {% else %}<p class="muted">Checkout unavailable</p>{% endif %}
+    </div>
+  </article>
+{% endfor %}
+</div>
+<section class="card billing-notes"><h2>Clear limits. Your records stay yours.</h2>
+  <p>Allowances are provisional. Quotation saves include revisions, but previews do not count. The shared monthly allowance resets on the first day of each month in India time, including annual plans. Changing plans never resets usage.</p>
+  <p>Pending team invitations reserve seats. If paid access expires, the workspace returns to Free: existing records remain viewable and exportable, while users above the allowance become read-only. The owner retains access.</p>
+  <p>All Business tiers include the same available features with different capacity. Renewals and tier changes begin after prepaid access ends; no proration or automatic charges are applied.</p>
+</section>
+{% endblock %}

@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from .test_helpers import grant_test_plan
 
 from .models import AuditEvent, BusinessAccount, Customer, Quote, QuotePricingSettings, RFQ, TeamInvitation, TeamMembership
 
@@ -14,6 +15,7 @@ class TeamWorkspaceTests(TestCase):
         user_model = get_user_model()
         self.owner = user_model.objects.create_user(username="workspace-owner", password="Owner-Test-Password-9!")
         self.account = BusinessAccount.objects.create(owner=self.owner, name="Synthetic Steel Co")
+        grant_test_plan(self.owner)
         self.customer = Customer.objects.create(owner=self.owner, name="Company-wide customer")
         self.rfq = RFQ.objects.create(owner=self.owner, customer=self.customer, reference="TEAM-001", received_on="2026-11-22")
         self.quote = Quote.objects.create(

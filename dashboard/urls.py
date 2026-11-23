@@ -1,9 +1,17 @@
 from django.urls import path
 
 from . import views
+from . import billing_views
 
 app_name = "dashboard"
 urlpatterns = [
+    path("plans/", billing_views.plans, name="plans"),
+    path("signup/", billing_views.signup, name="signup"),
+    path("billing/", billing_views.billing_overview, name="billing"),
+    path("billing/checkout/", billing_views.checkout_create, name="checkout_create"),
+    path("billing/checkout/<uuid:pk>/", billing_views.checkout, name="checkout"),
+    path("billing/checkout/<uuid:pk>/cancel/", billing_views.cancel_checkout, name="cancel_checkout"),
+    path("billing/webhooks/test/", billing_views.test_webhook, name="billing_test_webhook"),
     path("", views.home, name="home"),
     path("preferences/", views.preferences, name="preferences"),
     path("company-defaults/", views.company_defaults, name="company_defaults"),

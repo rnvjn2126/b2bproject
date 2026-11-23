@@ -27,6 +27,7 @@ from .forms import (
 from .accounts import (
     account_owner, business_account_for, can_manage_account, can_manage_team, user_can_join_account,
 )
+from .billing import current_plan, reserve_quotation, reserved_seats, user_has_seat
 from .models import (
     AuditEvent, BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings,
     UserPreferences, QuotationDefaults, RFQ, RFQLine, Supplier, SupplierOffer, TeamInvitation, TeamMembership,
@@ -192,16 +193,21 @@ def team_list(request):
                     )
                     invitation.full_clean()
                     with transaction.atomic():
-                        invitation.save()
-                        AuditEvent.objects.create(
-                            owner=account.owner, actor=request.user,
-                            action=AuditEvent.Action.INVITATION_CREATED,
-                            object_type="invitation", object_id=str(invitation.pk),
+                        BusinessAccount.objects.select_for_update().get(pk=account.pk)
+                        if reserved_seats(account) >= current_plan(account)["seats"]:
+                            invitation_form.add_error(None, "Your plan's user allowance is full, including pending invitations. Upgrade your plan or revoke an invitation.")
+                        else:
+                            invitation.save()
+                            AuditEvent.objects.create(
+                                owner=account.owner, actor=request.user,
+                                action=AuditEvent.Action.INVITATION_CREATED,
+                                object_type="invitation", object_id=str(invitation.pk),
+                            )
+                    if invitation.pk:
+                        request.session["team_invite_url"] = request.build_absolute_uri(
+                            reverse("dashboard:team_invite_accept", args=[token]),
                         )
-                    request.session["team_invite_url"] = request.build_absolute_uri(
-                        reverse("dashboard:team_invite_accept", args=[token]),
-                    )
-                    return redirect("dashboard:team_list")
+                        return redirect("dashboard:team_list")
         else:
             return HttpResponseBadRequest("Choose a valid team action.")
 
@@ -294,6 +300,11 @@ def team_invite_accept(request, token):
 
     if request.method == "POST":
         with transaction.atomic():
+            BusinessAccount.objects.select_for_update().get(pk=invitation.account_id)
+            if 1 + invitation.account.memberships.count() >= current_plan(invitation.account)["seats"]:
+                return render(request, "billing/limit.html", {
+                    "reason": "This workspace has no available user seats. Ask its owner to upgrade before accepting.",
+                }, status=403)
             invitation = get_object_or_404(
                 TeamInvitation.objects.select_for_update().filter(
                     accepted_at__isnull=True, revoked_at__isnull=True,
@@ -786,12 +797,18 @@ def _quote_create_page(request, rfq, source_quote=None):
     preview = form.pricing_rows if valid_pricing and request.POST.get("action") == "preview" else []
     if valid_pricing and not preview:
         with transaction.atomic():
+            account = business_account_for(request.user, create=True)
+            BusinessAccount.objects.select_for_update().get(pk=account.pk)
             if source_quote:
                 previous = Quote.objects.select_for_update().get(pk=source_quote.pk, owner=owner)
                 newer = previous.revisions.filter(owner=owner).first()
                 if newer:
                     messages.info(request, "A newer revision exists. Open it to prepare another revision.")
                     return redirect("dashboard:quote_detail", pk=newer.pk)
+            if not user_has_seat(request.user, account) or not reserve_quotation(account):
+                return render(request, "billing/limit.html", {
+                    "reason": "Your workspace has reached its user or monthly quotation allowance. Upgrade your plan to continue saving quotations.",
+                }, status=403)
             quote = Quote(
                 owner=owner,
                 rfq=rfq,

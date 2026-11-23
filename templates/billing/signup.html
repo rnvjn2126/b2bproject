@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Create a Free workspace · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card"><h1>Start your Free workspace</h1><p>One user, five quotation saves each month. No payment details needed.</p><p class="notice">Local preview: use synthetic company and contact details.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Create Free workspace</button></form>
+<p><a href="{% url 'login' %}">Already registered? Sign in</a> · <a href="{% url 'dashboard:plans' %}">Compare plans</a></p></section>
+{% endblock %}

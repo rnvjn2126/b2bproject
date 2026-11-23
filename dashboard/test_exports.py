@@ -4,6 +4,7 @@ from io import StringIO
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from .test_helpers import grant_test_plan
 
 from .models import BusinessAccount, Customer, Supplier, TeamMembership
 
@@ -53,6 +54,7 @@ class RelationshipCSVExportTests(TestCase):
 
     def test_company_members_share_contact_exports_and_exports_are_get_only(self):
         account = BusinessAccount.objects.create(owner=self.owner, name="Synthetic Export Co")
+        grant_test_plan(self.owner)
         member = get_user_model().objects.create_user(
             username="export-member", email="member@example.test", password="Export-Member-Password-98!",
         )

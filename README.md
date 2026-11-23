@@ -22,6 +22,16 @@ The workspace dashboard includes a private, account-scoped checklist for adding 
 
 ## Shared team workspace
 
+## Free and Business plans
+
+The app now offers Free, Small Business, Medium Business and Large Business plans per company. Provisional user limits are 1/3/10/30 and monthly quotation-save allowances are 5/100/500/2,000. Open **Plan & billing** in the sidebar or visit /plans/. Local signup starts on Free.
+
+Business plans unlock the existing Reports page, company-default editing, CSV imports and additional team capacity. Limits are enforced on the server. Existing records and exports remain available after expiry.
+
+**Billing is a local simulation only:** no real money, payment details or automatic renewals. Prices are unset; real gateway integration is still required. Simulation/test access is blocked in production. Read [billing rules and remaining launch work](docs/BILLING.md).
+
+## Shared team workspace
+
 The business owner can name the workspace and create a one-time invitation link for a teammate. Links expire in 72 hours; the app stores only a digest and does not email invitations. Teammates must use the invited email. Owners alone manage member roles and access. Owners and managers can approve below-floor quotations and edit pricing guardrails; sales members can work in the shared company records but cannot perform those actions. This is a local MVP control, not a production identity or compliance certification.
 
 Owners and managers can review selected workspace activity, including quote approvals and status changes, pricing changes, and membership changes. Entries do not store rates, margins, invitation emails, or user-entered notes. This application history is not tamper-evident.

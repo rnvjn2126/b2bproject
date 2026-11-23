@@ -73,6 +73,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "dashboard.middleware.PrivateResponseMiddleware",
+    "dashboard.middleware.PlanAccessMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",
@@ -150,3 +151,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard:home"
 LOGOUT_REDIRECT_URL = "login"
+
+# Local simulation only. Live billing needs a separately reviewed provider integration.
+BILLING_SANDBOX_ENABLED = DEBUG
+BILLING_WEBHOOK_SECRET = os.environ.get("BILLING_TEST_WEBHOOK_SECRET", "")
+# Public signup needs email verification and abuse controls before a hosted launch.
+PUBLIC_SIGNUP_ENABLED = DEBUG

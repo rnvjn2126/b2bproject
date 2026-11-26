@@ -8,7 +8,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 01 Double-entry engine | Complete for local SQLite | Sealed journals, reference numbers, exact balance enforcement, duplicate protection, reversals, locked periods and owner audit history. PostgreSQL execution remains a release gate. |
 | 02 Ledgers and vouchers | Complete for internal vouchers | Eight voucher types, draft and approval workflow, ledger statements, day book and trial balance. |
 | 03 Sales and purchase orders | Complete for operational orders | Accepted quotation conversion, split procurement, approvals, cancellation, partial movements, pending reports and private PDFs. Orders do not create journals. |
-| 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations and owner-only movement-based draft screens. Full regression on the draft screens, issue numbering, immutable issued records, ledger posting, notes, returns and print remain open. |
+| 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations and owner-only movement-based draft screens. Issue numbering, immutable issued records, ledger posting, notes, returns and print remain open. |
 | 05 Receivables and payables | Pending | Requires posted invoices and settlement allocation. |
 | 06 Banking | Pending | Requires posted settlement workflow and bank matching rules. |
 | 07 Inventory | Pending | Goods receipts and dispatch exist operationally. The stock ledger is pending. |
@@ -31,9 +31,9 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 04A | 4 passed | 135 passed, 132.120 s | 135 passed, 132.417 s |
 | 04B | 7 passed | 138 passed, 133.842 s | 138 passed, 134.857 s |
 | 04C | 9 passed | 140 passed, 132.872 s | 140 passed, 133.848 s |
-| 04D | 17 passed (invoicing and orders) | Pending | Pending |
+| 04D | 17 passed (invoicing and orders) | 142 passed, 84.230 s | 142 passed, 84.471 s |
 
-Django and migration drift checks passed through 04D. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Native browser checks on the draft screens remain pending. Its first targeted run failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
+Django and migration drift checks passed through 04D. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. Its first targeted run failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 
 ## Reconciliation, security and release gates
 

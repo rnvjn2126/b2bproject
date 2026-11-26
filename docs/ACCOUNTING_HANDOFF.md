@@ -5,12 +5,12 @@ Current branch: `ai/accounting-overnight`.
 ## Checkpoint 04D · Owner invoice draft screens
 
 - **Completed:** Accounting lists eligible confirmed dispatches and receipts. Owners can submit an internal draft and reopen its saved sales or purchase snapshot. A repeated submission opens the existing draft. No journal is posted.
-- **Pending:** full normal/reverse regression and native browser verification of the draft workflow, followed by invoice issuance, statutory snapshots, GST ledger posting, notes, returns and print. Checkpoints 05–14 remain pending.
+- **Pending:** invoice issuance, statutory snapshots, GST ledger posting, notes, returns and print. Checkpoints 05–14 remain pending.
 - **Changed files:** accounting routes and navigation, invoicing forms, service, views and tests, three draft templates and the checkpoint documents. **Migrations:** none.
-- **Tests:** 17 focused invoicing and order tests passed after correcting an invalid-choice assertion. Django check and migration drift check passed. The most recent full runs passed 140 each on 04C. Full and browser verification for 04D remain open.
+- **Tests:** 17 focused invoicing and order tests passed after correcting an invalid-choice assertion. Django check and migration drift check passed. The normal and reverse full runs each passed 142 tests (84.230 and 84.471 seconds). Native Chrome verified sales and purchase drafts at desktop and phone widths.
 - **Security and assumptions:** owner-only, same-company source/draft/registration, CSRF on submission and no-store responses. Continue using synthetic values. Invoice drafts cannot issue a tax document or post ledger entries.
-- **Latest implementation commit:** `326c86d374afd18ca29b96a416c65c985a35df35`. Verified with targeted tests.
-- **Exact next task:** run `manage.py test --noinput` and the reverse run, then verify the sales and purchase draft screens in a local browser at desktop and mobile widths. Fix regressions and record results before starting statutory issue and posting. Follow [Windows resume commands](OVERNIGHT_PROGRESS.md).
+- **Latest implementation commit:** `326c86d374afd18ca29b96a416c65c985a35df35`. Verified with focused, full and browser tests.
+- **Exact next task:** design and test exact debit/credit allocations from validated snapshots before connecting any issuance or posting route. Follow [Windows resume commands](OVERNIGHT_PROGRESS.md).
 
 ## Checkpoint 04C · Owner GST settings
 

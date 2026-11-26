@@ -1,0 +1,24 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Accounting audit history</h1>
+  <p>Journal postings, reversals and period locks are shown in order of recording.</p>
+  <div class="table-scroll" tabindex="0">
+    <table>
+      <thead><tr><th scope="col">Recorded</th><th scope="col">Event</th><th scope="col">Recorded by</th><th scope="col">Journal or period</th></tr></thead>
+      <tbody>
+        {% for entry in page %}
+        <tr>
+          <td>{{ entry.event_time|date:"d M Y, H:i T" }}</td>
+          <th scope="row">{{ entry.event }}</th>
+          <td>{{ entry.actor|default:"—" }}</td>
+          <td>{% if entry.event == "Period locked" %}{{ entry.event_date|date:"F Y" }}{% else %}<a href="{% url 'accounting:journal' entry.object_id %}">JRN-{{ entry.object_id }}</a>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="4">No accounting activity yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}
+  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}
+</section>
+{% endblock %}

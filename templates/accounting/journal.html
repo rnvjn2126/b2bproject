@@ -1,10 +1,10 @@
 {% extends "accounting/base.html" %}
 {% block books %}
 <section class="card">
-  <h1>Journal {{ journal.pk }}</h1>
+  <h1>Journal {{ journal.transaction_reference }}</h1>
   <p>{{ journal.date|date:"d M Y" }} · {{ journal.get_kind_display }}</p>
   <p>{{ journal.narration }}</p>
-  <p>Reference: {{ journal.reference|default:"—" }} · Branch: {{ journal.branch.name|default:"—" }} · Cost centre: {{ journal.cost_centre.name|default:"—" }}</p>
+  <p>External reference: {{ journal.reference|default:"—" }} · Branch: {{ journal.branch.name|default:"—" }} · Cost centre: {{ journal.cost_centre.name|default:"—" }}</p>
   <p>Posted by {{ journal.submitted_by.get_username }} on {{ journal.posted_at|date:"d M Y, H:i T" }}.</p>
   {% if journal.reverses %}<p>Reverses <a href="{% url 'accounting:journal' journal.reverses_id %}">journal {{ journal.reverses_id }}</a>.</p>
   {% elif journal.reversal %}<p>Reversed by <a href="{% url 'accounting:journal' journal.reversal.pk %}">journal {{ journal.reversal.pk }}</a>.</p>

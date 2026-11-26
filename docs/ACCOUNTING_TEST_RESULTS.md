@@ -24,3 +24,9 @@
 - Test run 2: `manage.py test --noinput --reverse` passed all 121 tests in 121.752 seconds, using a separate synthetic test database.
 - Chrome verified that a posted receipt changes reported income and that the balance sheet reconciles at a 390 px viewport.
 - These runs verify this checkpoint. The outstanding checklist items remain open.
+
+## Overnight Checkpoint 01
+
+- 14 targeted accounting tests passed. Full run 1 passed 123 tests in 127.419 seconds. Full run 2 passed 123 tests in reverse order in 126.062 seconds.
+- Django check and migration drift check passed. A populated synthetic SQLite database upgraded from accounting migration 0002 and retained its journal and lines. Guards rejected edits, deletes and appends affecting posted journals or locked periods.
+- Chrome verified a native journal submission, reconciled trial balance and the accounting audit screen. PostgreSQL trigger execution and concurrency remain unverified.

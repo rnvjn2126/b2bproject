@@ -6,7 +6,7 @@
   <div class="table-scroll" tabindex="0"><table>
     <thead><tr><th scope="col">Journal</th><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Reference</th><th scope="col">Branch</th></tr></thead>
     <tbody>{% for journal in page %}<tr>
-      <th scope="row"><a href="{% url 'accounting:journal' journal.pk %}">Journal {{ journal.pk }}</a></th>
+      <th scope="row"><a href="{% url 'accounting:journal' journal.pk %}">{{ journal.transaction_reference }}</a></th>
       <td>{{ journal.date|date:"d M Y" }}</td><td>{{ journal.get_kind_display }}</td><td>{{ journal.reference|default:"—" }}</td><td>{{ journal.branch.name|default:"—" }}</td>
     </tr>{% empty %}<tr><td colspan="5">No journals have been posted.</td></tr>{% endfor %}</tbody>
   </table></div>

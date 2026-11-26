@@ -7,7 +7,7 @@ The [numbered specifications](checkpoints/) define each checkpoint's scope. A ch
 | # | Checkpoint | Status at baseline |
 | --- | --- | --- |
 | 00 | Repository preparation | Complete. Django check and migration drift check passed. Runs 1 and 2 each passed 121 tests. |
-| 01 | Double-entry accounting engine | Assigned. Existing foundations, with uniqueness and audit gaps to inspect |
+| 01 | Double-entry accounting engine | Complete on the supported local SQLite workflow. Both full runs passed 123 tests. PostgreSQL execution remains a release gate. |
 | 02 | Ledgers and voucher management | Assigned. Existing cash vouchers and trial balance |
 | 03 | Sales and purchase orders | Assigned. Depends on quotation and procured offer snapshots |
 | 04 | Invoicing and Indian GST | Assigned. Depends on confirmed order and ledger workflows, and official statutory sources |

@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -214,9 +215,43 @@ class AccountingTests(TestCase):
         self.client.force_login(manager)
         self.assertEqual(self.client.get(url, dates).status_code, 403)
 
-    def test_financial_statements_warn_on_inconsistent_ledger(self):
-        journal = self.post()
-        JournalLine.objects.filter(journal=journal, side=JournalLine.Side.CREDIT).update(amount=Decimal("1.00"))
+    def test_unbalanced_unsealed_entries_do_not_enter_statements(self):
+        journal = Journal.objects.create(
+            workspace=self.workspace, period=self.year.periods.first(), date=self.day,
+            kind=Journal.Kind.GENERAL, narration="Synthetic interrupted draft", submitted_by=self.owner,
+        )
+        JournalLine.objects.create(journal=journal, ledger=self.cash, side="D", amount=Decimal("1.00"))
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Journal.objects.filter(pk=journal.pk).update(sealed=True)
         response = self.client.get(reverse("accounting:statements"), {"start": "2026-04-01", "end": "2026-04-30"})
-        self.assertContains(response, "The balance sheet differs")
-        self.assertEqual(response.context["statements"]["difference"], Decimal("999.01"))
+        self.assertEqual(response.context["statements"]["balance_sheet"][0]["total"], Decimal(0))
+        self.assertEqual(self.client.get(reverse("accounting:journal", args=[journal.pk])).status_code, 404)
+
+    def test_database_blocks_changes_to_posted_journals_and_locked_periods(self):
+        journal = self.post()
+        self.assertTrue(journal.sealed)
+        self.assertEqual(lock_period(self.workspace, self.owner, journal.period_id), 1)
+        for attempt in (
+            lambda: Journal.objects.filter(pk=journal.pk).update(narration="Changed"),
+            lambda: journal.lines.update(amount=Decimal("3.00")),
+            lambda: journal.lines.all().delete(),
+            lambda: journal.lines.create(ledger=self.cash, side="D", amount=Decimal("1.00")),
+            lambda: self.year.periods.filter(pk=journal.period_id).update(locked_at=None),
+        ):
+            with self.assertRaises(IntegrityError), transaction.atomic():
+                attempt()
+        self.assertEqual(journal.lines.count(), 2)
+
+    def test_audit_history_and_stable_references_are_company_scoped(self):
+        journal = self.post()
+        reversal = self.post(reverses=journal, date=date(2026, 5, 1))
+        self.assertNotEqual(journal.transaction_reference, reversal.transaction_reference)
+        lock_period(self.workspace, self.owner, journal.period_id)
+        url = reverse("accounting:audit_history")
+        response = self.client.get(url)
+        self.assertContains(response, journal.transaction_reference)
+        self.assertContains(response, reversal.transaction_reference)
+        self.assertContains(response, "Journal reversed")
+        self.assertContains(response, "Period locked")
+        self.client.force_login(self.outsider)
+        self.assertNotContains(self.client.get(url), journal.transaction_reference)

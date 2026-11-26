@@ -95,6 +95,12 @@ class Journal(models.Model):
     posted_at = models.DateTimeField(auto_now_add=True)
     submission_key = models.UUIDField(default=uuid.uuid4, editable=False)
     fingerprint = models.CharField(max_length=64, editable=False)
+    sealed = models.BooleanField(default=False, editable=False)
+
+    @property
+    def transaction_reference(self):
+        # The database primary key gives every posted journal a stable, unique reference.
+        return f"JRN-{self.pk}"
 
     class Meta:
         ordering = ["-date", "-id"]

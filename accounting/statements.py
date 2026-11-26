@@ -8,6 +8,7 @@ def financial_statements(workspace, start, end, branch=None):
     """Build statements from posted lines, retaining exact Decimal totals on SQLite."""
     lines = JournalLine.objects.filter(
         journal__workspace=workspace,
+        journal__sealed=True,
         ledger__workspace=workspace,
         ledger__group__workspace=workspace,
         journal__date__lte=end,

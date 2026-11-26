@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Case, F, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -99,15 +100,33 @@ def add_chart_record(request, workspace, kind):
 @owner_only
 @require_GET
 def journals(request, workspace):
-    entries = Journal.objects.filter(workspace=workspace).select_related("branch")
+    entries = Journal.objects.filter(workspace=workspace, sealed=True).select_related("branch")
     return render(request, "accounting/journals.html", {"page": Paginator(entries, 25).get_page(request.GET.get("page"))})
+
+
+@owner_only
+@require_GET
+def audit_history(request, workspace):
+    journals = Journal.objects.filter(workspace=workspace, sealed=True).order_by().annotate(
+        event_time=F("posted_at"), actor=F("submitted_by__username"),
+        event=Case(When(kind=Journal.Kind.REVERSAL, then=Value("Journal reversed")), default=Value("Journal posted")),
+        object_id=F("pk"), event_date=F("date"),
+    ).values("event_time", "actor", "event", "object_id", "event_date")
+    locks = Period.objects.filter(year__workspace=workspace, locked_at__isnull=False).order_by().annotate(
+        event_time=F("locked_at"), actor=F("locked_by__username"), event=Value("Period locked"),
+        object_id=F("pk"), event_date=F("starts_on"),
+    ).values("event_time", "actor", "event", "object_id", "event_date")
+    events = journals.union(locks).order_by("-event_time", "event", "-object_id")
+    return render(request, "accounting/audit_history.html", {
+        "page": Paginator(events, 25).get_page(request.GET.get("page")),
+    })
 
 
 @owner_only
 @require_GET
 def journal_detail(request, workspace, pk):
     journal = get_object_or_404(Journal.objects.select_related("branch", "cost_centre", "submitted_by", "reverses", "reversal"),
-                               workspace=workspace, pk=pk)
+                               workspace=workspace, pk=pk, sealed=True)
     return render(request, "accounting/journal.html", {"journal": journal, "lines": journal.lines.select_related("ledger")})
 
 
@@ -160,7 +179,7 @@ def cash_voucher_create(request, workspace, kind):
 @owner_only
 @require_http_methods(["GET", "POST"])
 def reverse_journal(request, workspace, pk):
-    original = get_object_or_404(Journal, workspace=workspace, pk=pk)
+    original = get_object_or_404(Journal, workspace=workspace, pk=pk, sealed=True)
     form = PostingForm(request.POST if request.method == "POST" else None, initial={
         "date": timezone.localdate(), "reference": original.reference, "submission_key": uuid.uuid4(),
     })
@@ -187,7 +206,8 @@ def balances(request, workspace, pk=None):
     rows, detail, totals = [], None, None
     if form.is_valid():
         start, end, branch = (form.cleaned_data[key] for key in ("start", "end", "branch"))
-        entries = JournalLine.objects.filter(journal__workspace=workspace, ledger__workspace=workspace, journal__date__lte=end)
+        entries = JournalLine.objects.filter(journal__workspace=workspace, journal__sealed=True,
+                                             ledger__workspace=workspace, journal__date__lte=end)
         if branch:
             entries = entries.filter(journal__branch=branch)
         if ledger:

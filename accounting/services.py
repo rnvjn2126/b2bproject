@@ -85,7 +85,7 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
                  lines=(), branch=None, cost_centre=None, reverses=None):
     lock_books(workspace, actor)
     if reverses is not None:
-        if reverses.workspace_id != workspace.pk or reverses.kind == Journal.Kind.REVERSAL:
+        if not reverses.sealed or reverses.workspace_id != workspace.pk or reverses.kind == Journal.Kind.REVERSAL:
             raise ValidationError("Choose an original journal in your workspace.")
         if date < reverses.date:
             raise ValidationError("A reversal cannot be dated before the original journal.")
@@ -124,7 +124,7 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
     payload = [date.isoformat(), kind, reference, narration, getattr(branch, "pk", None),
                getattr(cost_centre, "pk", None), getattr(reverses, "pk", None), fingerprint_lines]
     fingerprint = hashlib.sha256(json.dumps(payload).encode()).hexdigest()
-    journals = Journal.objects.filter(workspace=workspace)
+    journals = Journal.objects.filter(workspace=workspace, sealed=True)
     existing = journals.filter(submission_key=submission_key).first()
     if existing:
         if existing.fingerprint != fingerprint:
@@ -150,4 +150,7 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
     journal.save()
     JournalLine.objects.bulk_create(JournalLine(journal=journal, ledger=ledger, side=side, amount=amount)
                                     for ledger, side, amount in lines)
+    # Seal only after every line exists. The database rejects later mutations.
+    journal.sealed = True
+    journal.save(update_fields=["sealed"])
     return journal

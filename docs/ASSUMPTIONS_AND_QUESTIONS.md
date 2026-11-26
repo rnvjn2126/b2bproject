@@ -83,6 +83,10 @@ None at setup. Record any task failure with failing command, log, and recommende
 - The 12 installed runtime packages passed pip-audit with no known advisories on 23 November 2026. The audited versions are recorded in requirements-production.lock; target-OS verification, future re-audits and OS/server patching remain release duties.
 - Release questions remain in docs/PRODUCTION_SECURITY.md: production domain/proxy, PostgreSQL provider, administrative MFA/SSO, infrastructure limits, backup/restore and monitoring owners. No unsupported answers were invented.
 
+## Daily workspace report (26 November 2026)
+- Reports defaults to today's activity in India time and accepts past dates. Counts use enquiry received dates and recorded timestamps for quotation saves, sends, outcomes and completed follow-ups. Revisions count as saves, and “marked sent” reflects what staff recorded.
+- Daily activity is a company-wide Business-plan report. It does not measure individual logins, time spent or staff performance. Decide later whether those measures or scheduled delivery are needed.
+
 ## Tiered plans (23 November 2026)
 - Add Free, Small Business, Medium Business and Large Business as company-wide plans. Provisional user limits are 1/3/10/30; monthly quotation-save limits are 5/100/500/2,000. All paid tiers expose the same existing business features with different capacity.
 - Prices remain unset. No real payment keys, provider registration, charges, customer messages or deployments are used. The local simulation is prominently labelled and cannot grant access in production.

@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import timedelta
+from datetime import date, timedelta
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
@@ -13,6 +13,20 @@ from .models import (
     BusinessAccount, Customer, FollowUp, Product, Quote, QuotePricingSettings, RFQ, RFQLine,
     Supplier, SupplierOffer, TeamInvitation, TeamMembership, UserPreferences, QuotationDefaults,
 )
+
+
+class DailyReportForm(forms.Form):
+    date = forms.DateField(
+        label="Report date", required=False, input_formats=["%Y-%m-%d"],
+        widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date", "min": "0001-01-02"}),
+    )
+
+    def clean_date(self):
+        date = self.cleaned_data["date"]
+        day = self.cleaned_data["date"]
+        if day and (day == date.min or day > timezone.localdate()):
+            raise ValidationError("Choose today or a past date.")
+        return day
 
 
 class WorkspaceSignupForm(UserCreationForm):

@@ -3,6 +3,23 @@
 {% block content %}
 <section class="card">
   <h1>Business reports</h1>
+  <h2>Daily activity</h2>
+  <form method="get" class="inline-form">
+    {{ date_form.date.label_tag }} {{ date_form.date }}
+    <button type="submit">Show day</button>
+  </form>
+  {{ date_form.date.errors }}
+  {% if daily %}
+    <p>Activity for <strong>{{ report_date|date:"j M Y" }}</strong> (India time). Saved quotations include revisions.</p>
+    <dl class="pipeline-grid">
+      <div class="metric"><dt>Enquiries received</dt><dd>{{ daily.enquiries }}</dd></div>
+      <div class="metric"><dt>Quotations saved</dt><dd>{{ daily.saved }}</dd></div>
+      <div class="metric"><dt>Quotations marked sent</dt><dd>{{ daily.sent }}</dd></div>
+      <div class="metric"><dt>Quotations accepted</dt><dd>{{ daily.accepted }}</dd></div>
+      <div class="metric"><dt>Quotations lost</dt><dd>{{ daily.lost }}</dd></div>
+      <div class="metric"><dt>Follow-ups completed</dt><dd>{{ daily.follow_ups }}</dd></div>
+    </dl>
+  {% endif %}
   <p>Quotation pipeline and win rate cover all dates. Follow-up completion and new enquiries cover {{ period_start }} to {{ today }}. Quote values, supplier rates, and margins are not included.</p>
   <h2>Quotation pipeline</h2>
   <p>{{ open_quote_count }} open quotations · {{ accepted_count }} accepted · {{ lost_count }} lost.</p>

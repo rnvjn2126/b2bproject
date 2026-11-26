@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as utc
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -76,6 +76,8 @@ class BusinessReportTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["accepted_count"], 1)
+        self.assertEqual(response.context["daily"]["accepted"], 1)
+        self.assertEqual(response.context["daily"]["saved"], 1)
         self.assertContains(response, "1 accepted")
         self.assertNotContains(self.client.get(reverse("dashboard:home")), "Open quotation value")
         self.assertNotContains(response, "PRIVATE-REPORT")
@@ -87,3 +89,29 @@ class BusinessReportTests(TestCase):
         self.assertIsNone(response.context["win_rate"])
         self.assertIsNone(response.context["follow_up_completion_rate"])
         self.assertContains(response, "Win rate appears after")
+
+    def test_daily_activity_uses_india_midnight_and_the_selected_date(self):
+        start = datetime(2026, 11, 24, 18, 30, tzinfo=utc.utc)
+        self.rfq.received_on = start.date() + timedelta(days=1)
+        self.rfq.save(update_fields=["received_on"])
+        accepted = self.add_quote(Quote.Status.ACCEPTED, "QT-DAILY-1")
+        Quote.objects.filter(pk=accepted.pk).update(created_at=start - timedelta(seconds=1), sent_at=start, closed_at=start)
+        lost = self.add_quote(Quote.Status.LOST, "QT-DAILY-2")
+        Quote.objects.filter(pk=lost.pk).update(created_at=start, sent_at=start, closed_at=start + timedelta(days=1))
+        FollowUp.objects.create(owner=self.owner, rfq=self.rfq, due_on=start.date(), completed_at=start)
+        response = self.client.get(reverse("dashboard:reports"), {"date": "2026-11-25"})
+        self.assertEqual(response.context["daily"], {
+            "saved": 1, "sent": 2, "accepted": 1, "lost": 0, "enquiries": 1, "follow_ups": 1,
+        })
+        self.assertContains(response, "25 Nov 2026")
+
+    def test_daily_report_validates_the_date_and_requires_a_business_plan(self):
+        url = reverse("dashboard:reports")
+        response = self.client.get(url, {"date": "not-a-date"})
+        self.assertContains(response, "Enter a valid date.")
+        self.assertIsNone(response.context["daily"])
+        response = self.client.get(url, {"date": (timezone.localdate() + timedelta(days=1)).isoformat()})
+        self.assertContains(response, "Choose today or a past date.")
+        self.assertIsNone(response.context["daily"])
+        self.client.force_login(get_user_model().objects.create_user(username="free-report"))
+        self.assertEqual(self.client.get(url, {"date": "2026-11-25"}).status_code, 403)

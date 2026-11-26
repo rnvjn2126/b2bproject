@@ -1,7 +1,7 @@
 import csv
 import hashlib
 import secrets
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import (
-    UserPreferencesForm, QuotationDefaultsForm, BusinessAccountForm, CustomerForm, FollowUpForm, ProductCSVImportForm, ProductForm,
+    UserPreferencesForm, QuotationDefaultsForm, BusinessAccountForm, CustomerForm, DailyReportForm, FollowUpForm, ProductCSVImportForm, ProductForm,
     QuoteCreateForm, QuotePricingSettingsForm, QuoteStatusForm, RFQForm, RFQLineFormSet,
     RFQStatusForm, SupplierForm, SupplierOfferForm, TeamInvitationAcceptForm, TeamInvitationForm,
 )
@@ -370,6 +370,8 @@ def activity_log(request):
 def reports(request):
     owner = account_owner(request.user)
     today = timezone.localdate()
+    date_form = DailyReportForm(request.GET or None, initial={"date": today})
+    date_form.fields["date"].widget.attrs["max"] = today.isoformat()
     period_start = today - timedelta(days=29)
     quotes = Quote.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner)
     counts = {
@@ -383,17 +385,34 @@ def reports(request):
         (Decimal(accepted) * 100 / decided).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
         if decided else None
     )
-    due_follow_ups = FollowUp.objects.filter(
-        owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
-        due_on__range=(period_start, today),
-    )
+    follow_ups = FollowUp.objects.filter(owner=owner, rfq__owner=owner, rfq__customer__owner=owner)
+    enquiries = RFQ.objects.filter(owner=owner, customer__owner=owner)
+    due_follow_ups = follow_ups.filter(due_on__range=(period_start, today))
     due_count = due_follow_ups.count()
     completed_count = due_follow_ups.filter(completed_at__isnull=False).count()
     follow_up_completion_rate = (
         (Decimal(completed_count) * 100 / due_count).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
         if due_count else None
     )
+    daily = None
+    report_date = None
+    if not date_form.is_bound or date_form.is_valid():
+        report_date = (date_form.cleaned_data.get("date") if date_form.is_bound else None) or today
+        # A daily report uses midnight in the app's timezone, even for timestamps stored in UTC.
+        start = timezone.make_aware(datetime.combine(report_date, time.min))
+        end = timezone.make_aware(datetime.combine(report_date + timedelta(days=1), time.min))
+        daily = quotes.aggregate(
+            saved=Count("pk", filter=Q(created_at__gte=start, created_at__lt=end)),
+            sent=Count("pk", filter=Q(sent_at__gte=start, sent_at__lt=end)),
+            accepted=Count("pk", filter=Q(closed_at__gte=start, closed_at__lt=end, status=Quote.Status.ACCEPTED)),
+            lost=Count("pk", filter=Q(closed_at__gte=start, closed_at__lt=end, status=Quote.Status.LOST)),
+        )
+        daily["enquiries"] = enquiries.filter(received_on=report_date).count()
+        daily["follow_ups"] = follow_ups.filter(completed_at__gte=start, completed_at__lt=end).count()
     return render(request, "dashboard/reports.html", {
+        "date_form": date_form,
+        "report_date": report_date,
+        "daily": daily,
         "pipeline": [
             {"label": label, "count": counts.get(status, 0)}
             for status, label in Quote.Status.choices
@@ -408,17 +427,12 @@ def reports(request):
         "has_win_rate": win_rate is not None,
         "period_start": period_start,
         "today": today,
-        "overdue_follow_up_count": FollowUp.objects.filter(
-            owner=owner, rfq__owner=owner, rfq__customer__owner=owner,
-            completed_at__isnull=True, due_on__lt=today,
-        ).count(),
+        "overdue_follow_up_count": follow_ups.filter(completed_at__isnull=True, due_on__lt=today).count(),
         "due_follow_up_count": due_count,
         "completed_follow_up_count": completed_count,
         "follow_up_completion_rate": follow_up_completion_rate,
         "has_follow_up_completion_rate": follow_up_completion_rate is not None,
-        "new_enquiry_count": RFQ.objects.filter(
-            owner=owner, customer__owner=owner, received_on__range=(period_start, today),
-        ).count(),
+        "new_enquiry_count": enquiries.filter(received_on__range=(period_start, today)).count(),
     })
 
 

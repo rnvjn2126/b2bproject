@@ -8,6 +8,7 @@
 - **Migrations:** invoicing `0001_initial`. Adds registration and rate tables without seeding rates or altering trading records.
 - **Tests:** four targeted tests passed. Full run 1 passed 135 in 132.120 seconds. Reverse run 2 passed 135 in 132.417 seconds. Django and migration checks passed.
 - **Security and accounting assumptions:** GSTIN validation checks the regular format. Explicit domestic place of supply and local tax component are required. Rates and actual tax treatment require review. No official approvals, payment or return submission are generated.
+- **Latest verified implementation commit:** `9af837825f8b0a6693b346ff32c29c4c32462845`.
 - **Next instructions:** checkpoint 04B should add company-owner-only internal draft snapshots linked to eligible confirmed dispatches or receipts. Start with one movement per draft and prove company isolation, duplicate prevention and quote/PO rate preservation.
 
 ## Checkpoint 03 · Sales and purchase orders

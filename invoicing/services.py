@@ -1,8 +1,10 @@
 from dataclasses import asdict
+from datetime import date
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
 from accounting.services import lock_books
 from orders.models import OrderMovement, SalesOrder
@@ -26,7 +28,8 @@ def eligible_movements(workspace):
 
 @transaction.atomic
 def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin, item_code,
-                  place_of_supply, local_component, inclusive, discount, freight, round_off):
+                  place_of_supply, local_component, inclusive, discount, freight, round_off,
+                  purchase_unit_price=None, supplier_invoice_date=None):
     """Snapshot a domestic goods estimate for one movement. The draft has no accounting effect."""
     lock_books(workspace, actor)
     if not isinstance(inclusive, bool):
@@ -40,9 +43,15 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
 
     validate_gstin(registration.gstin)
     validate_gstin(party_gstin)
-    rate = TaxRate.effective_for(workspace, TaxRate.ItemKind.GOODS, item_code, movement.date)
+    has_supplier_actuals = purchase_unit_price is not None or supplier_invoice_date is not None
+    if has_supplier_actuals and (movement.sales_line_id or purchase_unit_price is None
+                                 or type(supplier_invoice_date) is not date
+                                 or supplier_invoice_date > timezone.localdate()):
+        raise ValidationError("Enter both actual supplier price and a valid supplier invoice date for a receipt.")
+    rate_date = supplier_invoice_date if has_supplier_actuals else movement.date
+    rate = TaxRate.effective_for(workspace, TaxRate.ItemKind.GOODS, item_code, rate_date)
     if not rate:
-        raise ValidationError("Configure an HSN rate effective on the movement date.")
+        raise ValidationError("Configure an HSN rate effective on the selected tax date.")
     if movement.sales_line_id:
         line = movement.sales_line
         kind = InvoiceDraft.Kind.SALES
@@ -53,7 +62,8 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
         line = purchase.requirement
         kind = InvoiceDraft.Kind.PURCHASE
         party_name, party_address = purchase.supplier_name, purchase.supplier.address
-        supplier_state, unit_price = party_gstin[:2], purchase.unit_price
+        supplier_state = party_gstin[:2]
+        unit_price = purchase_unit_price if has_supplier_actuals else purchase.unit_price
     if not all(value.strip() for value in (party_name, party_address, registration.registered_name,
                                            registration.registered_address)):
         raise ValidationError("The company and trading party need registered names and addresses.")
@@ -70,6 +80,8 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
                         "address": registration.registered_address},
             "party": {"gstin": party_gstin, "name": party_name, "address": party_address},
             "movement_reference": movement.reference,
+            "tax_rate_date": rate_date.isoformat(),
+            "supplier_invoice_date": supplier_invoice_date.isoformat() if has_supplier_actuals else None,
             "item": {"description": line.description, "grade": line.grade, "dimensions": line.dimensions,
                      "unit": line.unit, "quantity": str(movement.quantity), "unit_price": str(unit_price)},
             "rate": {"hsn": rate.item_code, "effective_from": rate.effective_from.isoformat(),

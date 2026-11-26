@@ -36,8 +36,15 @@ class InvoiceDraftForm(forms.Form):
     freight = forms.DecimalField(max_digits=15, decimal_places=2, min_value=0, initial=0)
     round_off = forms.DecimalField(max_digits=5, decimal_places=2, initial=0)
 
-    def __init__(self, *args, workspace, **kwargs):
+    purchase_unit_price = forms.DecimalField(label="Supplier invoice unit price", max_digits=14, decimal_places=4,
+                                             min_value=0, required=False)
+    supplier_invoice_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+
+    def __init__(self, *args, workspace, purchase=False, **kwargs):
         super().__init__(*args, **kwargs)
+        if not purchase:
+            self.fields.pop("purchase_unit_price")
+            self.fields.pop("supplier_invoice_date")
         self.fields["registration_id"].choices = [
             (registration.pk, registration.gstin)
             for registration in CompanyGSTRegistration.objects.filter(workspace=workspace).order_by("gstin")

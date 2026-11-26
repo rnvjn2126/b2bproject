@@ -9,6 +9,7 @@
     <dt>Trading party</dt><dd>{{ snapshot.party.name }} · {{ snapshot.party.gstin }} · {{ snapshot.party.address }}</dd>
     <dt>Item</dt><dd>{{ snapshot.item.description }} {{ snapshot.item.grade }} {{ snapshot.item.dimensions }} · {{ snapshot.item.quantity }} {{ snapshot.item.unit }} at ₹{{ snapshot.item.unit_price }}</dd>
     <dt>HSN and rate date</dt><dd>{{ snapshot.rate.hsn }} · {{ snapshot.rate.effective_from }}</dd>
+    {% if draft.kind == "purchase" %}<dt>Supplier invoice date</dt><dd>{{ snapshot.supplier_invoice_date|default:"Purchase order estimate" }}</dd>{% endif %}
     <dt>Place of supply</dt><dd>{{ snapshot.place_of_supply }}</dd>
     <dt>Discount</dt><dd>₹{{ snapshot.discount }}</dd>
     <dt>Freight</dt><dd>₹{{ snapshot.freight }}</dd>

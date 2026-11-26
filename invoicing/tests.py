@@ -14,7 +14,7 @@ from accounting.services import lock_period, post_journal, setup_books
 from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer, TeamMembership
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
-from .issuance import issue_internal_sale
+from .issuance import issue_internal_purchase, issue_internal_sale
 from .models import CompanyGSTRegistration, InvoiceDraft, IssuedInvoice, TaxRate
 from .posting import plan_invoice_posting, resolve_invoice_lines
 from .services import prepare_draft
@@ -153,6 +153,23 @@ class InvoiceDraftTests(TestCase):
         self.assertEqual(purchase.snapshot["tax"]["igst"], "48.00")
         self.assertNotIn("Synthetic Supplier", str(sale.snapshot))
         self.assertFalse(Journal.objects.exists())
+
+    def test_purchase_draft_captures_actual_price_and_version_on_supplier_date(self):
+        prior = date(2026, 4, 20)
+        self.rate.effective_from = date(2026, 5, 1)
+        self.rate.save(update_fields=["effective_from"])
+        older = TaxRate.objects.create(
+            workspace=self.workspace, item_kind="goods", item_code="000000", effective_from=prior,
+            source_url="https://example.test/synthetic-only", integrated_rate="8", central_rate="4", local_rate="4",
+        )
+        with self.assertRaisesMessage(ValidationError, "both actual supplier price"):
+            self.draft(self.receipt, purchase_unit_price=Decimal("75"))
+        with self.assertRaisesMessage(ValidationError, "for a receipt"):
+            self.draft(self.dispatch, purchase_unit_price=Decimal("75"), supplier_invoice_date=prior)
+        draft = self.draft(self.receipt, purchase_unit_price=Decimal("75"), supplier_invoice_date=prior)
+        self.assertEqual((draft.total, draft.rate_id), (Decimal("405.00"), older.pk))
+        self.assertEqual(draft.snapshot["supplier_invoice_date"], prior.isoformat())
+        self.assertEqual(draft.snapshot["item"]["unit_price"], "75")
 
     def test_snapshot_survives_source_changes_and_rejects_duplicate_drafts(self):
         draft = self.draft(self.dispatch)
@@ -373,6 +390,57 @@ class InvoiceDraftTests(TestCase):
             )
         self.assertFalse(IssuedInvoice.objects.exists())
         self.assertTrue(Journal.objects.get(pk=journal.pk).sealed)
+
+    def purchase_issue_inputs(self, draft):
+        setup_books(self.workspace, self.owner, 2026)
+        ledger_ids = dict(Ledger.objects.filter(workspace=self.workspace, code__in=("2000", "1300", "5000")).values_list(
+            "code", "pk",
+        ))
+        return {
+            "draft_id": draft.pk, "posting_on": draft.supply_on, "confirmed_total": draft.total,
+            "supplier_invoice_date": draft.supply_on, "supplier_reference": "inv/11",
+            "recoverable_input_tax": True,
+            "ledger_ids": {"payable": ledger_ids["2000"], "purchases": ledger_ids["5000"], "input_igst": ledger_ids["1300"]},
+        }
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_purchase_issue_snapshots_supplier_document_and_deduplicates_across_receipts(self):
+        day = self.receipt.date
+        draft = self.draft(self.receipt, purchase_unit_price=Decimal("75"), supplier_invoice_date=day)
+        inputs = self.purchase_issue_inputs(draft)
+        invoice = issue_internal_purchase(self.workspace, self.owner, **inputs)
+        self.assertEqual((invoice.kind, invoice.number, invoice.supplier_reference, invoice.supplier_year),
+                         ("purchase", "INT-PI-2026-1", "INV/11", 2026))
+        self.assertEqual((invoice.supplier_invoice_date, invoice.total, invoice.recoverable_input_tax),
+                         (day, Decimal("420.00"), True))
+        self.assertEqual(invoice.journal.kind, Journal.Kind.PURCHASE_INVOICE)
+        self.assertTrue(invoice.journal.sealed)
+        self.assertEqual(list(invoice.journal.lines.values_list("ledger__code", "side", "amount")), [
+            ("2000", "C", Decimal("420")), ("5000", "D", Decimal("375")), ("1300", "D", Decimal("45")),
+        ])
+        replay = inputs | {"supplier_reference": " INV/11 "}
+        self.assertEqual(issue_internal_purchase(self.workspace, self.owner, **replay), invoice)
+        with self.assertRaisesMessage(ValidationError, "already issued"):
+            issue_internal_purchase(self.workspace, self.owner, **(inputs | {"recoverable_input_tax": False}))
+
+        second = OrderMovement.objects.create(purchase_order=self.receipt.purchase_order, quantity="2",
+                                              date=day, reference="SYN-R2", recorded_by=self.owner)
+        second_draft = self.draft(second, purchase_unit_price=Decimal("75"), supplier_invoice_date=day)
+        with self.assertRaisesMessage(ValidationError, "already recorded"):
+            issue_internal_purchase(self.workspace, self.owner, **(replay | {
+                "draft_id": second_draft.pk, "confirmed_total": second_draft.total,
+            }))
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            IssuedInvoice.objects.filter(pk=invoice.pk).update(supplier_reference="CHANGED")
+        self.assertEqual(Journal.objects.count(), 1)
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_purchase_issue_rejects_purchase_order_estimate(self):
+        draft = self.draft(self.receipt)
+        inputs = self.purchase_issue_inputs(draft)
+        with self.assertRaisesMessage(ValidationError, "actual purchase draft"):
+            issue_internal_purchase(self.workspace, self.owner, **inputs)
+        self.assertFalse(Journal.objects.exists())
 
     def invoice_payload(self):
         return {

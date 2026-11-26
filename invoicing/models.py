@@ -88,7 +88,13 @@ class IssuedInvoice(models.Model):
     year = models.ForeignKey("accounting.FinancialYear", on_delete=models.PROTECT)
     sequence = models.PositiveBigIntegerField()
     number = models.CharField(max_length=32)
+    kind = models.CharField(max_length=8, choices=InvoiceDraft.Kind.choices, default=InvoiceDraft.Kind.SALES)
     posting_on = models.DateField()
+    supplier_invoice_date = models.DateField(null=True)
+    supplier_reference = models.CharField(max_length=16, blank=True)
+    supplier_gstin = models.CharField(max_length=15, blank=True)
+    supplier_year = models.PositiveSmallIntegerField(null=True)
+    recoverable_input_tax = models.BooleanField(null=True)
     journal = models.OneToOneField("accounting.Journal", on_delete=models.PROTECT)
     total = models.DecimalField(max_digits=15, decimal_places=2)
     snapshot = models.JSONField()
@@ -97,11 +103,23 @@ class IssuedInvoice(models.Model):
     issued_at = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
-    def number_for(start_year, sequence):
-        return f"INT-SI-{start_year}-{sequence}"
+    def number_for(kind, start_year, sequence):
+        series = "SI" if kind == InvoiceDraft.Kind.SALES else "PI"
+        return f"INT-{series}-{start_year}-{sequence}"
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["workspace", "year", "sequence"], name="invoicing_unique_issue_number"),
             models.CheckConstraint(condition=Q(sequence__gt=0, total__gt=0), name="invoicing_valid_issued_invoice"),
+            models.UniqueConstraint(fields=["workspace", "supplier_gstin", "supplier_year", "supplier_reference"],
+                                    condition=Q(kind="purchase"), name="invoicing_unique_supplier_document"),
+            models.CheckConstraint(
+                condition=(
+                    Q(kind="sales", supplier_invoice_date__isnull=True, supplier_reference="", supplier_gstin="",
+                      supplier_year__isnull=True, recoverable_input_tax__isnull=True)
+                    | (Q(kind="purchase", supplier_invoice_date__isnull=False, supplier_year__isnull=False,
+                         recoverable_input_tax__isnull=False, supplier_invoice_date__lte=models.F("posting_on"))
+                       & ~Q(supplier_reference="") & ~Q(supplier_gstin=""))
+                ), name="invoicing_valid_supplier_document",
+            ),
         ]

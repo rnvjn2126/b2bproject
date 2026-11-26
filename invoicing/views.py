@@ -66,7 +66,8 @@ def invoice_prepare(request, workspace, pk):
     existing = InvoiceDraft.objects.filter(workspace=workspace, movement=movement).first()
     if existing:
         return redirect("accounting:invoice_draft", pk=existing.pk)
-    form = InvoiceDraftForm(request.POST if request.method == "POST" else None, workspace=workspace)
+    form = InvoiceDraftForm(request.POST if request.method == "POST" else None, workspace=workspace,
+                            purchase=movement.purchase_order_id is not None)
     if request.method == "POST" and form.is_valid():
         try:
             draft = prepare_draft(workspace, request.user, movement_id=movement.pk, **form.cleaned_data)

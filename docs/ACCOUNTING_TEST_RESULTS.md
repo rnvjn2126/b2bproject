@@ -56,4 +56,4 @@
 - 04D: 17 invoicing and order tests passed, including sales/purchase draft preparation and preview, replay, workspace and manager denial, CSRF and no ledger writes. The first targeted run had an assertion mismatch on Django's invalid-choice message. The corrected test checks the error code. Django and migration checks passed. Full run 1 passed 142 tests in 84.230 seconds. Reverse run 2 passed 142 tests in 84.471 seconds. Chrome verified native sales and purchase draft creation at desktop and phone widths.
 
 - 04E: 14 focused invoicing tests passed. Full normal and reverse runs passed 145 tests in 80.401 and 80.720 seconds.
-- 04F: 31 focused invoicing and accounting tests passed. Django and migration checks passed. 04F full results are pending.
+- 04F: 31 focused invoicing and accounting tests passed. Django and migration checks passed. Full run 1 passed 146 in 81.715 seconds. Reverse run 2 passed 146 in 81.984 seconds.

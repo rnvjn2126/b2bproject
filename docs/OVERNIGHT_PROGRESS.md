@@ -7,9 +7,9 @@
 - **Last verified task:** calculate balanced, write-free invoice posting proposals and validate the selected ledger mappings. The owner draft screens are browser-tested.
 - **Changed files:** `invoicing/posting.py`, `invoicing/tests.py` and accounting, GST and recovery documentation.
 - **Migrations:** none for 04D–04F. Invoicing migrations 0001 and 0002 have been exercised on disposable SQLite.
-- **Latest tests:** 04D passed 142 tests twice and Chrome draft checks. 04E passed 145 tests twice. 04F passed 31 focused invoicing and accounting tests. Django and migration checks passed. 04F full results are pending.
+- **Latest tests:** 04D passed 142 tests twice and Chrome draft checks. 04E passed 145 tests twice. 04F passed 31 focused invoicing and accounting tests. Django and migration checks passed. 04F full runs passed 146 tests in 81.715 and 81.984 seconds.
 - **Known issues and release gates:** statutory issue, posting, regulated workflows, professional review, complete financial month reconciliation and PostgreSQL execution remain open. No issue or posting endpoint is present.
-- **Exact next task:** confirm the 04F regression results, then create an internal issue service that can atomically preserve an immutable invoice snapshot, allocate workspace/financial-year numbering and link to one sealed journal. Use synthetic data, enforce owner authorization and period locks, and gate production issue pending professional review. Notes, returns, A4 print and Checkpoints 05–14 remain pending.
+- **Exact next task:** create an internal issue service that can atomically preserve an immutable invoice snapshot, allocate workspace/financial-year numbering and link to one sealed journal. Use synthetic data, enforce owner authorization and period locks, and gate production issue pending professional review. Notes, returns, A4 print and Checkpoints 05–14 remain pending.
 
 ## Resume on Windows
 

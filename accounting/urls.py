@@ -1,11 +1,14 @@
 from django.urls import path
 
+from invoicing.views import gst_settings
+
 from . import views, voucher_views
 from .models import Journal
 
 app_name = "accounting"
 urlpatterns = [
     path("", views.home, name="home"),
+    path("gst-settings/", gst_settings, name="gst_settings"),
     path("periods/<int:pk>/lock/", views.close_period, name="close_period"),
     path("chart/", views.chart, name="chart"),
     path("chart/groups/new/", views.add_chart_record, {"kind": "group"}, name="add_group"),

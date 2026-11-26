@@ -5,10 +5,11 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import Client, TestCase
+from django.urls import reverse
 
 from accounting.models import Journal
-from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer
+from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer, TeamMembership
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
 from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
@@ -177,3 +178,61 @@ class InvoiceDraftTests(TestCase):
         with self.assertRaises(ValidationError):
             self.draft(self.receipt)
         self.assertFalse(InvoiceDraft.objects.exists())
+
+
+class GSTSettingsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        users = get_user_model().objects
+        cls.owner = users.create_user(username="settings-owner")
+        cls.other = users.create_user(username="settings-other")
+        cls.staff = users.create_user(username="settings-staff")
+        cls.workspace = BusinessAccount.objects.create(owner=cls.owner, name="Synthetic GST settings")
+        other_workspace = BusinessAccount.objects.create(owner=cls.other, name="Other GST workspace")
+        CompanyGSTRegistration.objects.create(
+            workspace=other_workspace, gstin="27AAAAA0000A1Z0", registered_name="Private Other Company",
+            registered_address="Other Address",
+        )
+        TeamMembership.objects.create(account=cls.workspace, user=cls.staff, role=TeamMembership.Role.MANAGER)
+
+    def setUp(self):
+        self.client.force_login(self.owner)
+        self.url = reverse("accounting:gst_settings")
+        self.registration = {
+            "action": "registration", "registration-gstin": "27AAAAA0000A1Z0",
+            "registration-registered_name": "Synthetic Company", "registration-registered_address": "Synthetic Address",
+        }
+        self.rate = {
+            "action": "rate", "rate-item_kind": "goods", "rate-item_code": "000000",
+            "rate-effective_from": "2026-04-01", "rate-source_url": "https://example.test/synthetic-only",
+            "rate-integrated_rate": "12", "rate-central_rate": "6", "rate-local_rate": "6", "rate-cess_rate": "0",
+        }
+
+    def test_owner_can_add_registration_and_rate_once_and_view_only_own_company(self):
+        self.assertRedirects(self.client.post(self.url, self.registration), self.url)
+        self.assertRedirects(self.client.post(self.url, self.rate), self.url)
+        for payload in (self.registration, self.rate):
+            self.assertContains(self.client.post(self.url, payload), "already recorded for your company")
+        self.assertEqual(CompanyGSTRegistration.objects.filter(workspace=self.workspace).count(), 1)
+        self.assertEqual(TaxRate.objects.filter(workspace=self.workspace).count(), 1)
+        response = self.client.get(self.url)
+        self.assertContains(response, "Synthetic Company")
+        self.assertContains(response, "https://example.test/synthetic-only")
+        self.assertNotContains(response, "Private Other Company")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+
+    def test_permissions_csrf_and_validation_prevent_invalid_records(self):
+        self.assertContains(self.client.post(self.url, self.rate | {"rate-integrated_rate": "101"}),
+                            "Enter a percentage between 0 and 100.")
+        self.assertContains(self.client.post(self.url, self.rate | {"rate-item_kind": "service", "rate-item_code": "0000"}),
+                            "Enter the six-digit SAC code.")
+        self.assertContains(self.client.post(self.url, self.registration | {"registration-gstin": "INVALID"}),
+                            "Enter a 15-character GSTIN")
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.owner)
+        self.assertEqual(csrf_client.post(self.url, self.registration).status_code, 403)
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.assertEqual(self.client.post(self.url, self.rate).status_code, 403)
+        self.assertFalse(TaxRate.objects.exists())
+        self.assertFalse(CompanyGSTRegistration.objects.filter(workspace=self.workspace).exists())

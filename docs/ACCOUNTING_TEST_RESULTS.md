@@ -49,3 +49,6 @@
 - 04B: Seven focused tests passed after correcting a synthetic quote fixture. Tests cover sales and purchase snapshots, effective GST component amounts, cross-company inputs, replay rejection and no ledger posting.
 - 04B full run 1 passed 138 in 133.842 seconds. Reverse full run 2 passed 138 in 134.857 seconds.
 - Django and migration drift checks passed after both slices. These runs used synthetic SQLite test databases. The draft service has no browser workflow and PostgreSQL has not been executed.
+
+- 04C: Nine focused invoicing tests passed, including owner GST registration/rate creation, validation, duplicate rejection, tenant boundaries, manager denial, CSRF and no-store headers.
+- 04C full run 1 passed 140 tests in 132.872 seconds. Reverse run 2 passed 140 tests in 133.848 seconds. Django and migration checks passed. Native Chrome verified registration submission and the layout at a 390 px viewport.

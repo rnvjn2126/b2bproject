@@ -23,3 +23,7 @@ The calculation module supports company-specific, dated HSN/SAC rates, one domes
 ## Checkpoint 04B · Internal invoice drafts
 
 One confirmed dispatch or goods receipt can seed one owner-only draft. The dispatch uses the sales order price. The receipt uses the purchase order price as an estimate. Rate selection uses the movement date. Confirm the legally relevant tax time, actual supplier invoice amount, registered parties, treatment of partial deliveries, credit/debit notes and returns before adding statutory issuance. Draft snapshots preserve the inputs and results but are not issued invoice records. The current service has no UI, print, issuance or journal path.
+
+## Checkpoint 04C · Draft settings
+
+Accounting owners can add draft registration records and dated rates. The settings capture a source URL as text and use the calculation module's supported range and classification rules. Recording a source is an audit aid. Verify its relevance, effective period and the applicable commodity classification before statutory use.

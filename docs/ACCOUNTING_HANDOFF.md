@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 04H · Gated internal purchase recording
+
+- **Completed:** purchase drafts accept actual supplier unit price and invoice date. Purchase recording requires those actuals, matched totals and explicit input-tax treatment. Each record preserves a supplier document separately from its internal number. Duplicate supplier references across different receipts are rejected within the company, GSTIN and supplier financial year.
+- **Pending:** cancellation and adjustment/reversal workflows, brand and A4 print, statutory review and production release. The same default-off feature gate protects both issue services.
+- **Changed files:** accounting journal model and service, invoicing forms, models, draft/issue services, views, tests, templates and documents. **Migrations:** accounting 0007 and invoicing 0005.
+- **Tests:** 40 focused tests passed. Full normal/reverse runs passed 155 tests in 87.681 and 86.535 seconds. Django and migration checks passed. Populated SQLite upgrade retained a sale and guards. A downgrade was prevented once purchase evidence existed. Chrome verified entering actual supplier price/date and the result at phone width.
+- **Assumptions:** one supplier document per confirmed receipt in this slice. References compare case-insensitively. The supplier date is used for the draft rate lookup. Purchase accounting date must be on or after receipt and supplier dates. Eligibility for input credit remains subject to professional review. PostgreSQL execution remains pending.
+- **Verified commit:** `b66a8d6124ff0398f4df93c10b68e40a66cfcb4b`.
+- **Exact next task:** build an owner-only internal invoice cancellation using a separately sealed reversing journal and immutable correction record. Ensure closed original periods are handled through a valid later posting date, no identifiers are recycled, and the generic journal reversal stays blocked.
+
 ## Checkpoint 04G · Gated internal sales issue
 
 - **Completed:** same-company owner sales issuance from a confirmed dispatch. An atomic service assigns one internal financial-year number, copies the reviewed draft and links one balanced, sealed journal. The database rejects issued-row writes/deletes and incompatible journal links. Unchanged retries return the original. Generic journal reversal rejects invoice journals until invoice corrections are implemented.

@@ -11,3 +11,11 @@ Initial source register (27 November 2026):
 - [Official e-Way Bill documentation](https://docs.ewaybillgst.gov.in/) is a starting point for transport document integration. Recheck current applicability when designing dispatch.
 
 Open reviews include registration and place-of-supply mappings, rate effective dates, input credit treatment, reverse charge, exports/SEZ, GSTR-2B data matching and electronic document applicability. No universal steel rate or statutory threshold is configured.
+
+## Checkpoint 04A · Calculation scope
+
+- IGST Act sections 7, 8 and 10 define inter-state and intra-state supplies and several place-of-supply scenarios for goods. The calculator accepts an explicitly determined domestic place of supply. The supplier GSTIN prefix and a destination alone cannot determine all scenarios. [India Code, Integrated Goods and Services Tax Act](https://upload.indiacode.nic.in/showfile?actid=AC_CEN_2_2_00043_201713_1517807328116&filename=a2017-13.pdf&type=actfile)
+- The inclusive-price formula is based on Rule 35. The internal calculator rounds components to paise and preserves the entered inclusive total. Confirm document-level and statutory rounding, cess treatment and tax base against applicable current rules before issuing invoices. [CBIC consolidated CGST Rules, January 2022](https://cbic-gst.gov.in/pdf/01012022-CGST-Rules-2017-amended_Part-A.pdf)
+- Invoice and note requirements and electronic invoice applicability need a separate review against amended rules and current notifications for each company. GSTIN validation here checks the regular registration format only. Registration status and ownership require independent confirmation. [CBIC invoice rules](https://cbic-gst.gov.in/gst-invoice-rules.html) · [GST e-invoice portal guidance](https://einvoice6.gst.gov.in/content/e-invoice-printing-process-mandatory-fields-modes-of-irn-generation/)
+
+The calculation module supports company-specific, dated HSN/SAC rates, one domestic GST regime per line, percentage cess and rounding. It contains no statutory rate seed data. GST rates, place of supply, party registration, tax treatment and rules for rounding, discounts, freight, returns and notes require approval before production use.

@@ -1,5 +1,15 @@
 # Accounting handoff
 
+## Checkpoint 04A · GST calculation foundation
+
+- **Completed:** introduced company GST registration records, dated HSN/SAC rate lookup and a Decimal calculator for domestic CGST/SGST/UTGST/IGST, percentage cess, discounts, freight, inclusive pricing and round-off. Added Indian amount in words and recorded official sources.
+- **Pending:** sales and purchase drafts, approved registrations, issue numbering, statutory snapshots, posted GST ledgers, notes, returns and A4 output. The calculator is internal and has no public or posting routes.
+- **Changed files:** new `invoicing/` app, `steel_quotes/settings.py`, GST source register, checkpoint tracker and handoff.
+- **Migrations:** invoicing `0001_initial`. Adds registration and rate tables without seeding rates or altering trading records.
+- **Tests:** four targeted tests passed. Full run 1 passed 135 in 132.120 seconds. Reverse run 2 passed 135 in 132.417 seconds. Django and migration checks passed.
+- **Security and accounting assumptions:** GSTIN validation checks the regular format. Explicit domestic place of supply and local tax component are required. Rates and actual tax treatment require review. No official approvals, payment or return submission are generated.
+- **Next instructions:** checkpoint 04B should add company-owner-only internal draft snapshots linked to eligible confirmed dispatches or receipts. Start with one movement per draft and prove company isolation, duplicate prevention and quote/PO rate preservation.
+
 ## Checkpoint 03 · Sales and purchase orders
 
 - **Completed:** accepted quotations convert once per quotation series. Sales terms and customer details are snapshotted. Sales and purchase orders have references, delivery dates, approval/cancellation attribution, printable PDFs and pending reports. Separate supplier allocations support split procurement. Goods receipts and dispatch record partial quantities and reject duplicates and quantities beyond the requirement or available receipts.

@@ -1,0 +1,21 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Accounts</h1>
+  <p>Set up your company books before posting journals. Each financial year runs from April to March.</p>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Set up financial year</button></form>
+</section>
+{% for year in years %}
+<section class="card">
+  <h2>Financial year {{ year }}</h2>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Period</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+    <tbody>{% for period in year.periods.all %}
+      <tr><th scope="row">{{ period.starts_on|date:"F Y" }}</th><td>{% if period.locked_at %}Locked {{ period.locked_at|date:"d M Y" }}{% else %}Open{% endif %}</td>
+        <td>{% if not period.locked_at %}<form method="post" action="{% url 'accounting:close_period' period.pk %}">{% csrf_token %}<button type="submit" class="secondary">Lock {{ period.starts_on|date:"M Y" }}</button></form>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  <p class="muted">A locked period cannot receive new postings. Corrections can be posted in a later open period.</p>
+</section>
+{% empty %}<p>No financial years yet. Setting one up also creates the starter chart.</p>{% endfor %}
+{% endblock %}

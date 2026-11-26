@@ -12,4 +12,5 @@ def workspace_preferences(request):
         "workspace_name": account.name if account else "Workspace",
         "workspace_plan": current_plan(account),
         "can_edit_company_defaults": can_manage_account(request.user, account),
+        "can_access_books": not account or account.owner_id == request.user.pk,
     }

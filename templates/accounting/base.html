@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Accounts · Steel Quotes{% endblock %}
+{% block content %}
+<nav aria-label="Accounting navigation" class="actions">
+  <a href="{% url 'accounting:home' %}">Financial periods</a> ·
+  <a href="{% url 'accounting:chart' %}">Chart of accounts</a> ·
+  <a href="{% url 'accounting:journals' %}">Journals</a> ·
+  <a href="{% url 'accounting:trial_balance' %}">Trial balance</a>
+</nav>
+{% block books %}{% endblock %}
+{% endblock %}

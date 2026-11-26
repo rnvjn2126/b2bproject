@@ -1,0 +1,31 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>{% if ledger %}Ledger: {{ ledger }}{% else %}Trial balance{% endif %}</h1>
+  <form method="get" class="inline-form">
+    {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+    <button type="submit">Apply filters</button>
+  </form>
+  {% if totals %}
+  <p>All amounts in INR. A negative opening balance represents a credit.</p>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Ledger</th><th scope="col">Opening balance</th><th scope="col">Period debit</th><th scope="col">Period credit</th><th scope="col">Closing debit</th><th scope="col">Closing credit</th></tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <th scope="row"><a href="{% url 'accounting:ledger' row.ledger.pk %}?start={{ form.start.value|date:'Y-m-d'|default:form.start.value|urlencode }}&amp;end={{ form.end.value|date:'Y-m-d'|default:form.end.value|urlencode }}{% if form.branch.value %}&amp;branch={{ form.branch.value|urlencode }}{% endif %}">{{ row.ledger }}</a></th>
+      <td>{{ row.opening|floatformat:2 }}</td><td>{{ row.debit|floatformat:2 }}</td><td>{{ row.credit|floatformat:2 }}</td><td>{{ row.closing_debit|floatformat:2 }}</td><td>{{ row.closing_credit|floatformat:2 }}</td>
+    </tr>{% empty %}<tr><td colspan="6">No posted activity through this date.</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><th scope="row" colspan="2">Total</th><td>{{ totals.debit|floatformat:2 }}</td><td>{{ totals.credit|floatformat:2 }}</td><td>{{ totals.closing_debit|floatformat:2 }}</td><td>{{ totals.closing_credit|floatformat:2 }}</td></tr></tfoot>
+  </table></div>
+  {% endif %}
+  {% if detail %}
+    <h2>Entries in date range</h2>
+    <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Date</th><th scope="col">Journal</th><th scope="col">Side</th><th scope="col">Amount (INR)</th></tr></thead>
+    <tbody>{% for line in detail %}<tr><td>{{ line.journal.date|date:"d M Y" }}</td><th scope="row"><a href="{% url 'accounting:journal' line.journal_id %}">Journal {{ line.journal_id }}</a></th><td>{{ line.get_side_display }}</td><td>{{ line.amount|floatformat:2 }}</td></tr>
+    {% empty %}<tr><td colspan="4">No entries in this date range.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% if detail.has_previous %}<a href="{% querystring page=detail.previous_page_number %}">Previous</a>{% endif %}
+    {% if detail.has_next %}<a href="{% querystring page=detail.next_page_number %}">Next</a>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

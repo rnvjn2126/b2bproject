@@ -13,3 +13,15 @@ Read `docs/PRODUCT_BRIEF.md` before coding. Develop a working Django steel-trade
 - Do not disable automated tests or modify CI, repository security settings, or production infrastructure.
 - The external overnight controller runs `manage.py check`, `makemigrations --check --dry-run`, and `manage.py test --noinput` and records tested Git checkpoints.
 - If unclear, take the least risky reversible approach and state it. Never fabricate test results.
+
+## Accounting checkpoint instructions
+
+These user-approved rules supersede the earlier branch rule for accounting work. Use the local `ai/accounting-overnight` branch, based on the most complete appropriate branch, and preserve existing user changes. Require explicit permission for any remote push, deployment or spending. Keep this branch separate from main and development.
+
+- Inspect relevant existing functionality before changing it. Reuse existing Django models, services, components and dependencies where practical. Keep changes small and avoid rebuilding delivered features or repeatedly scanning the repository.
+- Work on the currently assigned checkpoint. Proceed to another only when its prompt or the autonomous runner authorizes it, after completing the required checkpoint checks. Document blockers and continue independent in-scope work.
+- Work with synthetic test data. Enforce company isolation and server permissions. Use Decimal for money and preserve existing security protections. Keep incomplete or unverified financial features disabled or separate from production workflows.
+- Follow the existing UI and accessibility conventions. Use official sources for statutory requirements, record unresolved legal, taxation and accounting decisions, and use original code and design without copying Tally branding or interface.
+- Run targeted tests during implementation and the full regression suite before completing a checkpoint. Run Django configuration and migration drift checks. Report only executed results, keep progress concise, and make small recoverable local commits.
+- Update [checkpoint status](docs/ACCOUNTING_CHECKPOINTS.md) and the [handoff](docs/ACCOUNTING_HANDOFF.md) before stopping or moving forward. Record the checkpoint number, completed and pending tasks, changed files, migrations, test results, known errors, security concerns, accounting assumptions, verified commit hash and next instructions. Record a checkpoint complete only after its implementation, verification, regression checks and documentation pass.
+- The owner has assigned Checkpoints 00–14 for this run. Begin each automatically after the prior checkpoint. Split large checkpoints into verified slices and continue with independent tasks if dependencies permit. Use only the active file in `docs/checkpoints/` and its relevant dependencies. At a resource limit, leave a recoverable commit, precise next task and actual verification results. Record completed, partial, blocked and pending work in the final report.

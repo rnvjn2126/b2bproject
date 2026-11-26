@@ -31,3 +31,11 @@ Accounting owners can add draft registration records and dated rates. The settin
 ## Checkpoints 04E–04F · Proposed journal lines
 
 The invoice posting service currently computes balanced proposals and validates ledger mappings without issuing an invoice or posting accounting entries. Explicit purchase input-tax treatment in a proposal represents an accounting choice for testing. Establish the legal entitlement, treatment of partial recovery, actual purchase invoice value and posting policy before connecting this to a user-facing issue action.
+
+### Internal issuance implementation boundaries
+
+1. In one transaction, lock the company, confirm the draft and exact ledgers are in that company, and find an open accounting period for the approved issue/posting date. Recheck order eligibility and financial limits.
+2. Generate a unique workspace and financial-year issue reference. Keep external purchase references distinct. Store the issue date, revision-free snapshot, selected treatment, actor and source draft. Repeated submissions should converge on the same issued record and sealed journal.
+3. Add invoice-specific posting validation in the shared engine. Existing manual trade vouchers continue to enforce their current account rules. A failure in validation, numbering, persistence or journal sealing must roll back the whole issue operation.
+4. Guard issued records and their journal relationship against updates and deletions through normal application and database writes. Handle corrections through linked reversal and note workflows. Verify SQLite migration triggers and run PostgreSQL integration tests when available.
+5. Keep these operations internal while sale numbering, supplier document dates/references and input-tax eligibility are being verified. Do not route public invoice output or GST filings through an unreviewed implementation.

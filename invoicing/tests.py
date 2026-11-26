@@ -243,6 +243,29 @@ class InvoiceDraftTests(TestCase):
             resolve_invoice_lines(self.other_workspace, draft, mapping)
         self.assertFalse(Journal.objects.exists())
 
+    def test_purchase_proposal_uses_only_ledgers_required_by_selected_tax_treatment(self):
+        draft = self.draft(self.receipt)
+        accounts = {}
+        for code, kind in (("PAY", "liability"), ("STOCK", "asset"), ("GST", "asset"), ("EXP", "expense")):
+            group = AccountGroup.objects.create(workspace=self.workspace, code=code, name=code, kind=kind)
+            accounts[code] = Ledger.objects.create(workspace=self.workspace, code=code, name=code, group=group)
+        mapping = {"payable": accounts["PAY"].pk, "purchases": accounts["STOCK"].pk}
+        with self.assertRaisesMessage(ValidationError, "every required invoice role"):
+            resolve_invoice_lines(self.workspace, draft, mapping, recoverable_input_tax=True)
+        with self.assertRaisesMessage(ValidationError, "wrong account classification"):
+            resolve_invoice_lines(self.workspace, draft, mapping | {"input_igst": accounts["EXP"].pk},
+                                  recoverable_input_tax=True)
+        recover = resolve_invoice_lines(self.workspace, draft, mapping | {"input_igst": accounts["GST"].pk},
+                                        recoverable_input_tax=True)
+        expense = resolve_invoice_lines(self.workspace, draft, mapping | {"purchases": accounts["EXP"].pk},
+                                        recoverable_input_tax=False)
+        self.assertEqual(recover, [(accounts["PAY"], "C", Decimal("448.00")),
+                                   (accounts["STOCK"], "D", Decimal("400.00")),
+                                   (accounts["GST"], "D", Decimal("48.00"))])
+        self.assertEqual(expense, [(accounts["PAY"], "C", Decimal("448.00")),
+                                   (accounts["EXP"], "D", Decimal("448.00"))])
+        self.assertFalse(Journal.objects.exists())
+
     def invoice_payload(self):
         return {
             "registration_id": self.registration.pk, "party_gstin": "24BBBBB0000B1Z0", "item_code": "000000",

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card">
+  <h1>{{ title }}</h1><p>{{ note }}</p>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">{{ submit }}</button></form>
+</section>
+{% endblock %}

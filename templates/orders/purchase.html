@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Purchase order {{ purchase.number }} · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Purchase order {{ purchase.number }}</h1>
+  <p>{{ purchase.supplier_name }} · {{ purchase.get_status_display }} · Sales order <a href="{% url 'orders:sales_detail' purchase.requirement.order_id %}">{{ purchase.requirement.order.number }}</a></p>
+  <dl>
+    <dt>Supplier reference</dt><dd>{{ purchase.supplier_reference|default:"Not provided" }}</dd>
+    <dt>Expected delivery</dt><dd>{{ purchase.delivery_on|date:"d M Y" }}</dd>
+    <dt>Material</dt><dd>{{ purchase.requirement.description }} {{ purchase.requirement.grade }} {{ purchase.requirement.dimensions }}</dd>
+    <dt>Received</dt><dd>{{ received }} of {{ purchase.quantity }} {{ purchase.requirement.unit }}</dd>
+    <dt>Material amount before freight and tax</dt><dd>₹{{ purchase.total|floatformat:2 }}</dd>
+  </dl>
+  <h2>Goods receipts</h2>
+  <ul>{% for receipt in purchase.receipts.all %}<li>{{ receipt.reference }} · {{ receipt.quantity }} {{ purchase.requirement.unit }} · {{ receipt.date|date:"d M Y" }}</li>{% empty %}<li>No receipts recorded.</li>{% endfor %}</ul>
+  {% if purchase.status == "draft" %}<form method="post" action="{% url 'orders:purchase_approve' purchase.pk %}">{% csrf_token %}<button type="submit">Approve purchase order</button></form>{% endif %}
+  {% if purchase.status == "approved" %}<p><a href="{% url 'orders:purchase_pdf' purchase.pk %}">Download purchase PDF</a>{% if received < purchase.quantity %} · <a href="{% url 'orders:receipt' purchase.pk %}">Record goods receipt</a>{% endif %}</p>{% endif %}
+  {% if purchase.status == "cancelled" %}<p>Cancelled by {{ purchase.cancelled_by.get_username }}. {{ purchase.cancellation_reason }}</p>
+  {% elif not received %}<details><summary>Cancel purchase order</summary>
+    <form method="post" action="{% url 'orders:purchase_cancel' purchase.pk %}">{% csrf_token %}{{ cancellation_form.as_p }}<button type="submit" class="secondary">Confirm cancellation</button></form>
+  </details>{% endif %}
+</section>
+{% endblock %}

@@ -1,5 +1,16 @@
 # Accounting handoff
 
+## Checkpoint 03 · Sales and purchase orders
+
+- **Completed:** accepted quotations convert once per quotation series. Sales terms and customer details are snapshotted. Sales and purchase orders have references, delivery dates, approval/cancellation attribution, printable PDFs and pending reports. Separate supplier allocations support split procurement. Goods receipts and dispatch record partial quantities and reject duplicates and quantities beyond the requirement or available receipts.
+- **Pending:** Checkpoint 04 invoicing and GST. Inventory, valuation and ledger effects are separate downstream work. PostgreSQL concurrency execution remains a release gate.
+- **Changed files:** new `orders/` app and `templates/orders/`, project settings and URLs, workspace navigation and quote detail, accounting architecture, tracker, handoff and test results.
+- **Migrations:** orders `0001_initial` and `0002_purchaseorder_ordermovement_and_more`. No existing quotation data is modified.
+- **Tests:** 6 focused order tests passed. The first targeted run found an assertion text mismatch, corrected before verification. Full run 1 passed 131 tests in 84.364 seconds. Reverse run 2 passed 131 in 84.370 seconds. Django and migration checks passed. Chrome verified native quote acceptance, conversion, approval and mobile order detail.
+- **Known errors and security concerns:** no final test failures. Owners and managers can view orders. Mutations require a valid owner or manager seat. Supplier PDFs exclude buyer details and customer order PDFs exclude procurement and margin data. PostgreSQL and full integration remain unverified.
+- **Accounting assumptions:** one sales order per quote series. One purchase order per sales requirement and selected offer, with multiple orders for split suppliers. PO rates represent normalized material before tax and freight. Dispatch requires recorded receipts through the dispatch date. Orders and movements do not create journals or warehouse stock.
+- **Next instructions:** read Checkpoint 04 and the GST source register. Start with statutory source review and a synthetic, versioned tax calculation slice. Invoice issuance and posting must be separate from accepted orders and tied to explicit eligible quantities. Keep statutory functionality disabled or separate until professional review and verification.
+
 ## Checkpoint 02 · Ledgers and voucher management
 
 - **Completed:** expanded the Indian starter chart. Added eight internal voucher types with draft entry, numbered review, revision checks and owner approval through the shared posting service. Added the date and branch filtered day book. Reused general ledger and trial balance.

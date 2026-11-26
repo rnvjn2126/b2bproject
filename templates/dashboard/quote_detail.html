@@ -11,6 +11,7 @@
     <p>Revision history: {% for revision in quote.revision_history %}<a href="{% url 'dashboard:quote_detail' revision.pk %}">R{{ revision.revision }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
   {% endif %}
   <p>Status: <strong>{{ quote.get_status_display }}</strong></p>
+  {% if quote.status == "accepted" and can_approve %}<p><a href="{% url 'orders:convert' quote.pk %}">Prepare sales order</a></p>{% endif %}
   {% if can_update_status %}
     <form class="inline-form" method="post" action="{% url 'dashboard:quote_update_status' quote.pk %}">
       {% csrf_token %}

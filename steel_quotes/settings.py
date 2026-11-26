@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "axes",
     "dashboard",
     "accounting",
+    "orders",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Sales orders · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card"><h1>Sales orders</h1>
+  <p>Convert an <a href="{% url 'dashboard:quote_list' %}?status=accepted">accepted quotation</a> to start an order.</p>
+  <p><a href="{% url 'orders:pending' %}">Pending sales and purchase orders</a></p>
+  <form method="get" class="inline-form">
+    <label for="status">Status</label>
+    <select id="status" name="status"><option value="">All statuses</option>{% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button type="submit">Filter</button>
+  </form>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Requested delivery</th></tr></thead>
+    <tbody>{% for order in page %}
+      <tr><th scope="row"><a href="{% url 'orders:sales_detail' order.pk %}">{{ order.number }}</a></th><td>{{ order.customer_name }}</td><td>{{ order.get_status_display }}</td><td>{{ order.delivery_on|date:"d M Y"|default:"To be confirmed" }}</td></tr>
+    {% empty %}<tr><td colspan="4">No sales orders match these filters.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}
+  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}
+</section>
+{% endblock %}

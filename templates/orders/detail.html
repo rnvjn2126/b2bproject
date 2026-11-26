@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Sales order {{ order.number }} · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Sales order {{ order.number }}</h1>
+  <p>{{ order.customer_name }} · {{ order.get_status_display }}</p>
+  <p>Source <a href="{% url 'dashboard:quote_detail' order.source_quote_id %}">{{ order.quotation_number }} R{{ order.quotation_revision }}</a></p>
+  <dl>
+    <dt>Customer purchase order</dt><dd>{{ order.customer_reference|default:"Not provided" }}</dd>
+    <dt>Requested delivery</dt><dd>{{ order.delivery_on|date:"d M Y"|default:"To be confirmed" }}</dd>
+    <dt>Payment terms</dt><dd>{{ order.payment_terms|default:"Not recorded" }}</dd>
+    <dt>Delivery terms</dt><dd>{{ order.delivery_terms|default:"Not recorded" }}</dd>
+  </dl>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Item</th><th scope="col">Grade and dimensions</th><th scope="col">Quantity</th><th scope="col">Unit</th><th scope="col">Rate (INR)</th><th scope="col">Total (INR)</th></tr></thead>
+    <tbody>{% for line in order.lines.all %}<tr><th scope="row">{{ line.description }}</th><td>{{ line.grade }} {{ line.dimensions }}</td><td>{{ line.quantity }}</td><td>{{ line.unit }}</td><td>{{ line.unit_price }}</td><td>{{ line.total|floatformat:2 }}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><th scope="row" colspan="5">Subtotal before tax</th><td>{{ order.subtotal|floatformat:2 }}</td></tr></tfoot>
+  </table></div>
+  {% if order.status == "draft" %}<form method="post" action="{% url 'orders:sales_approve' order.pk %}">{% csrf_token %}<button type="submit">Approve sales order</button></form>{% endif %}
+  {% if order.status == "approved" %}<p>Approved by {{ order.approved_by.get_username }}. <a href="{% url 'orders:sales_pdf' order.pk %}">Download order PDF</a></p>{% endif %}
+  <h2>Procurement and dispatch</h2>
+  {% for line in order.lines.all %}
+  <div class="card">
+    <h3>{{ line.description }} · {{ line.quantity }} {{ line.unit }}</h3>
+    {% if order.status == "approved" %}<p><a href="{% url 'orders:purchase_create' line.pk %}">Allocate supplier offer</a> · <a href="{% url 'orders:dispatch' line.pk %}">Record dispatch</a></p>{% endif %}
+    <h4>Purchase orders</h4>
+    <ul>{% for purchase in line.purchases.all %}<li><a href="{% url 'orders:purchase_detail' purchase.pk %}">{{ purchase.number }}</a> · {{ purchase.supplier_name }} · {{ purchase.quantity }} {{ line.unit }} · {{ purchase.get_status_display }}</li>{% empty %}<li>No supplier allocations.</li>{% endfor %}</ul>
+    <h4>Dispatches</h4>
+    <ul>{% for movement in line.dispatches.all %}<li>{{ movement.reference }} · {{ movement.quantity }} {{ line.unit }} · {{ movement.date|date:"d M Y" }}</li>{% empty %}<li>No dispatches.</li>{% endfor %}</ul>
+  </div>
+  {% endfor %}
+  {% if order.status == "cancelled" %}
+    <p>Cancelled by {{ order.cancelled_by.get_username }}. {{ order.cancellation_reason }}</p>
+  {% else %}
+    <details><summary>Cancel order</summary>
+      <form method="post" action="{% url 'orders:sales_cancel' order.pk %}">{% csrf_token %}{{ cancellation_form.as_p }}<button type="submit" class="secondary">Confirm cancellation</button></form>
+    </details>
+  {% endif %}
+</section>
+{% endblock %}

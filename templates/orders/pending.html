@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Pending orders · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Pending orders</h1>
+  <h2>Sales orders with quantities to dispatch</h2>
+  <ul>{% for order in sales %}<li><a href="{% url 'orders:sales_detail' order.pk %}">{{ order.number }}</a> · {{ order.customer_name }} · {{ order.get_status_display }} · {{ order.delivery_on|date:"d M Y"|default:"Not scheduled" }}</li>{% empty %}<li>No pending sales orders.</li>{% endfor %}</ul>
+  {% if sales.has_previous %}<a href="{% querystring sales_page=sales.previous_page_number %}">Previous sales page</a>{% endif %}
+  {% if sales.has_next %}<a href="{% querystring sales_page=sales.next_page_number %}">Next sales page</a>{% endif %}
+  <h2>Purchase orders with quantities to receive</h2>
+  <ul>{% for order in purchases %}<li><a href="{% url 'orders:purchase_detail' order.pk %}">{{ order.number }}</a> · {{ order.supplier_name }} · {{ order.received }}/{{ order.quantity }} {{ order.requirement.unit }} received · {{ order.delivery_on|date:"d M Y" }}</li>{% empty %}<li>No pending purchase orders.</li>{% endfor %}</ul>
+  {% if purchases.has_previous %}<a href="{% querystring purchase_page=purchases.previous_page_number %}">Previous purchase page</a>{% endif %}
+  {% if purchases.has_next %}<a href="{% querystring purchase_page=purchases.next_page_number %}">Next purchase page</a>{% endif %}
+</section>
+{% endblock %}

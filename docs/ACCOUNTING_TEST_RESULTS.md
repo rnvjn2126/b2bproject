@@ -36,3 +36,9 @@
 - 16 targeted accounting tests passed. Tests cover all eight review voucher types, exact allocations, draft and approval replays, stale revisions, imbalance rejection, isolation and day book output.
 - Run 1 passed all 125 tests in 132.136 seconds. Reverse run 2 passed all 125 tests in 131.931 seconds. Django and migration checks passed.
 - Chrome verified owner draft entry, explicit approval, and the resulting day book on mobile.
+
+## Overnight Checkpoint 03
+
+- 6 focused order tests passed after correcting an expected text substring. Covered enquiry and accepted quote conversion, snapshots, gross-margin approval, tenant isolation, CSRF, approvals, partial receipts/dispatch and split suppliers.
+- Run 1 passed 131 tests in 84.364 seconds. Reverse run 2 passed 131 tests in 84.370 seconds. Configuration and migration drift checks passed.
+- Native Chrome verified quote acceptance, conversion, sales approval and mobile detail. Order PDF assertions covered procurement/customer boundaries. Orders and goods movements created no journals.

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Prepare sales order · Steel Quotes{% endblock %}
+{% block content %}
+<section class="card settings-card"><h1>Prepare sales order</h1>
+  <p>Source <a href="{% url 'dashboard:quote_detail' quote.pk %}">{{ quote.number }} R{{ quote.revision }}</a> · {{ quote.get_status_display }}</p>
+  {% if quote.status == "accepted" %}
+    <p>The order uses the selling terms saved on the accepted quotation.</p>
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Prepare draft sales order</button></form>
+  {% else %}<p>A recorded quotation acceptance is required.</p>{% endif %}
+</section>
+{% endblock %}

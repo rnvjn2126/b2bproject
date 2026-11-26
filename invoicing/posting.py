@@ -2,6 +2,8 @@ from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 
+from accounting.models import AccountGroup, Ledger
+
 from .models import InvoiceDraft
 from .tax import check_decimal
 
@@ -56,3 +58,30 @@ def plan_invoice_posting(draft, *, recoverable_input_tax=None):
     if round_off:
         lines.append(("round_off", material_side if round_off > 0 else balance_side, abs(round_off)))
     return lines
+
+
+def resolve_invoice_lines(workspace, draft, ledger_ids, *, recoverable_input_tax=None):
+    """Bind a proposal to distinct ledgers in this company without posting it."""
+    if draft.workspace_id != workspace.pk:
+        raise ValidationError("Choose an invoice draft in your workspace.")
+    plan = plan_invoice_posting(draft, recoverable_input_tax=recoverable_input_tax)
+    required = {role: ledger_ids.get(role) for role, _, _ in plan}
+    if any(type(pk) is not int or pk <= 0 for pk in required.values()):
+        raise ValidationError("Choose a ledger for every required invoice role.")
+    if len(set(required.values())) != len(required):
+        raise ValidationError("Choose distinct ledgers for the required invoice roles.")
+
+    ledgers = Ledger.objects.filter(workspace=workspace, group__workspace=workspace).select_related("group")
+    ledgers = ledgers.in_bulk(required.values())
+    kind = AccountGroup.Kind
+    allowed = {
+        "receivable": {kind.ASSET}, "payable": {kind.LIABILITY}, "sales": {kind.INCOME},
+        "purchases": {kind.ASSET, kind.EXPENSE}, "round_off": {kind.INCOME, kind.EXPENSE},
+        **{f"input_{component}": {kind.ASSET} for component in GST_COMPONENTS},
+        **{f"output_{component}": {kind.LIABILITY} for component in GST_COMPONENTS},
+    }
+    for role, pk in required.items():
+        ledger = ledgers.get(pk)
+        if ledger is None or ledger.group.kind not in allowed[role]:
+            raise ValidationError("An invoice ledger is unavailable or has the wrong account classification.")
+    return [(ledgers[required[role]], side, amount) for role, side, amount in plan]

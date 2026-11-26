@@ -8,12 +8,12 @@ from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from accounting.models import Journal
+from accounting.models import AccountGroup, Journal, Ledger
 from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer, TeamMembership
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
 from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
-from .posting import plan_invoice_posting
+from .posting import plan_invoice_posting, resolve_invoice_lines
 from .services import prepare_draft
 from .tax import calculate_line, invoice_total, validate_gstin
 from .words import rupees_in_words
@@ -217,6 +217,30 @@ class InvoiceDraftTests(TestCase):
             with self.subTest(override=override), self.assertRaises(ValidationError):
                 draft.snapshot["tax"] = original | override
                 plan_invoice_posting(draft)
+        self.assertFalse(Journal.objects.exists())
+
+    def test_posting_proposal_resolves_only_distinct_company_ledgers_with_expected_kinds(self):
+        draft = self.draft(self.dispatch)
+        asset = AccountGroup.objects.create(workspace=self.workspace, code="A", name="Assets", kind="asset")
+        income = AccountGroup.objects.create(workspace=self.workspace, code="I", name="Income", kind="income")
+        liability = AccountGroup.objects.create(workspace=self.workspace, code="L", name="Liabilities", kind="liability")
+        other_group = AccountGroup.objects.create(workspace=self.other_workspace, code="L", name="Other", kind="liability")
+
+        def ledger(code, group, workspace=self.workspace):
+            return Ledger.objects.create(workspace=workspace, code=code, name=code, group=group)
+
+        ar, sales, cgst, sgst = [ledger(code, group) for code, group in (
+            ("AR", asset), ("Sales", income), ("CGST", liability), ("SGST", liability),
+        )]
+        mapping = {"receivable": ar.pk, "sales": sales.pk, "output_cgst": cgst.pk, "output_sgst": sgst.pk}
+        lines = resolve_invoice_lines(self.workspace, draft, mapping)
+        self.assertEqual([account for account, _, _ in lines], [ar, sales, cgst, sgst])
+        for bad in (None, ar.pk, cgst.pk, ledger("Other", other_group, self.other_workspace).pk,
+                    ledger("Wrong group", other_group).pk):
+            with self.subTest(bad=bad), self.assertRaises(ValidationError):
+                resolve_invoice_lines(self.workspace, draft, mapping | {"output_sgst": bad})
+        with self.assertRaises(ValidationError):
+            resolve_invoice_lines(self.other_workspace, draft, mapping)
         self.assertFalse(Journal.objects.exists())
 
     def invoice_payload(self):

@@ -18,6 +18,7 @@ from dashboard.accounts import business_account_for
 from .forms import BalanceForm, CashVoucherForm, ChartForm, GroupForm, JournalForm, JournalLines, LedgerForm, PostingForm, YearForm
 from .models import AccountGroup, Branch, CostCentre, FinancialYear, Journal, JournalLine, Ledger, Period
 from .services import lock_books, lock_period, post_journal, setup_books
+from .statements import financial_statements
 
 
 def owner_only(view):
@@ -216,4 +217,16 @@ def balances(request, workspace, pk=None):
                                .order_by("journal__date", "journal_id", "pk"), 50).get_page(request.GET.get("page"))
     return render(request, "accounting/balances.html", {
         "form": form, "rows": rows, "detail": detail, "ledger": ledger, "totals": totals,
+    })
+
+
+@owner_only
+@require_GET
+def statements(request, workspace):
+    today = timezone.localdate()
+    defaults = {"start": date(financial_year_start(today), 4, 1), "end": today}
+    form = BalanceForm(request.GET or defaults, workspace=workspace)
+    result = financial_statements(workspace, **form.cleaned_data) if workspace and form.is_valid() else None
+    return render(request, "accounting/statements.html", {
+        "form": form, "statements": result, "workspace": workspace,
     })

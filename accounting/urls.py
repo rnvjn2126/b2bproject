@@ -20,5 +20,6 @@ urlpatterns = [
     path("journals/<int:pk>/", views.journal_detail, name="journal"),
     path("journals/<int:pk>/reverse/", views.reverse_journal, name="reverse"),
     path("trial-balance/", views.balances, name="trial_balance"),
+    path("statements/", views.statements, name="statements"),
     path("ledgers/<int:pk>/", views.balances, name="ledger"),
 ]

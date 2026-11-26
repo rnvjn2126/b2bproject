@@ -1,0 +1,30 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Financial statements</h1>
+  <form method="get" class="inline-form">
+    {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+    <button type="submit">Apply filters</button>
+  </form>
+  {% if not workspace %}<p><a href="{% url 'accounting:home' %}">Set up your books</a> to get started.</p>{% endif %}
+</section>
+{% if statements %}
+<section class="card">
+  <h2>Profit and loss</h2>
+  <p>{{ form.cleaned_data.start|date:"d M Y" }} through {{ form.cleaned_data.end|date:"d M Y" }} · INR</p>
+  {% include "accounting/statement_table.html" with sections=statements.profit_loss %}
+  <p><strong>Net result</strong> ₹{{ statements.net_result|floatformat:2 }}</p>
+</section>
+<section class="card">
+  <h2>Balance sheet</h2>
+  <p>As of {{ form.cleaned_data.end|date:"d M Y" }} · INR</p>
+  {% include "accounting/statement_table.html" with sections=statements.balance_sheet %}
+  <dl>
+    <dt>Accumulated ledger earnings</dt><dd>₹{{ statements.accumulated_result|floatformat:2 }}</dd>
+    <dt>Total liabilities and equity, including earnings</dt><dd>₹{{ statements.liabilities_and_equity|floatformat:2 }}</dd>
+  </dl>
+  {% if statements.difference %}<p class="alert" role="alert">The balance sheet differs by ₹{{ statements.difference|floatformat:2 }}. Review the trial balance before using these figures.</p>
+  {% else %}<p>Total assets equal total liabilities and equity.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

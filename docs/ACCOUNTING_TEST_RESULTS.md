@@ -15,3 +15,12 @@
 - Tested receipt, payment and contra line allocations, cash balance, duplicate submissions, cross-company ledger selection and locked periods.
 - Chrome verified that submitting a receipt via the native form updates the trial balance in the same synthetic workspace.
 - A concurrent receipt and period lock on separate connections to file-backed SQLite left a consistent ledger. PostgreSQL concurrency remains open.
+
+## Balance sheet and profit and loss, 27 November 2026
+
+- Django system check passed. Migration drift check reported no changes.
+- Focused accounting verification passed all 12 tests. New cases cover date ranges, branch and workspace boundaries, report access, exact reconciliation and visible handling of inconsistent ledger data.
+- Test run 1: `manage.py test --noinput` passed all 121 tests in 121.388 seconds.
+- Test run 2: `manage.py test --noinput --reverse` passed all 121 tests in 121.752 seconds, using a separate synthetic test database.
+- Chrome verified that a posted receipt changes reported income and that the balance sheet reconciles at a 390 px viewport.
+- These runs verify this checkpoint. The outstanding checklist items remain open.

@@ -181,3 +181,42 @@ class AccountingTests(TestCase):
         lock_period(self.workspace, self.owner, self.year.periods.first().pk)
         self.assertContains(self.client.post(url, payload | {"debit": self.cash.pk}), "open period")
         self.assertFalse(Journal.objects.exists())
+
+    def test_financial_statements_reconcile_and_respect_reporting_dates(self):
+        income = Ledger.objects.get(workspace=self.workspace, code="4100")
+        self.post(kind=Journal.Kind.OPENING, date=date(2026, 4, 1))
+        self.post(date=date(2026, 4, 2), lines=[(self.cash, "D", Decimal("113.45")), (income, "C", Decimal("113.45"))])
+        self.post(lines=[(self.freight, "D", Decimal("13.45")), (self.cash, "C", Decimal("13.45"))])
+        response = self.client.get(reverse("accounting:statements"), {"start": "2026-04-03", "end": "2026-04-30"})
+        self.assertContains(response, "Total assets equal total liabilities and equity.")
+        statements = response.context["statements"]
+        self.assertEqual(statements["net_result"], Decimal("-13.45"))
+        self.assertEqual(statements["accumulated_result"], Decimal("100.00"))
+        self.assertEqual(statements["balance_sheet"][0]["total"], Decimal("1100.01"))
+        self.assertEqual(statements["liabilities_and_equity"], Decimal("1100.01"))
+
+    def test_financial_statements_branch_and_workspace_scope(self):
+        branch = Branch.objects.create(workspace=self.workspace, code="PUN", name="Pune")
+        self.post(branch=branch)
+        self.post()
+        other_cash = Ledger.objects.get(workspace=self.other, code="1000")
+        other_capital = Ledger.objects.get(workspace=self.other, code="3000")
+        post_journal(self.other, self.outsider, date=self.day, kind=Journal.Kind.GENERAL,
+                     reference="", narration="Other workspace", submission_key=uuid.uuid4(),
+                     lines=[(other_cash, "D", Decimal("99")), (other_capital, "C", Decimal("99"))])
+        url = reverse("accounting:statements")
+        dates = {"start": "2026-04-01", "end": "2026-04-30"}
+        self.assertEqual(self.client.get(url, dates).context["statements"]["balance_sheet"][0]["total"], Decimal("2000.02"))
+        response = self.client.get(url, dates | {"branch": branch.pk})
+        self.assertEqual(response.context["statements"]["balance_sheet"][0]["total"], Decimal("1000.01"))
+        manager = get_user_model().objects.create_user(username="unauthorised-statement-manager")
+        TeamMembership.objects.create(account=self.workspace, user=manager, role=TeamMembership.Role.MANAGER)
+        self.client.force_login(manager)
+        self.assertEqual(self.client.get(url, dates).status_code, 403)
+
+    def test_financial_statements_warn_on_inconsistent_ledger(self):
+        journal = self.post()
+        JournalLine.objects.filter(journal=journal, side=JournalLine.Side.CREDIT).update(amount=Decimal("1.00"))
+        response = self.client.get(reverse("accounting:statements"), {"start": "2026-04-01", "end": "2026-04-30"})
+        self.assertContains(response, "The balance sheet differs")
+        self.assertEqual(response.context["statements"]["difference"], Decimal("999.01"))

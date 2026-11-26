@@ -1,0 +1,11 @@
+<div class="table-scroll" tabindex="0"><table>
+  <thead><tr><th scope="col">Ledger</th><th scope="col">Amount (INR)</th></tr></thead>
+  {% for section in sections %}
+  <tbody>
+    <tr><th scope="rowgroup" colspan="2">{{ section.label }}</th></tr>
+    {% for row in section.rows %}<tr><th scope="row">{{ row.code }} · {{ row.name }}</th><td>{{ row.amount|floatformat:2 }}</td></tr>
+    {% empty %}<tr><td colspan="2">No posted activity</td></tr>{% endfor %}
+    <tr><th scope="row">Total {{ section.label|lower }}</th><td>{{ section.total|floatformat:2 }}</td></tr>
+  </tbody>
+  {% endfor %}
+</table></div>

@@ -34,6 +34,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 04D | 17 passed (invoicing and orders) | 142 passed, 84.230 s | 142 passed, 84.471 s |
 | 04E | 14 passed (invoicing) | 145 passed, 80.401 s | 145 passed, 80.720 s |
 | 04F | 31 passed (invoicing and accounting) | 146 passed, 81.715 s | 146 passed, 81.984 s |
+| 04F purchase follow-up | 32 passed (invoicing and accounting) | 147 passed, 80.751 s | 147 passed, 80.623 s |
 
 Django and migration drift checks passed through 04F. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 

@@ -57,3 +57,5 @@
 
 - 04E: 14 focused invoicing tests passed. Full normal and reverse runs passed 145 tests in 80.401 and 80.720 seconds.
 - 04F: 31 focused invoicing and accounting tests passed. Django and migration checks passed. Full run 1 passed 146 in 81.715 seconds. Reverse run 2 passed 146 in 81.984 seconds.
+
+- The purchase mapping follow-up at `50f785ecd64e93a64853900afb90f0e9fa4575a8` passed 32 focused tests and both 147-test regressions (80.751 seconds normal, 80.623 seconds reverse). The follow-up tested missing or misclassified input-tax ledgers and the different recoverable-tax and cost allocations. Runtime code and migrations were unchanged by this follow-up.

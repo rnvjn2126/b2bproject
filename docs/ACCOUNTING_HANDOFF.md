@@ -9,6 +9,7 @@
 - **Tests:** 14 focused accounting tests passed. Run 1 passed all 123 in 127.419 seconds. Reverse-order run 2 passed all 123 in 126.062 seconds. Django, migration drift and Chrome journal/audit checks passed.
 - **Known errors and security concerns:** no SQLite failures after verification. PostgreSQL triggers were not executed here. Privileged database administrators remain outside the guard boundary. Guarded SQLite tables must retain their triggers during schema changes.
 - **Accounting assumptions:** internal transaction references are unique; external reference text can repeat. Unsealed rows stay out of posted reports. Closed periods and posted records use reversals and subsequent open periods for corrections.
+- **Latest verified implementation commit:** `d6dc590e12c5cad18ec5d5d13655732280836dd2`.
 - **Next instructions:** read Checkpoint 02. Preserve direct journal and cash voucher entry. Add draft voucher review and explicit approval through the shared posting service, complete the Indian chart and voucher types, and verify day book and ledger behaviour.
 
 ## Checkpoint 00 · Repository preparation

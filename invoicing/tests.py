@@ -13,6 +13,7 @@ from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, R
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
 from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .posting import plan_invoice_posting
 from .services import prepare_draft
 from .tax import calculate_line, invoice_total, validate_gstin
 from .words import rupees_in_words
@@ -179,6 +180,44 @@ class InvoiceDraftTests(TestCase):
             self.draft(self.receipt)
         self.assertFalse(InvoiceDraft.objects.exists())
 
+
+    def test_posting_plan_balances_sales_and_round_off(self):
+        draft = self.draft(self.dispatch, round_off=Decimal("-0.01"))
+        plan = plan_invoice_posting(draft)
+        self.assertEqual(plan, [
+            ("receivable", "D", Decimal("335.99")), ("sales", "C", Decimal("300.00")),
+            ("output_cgst", "C", Decimal("18.00")), ("output_sgst", "C", Decimal("18.00")),
+            ("round_off", "D", Decimal("0.01")),
+        ])
+        self.assertEqual(sum(amount for _, side, amount in plan if side == "D"),
+                         sum(amount for _, side, amount in plan if side == "C"))
+        self.assertFalse(Journal.objects.exists())
+
+    def test_purchase_posting_plan_requires_explicit_input_tax_treatment(self):
+        draft = self.draft(self.receipt, round_off=Decimal("0.01"))
+        with self.assertRaisesMessage(ValidationError, "Explicitly confirm"):
+            plan_invoice_posting(draft)
+        claim = plan_invoice_posting(draft, recoverable_input_tax=True)
+        expense = plan_invoice_posting(draft, recoverable_input_tax=False)
+        self.assertEqual(claim, [
+            ("payable", "C", Decimal("448.01")), ("purchases", "D", Decimal("400.00")),
+            ("input_igst", "D", Decimal("48.00")), ("round_off", "D", Decimal("0.01")),
+        ])
+        self.assertEqual(expense, [
+            ("payable", "C", Decimal("448.01")), ("purchases", "D", Decimal("448.00")),
+            ("round_off", "D", Decimal("0.01")),
+        ])
+        self.assertFalse(Journal.objects.exists())
+
+    def test_posting_plan_rejects_damaged_or_inconsistent_snapshots(self):
+        draft = self.draft(self.dispatch)
+        original = draft.snapshot["tax"].copy()
+        for override in ({"cgst": "NaN"}, {"sgst": "-1"}, {"cess": "0.001"},
+                         {"igst": "1"}, {"taxable": 300.00}, {"taxable": "299.99"}):
+            with self.subTest(override=override), self.assertRaises(ValidationError):
+                draft.snapshot["tax"] = original | override
+                plan_invoice_posting(draft)
+        self.assertFalse(Journal.objects.exists())
 
     def invoice_payload(self):
         return {

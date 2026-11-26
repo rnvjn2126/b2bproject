@@ -4,7 +4,7 @@ from django import forms
 from django.forms import formset_factory
 
 from .models import AccountGroup, Branch, CostCentre, Journal, JournalLine, Ledger
-from .services import CASH_LEDGER_CODES, MANUAL_JOURNAL_KINDS
+from .services import CASH_LEDGER_CODES, MANUAL_JOURNAL_KINDS, REVIEW_VOUCHER_KINDS
 
 
 class YearForm(forms.Form):
@@ -30,6 +30,11 @@ class AllocatedPostingForm(PostingForm):
 
 class JournalForm(AllocatedPostingForm):
     kind = forms.ChoiceField(choices=[(value, label) for value, label in Journal.Kind.choices if value in MANUAL_JOURNAL_KINDS])
+
+
+class VoucherForm(AllocatedPostingForm):
+    kind = forms.ChoiceField(choices=[(value, label) for value, label in Journal.Kind.choices if value in REVIEW_VOUCHER_KINDS])
+    revision = forms.IntegerField(min_value=1, widget=forms.HiddenInput)
 
 
 class CashVoucherForm(AllocatedPostingForm):

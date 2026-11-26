@@ -1,0 +1,22 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>{{ draft.number }} · {{ draft.get_kind_display }}</h1>
+  <p>Draft · {{ draft.date|date:"d M Y" }} · Entered by {{ draft.creator.get_username }}</p>
+  <p>{{ draft.narration }}</p>
+  <p>External reference: {{ draft.reference|default:"—" }} · Branch: {{ draft.branch.name|default:"—" }} · Cost centre: {{ draft.cost_centre.name|default:"—" }}</p>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Ledger</th><th scope="col">Side</th><th scope="col">Amount (INR)</th></tr></thead>
+    <tbody>{% for ledger, side, amount in rows %}
+      <tr><th scope="row">{{ ledger|default:"Unavailable ledger" }}</th><td>{% if side == "D" %}Debit{% else %}Credit{% endif %}</td><td>{{ amount|floatformat:2 }}</td></tr>
+    {% empty %}<tr><td colspan="3">No allocations yet.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p>Total debit ₹{{ debit|floatformat:2 }} · Total credit ₹{{ credit|floatformat:2 }}</p>
+  <p><a href="{% url 'accounting:voucher_edit' draft.pk %}">Edit draft</a></p>
+  <form method="post" action="{% url 'accounting:voucher_approve' draft.pk %}">
+    {% csrf_token %}<input type="hidden" name="revision" value="{{ draft.revision }}">
+    <button type="submit">Approve and post</button>
+  </form>
+  <p>Approval records an internal accounting entry. Use the posted journal to review or reverse it.</p>
+</section>
+{% endblock %}

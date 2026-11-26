@@ -1,5 +1,16 @@
 # Accounting handoff
 
+## Checkpoint 02 · Ledgers and voucher management
+
+- **Completed:** expanded the Indian starter chart. Added eight internal voucher types with draft entry, numbered review, revision checks and owner approval through the shared posting service. Added the date and branch filtered day book. Reused general ledger and trial balance.
+- **Pending:** Checkpoint 03 order conversion and procurement. GST and statutory notes are separate. PostgreSQL verification remains open.
+- **Changed files:** `accounting/forms.py`, `models.py`, `services.py`, `tests.py`, `urls.py`, `voucher_views.py`, migration 0005, accounting navigation and voucher/journal/day book templates, and accounting tracker, handoff, test, architecture and security documents.
+- **Migration:** `0005_alter_journal_kind_voucherdraft`. Re-run financial-year setup to add new starter groups to an existing workspace. Existing ledger classifications remain intact.
+- **Tests:** 16 targeted accounting tests passed. Run 1 passed 125 tests in 132.136 seconds. Reverse run 2 passed 125 tests in 131.931 seconds. Django and migration checks passed. Chrome verified draft creation, approval and the mobile day book.
+- **Known errors and security concerns:** no test failures. Draft and approval endpoints are company scoped and owner-only. Privileged database controls and PostgreSQL test gates remain as above.
+- **Accounting assumptions:** internal sales and purchase vouchers are manually approved accounting entries. Debit notes reduce supplier liabilities. Credit notes reduce customer receivables. No statutory tax calculation or automatic invoice allocation was added.
+- **Next instructions:** read Checkpoint 03. Introduce a separate operational order layer. Convert accepted quotes transactionally with private selling snapshots and a unique source link. Ship multiple supplier allocations, fulfilment, cancellation, reporting and PDF in small verified slices. Quotation and order acceptance must not post journals.
+
 ## Checkpoint 01 · Double-entry accounting engine
 
 - **Completed:** reused the company chart, years and periods, journal forms, exact debit/credit validation, posting idempotency, locks and reversals. Added stable `JRN-<id>` references, owner-only posting and period audit history, sealed journal records and database guards.

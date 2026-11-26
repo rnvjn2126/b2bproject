@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, voucher_views
 from .models import Journal
 
 app_name = "accounting"
@@ -14,6 +14,12 @@ urlpatterns = [
     path("chart/cost-centres/new/", views.add_chart_record, {"kind": "cost-centre"}, name="add_centre"),
     path("journals/", views.journals, name="journals"),
     path("journals/new/", views.journal_create, name="journal_create"),
+    path("vouchers/", voucher_views.vouchers, name="vouchers"),
+    path("vouchers/new/", voucher_views.voucher_edit, name="voucher_create"),
+    path("vouchers/<int:pk>/", voucher_views.voucher_detail, name="voucher"),
+    path("vouchers/<int:pk>/edit/", voucher_views.voucher_edit, name="voucher_edit"),
+    path("vouchers/<int:pk>/approve/", voucher_views.voucher_approve, name="voucher_approve"),
+    path("day-book/", voucher_views.day_book, name="day_book"),
     path("vouchers/receipt/new/", views.cash_voucher_create, {"kind": Journal.Kind.RECEIPT}, name="receipt"),
     path("vouchers/payment/new/", views.cash_voucher_create, {"kind": Journal.Kind.PAYMENT}, name="payment"),
     path("vouchers/contra/new/", views.cash_voucher_create, {"kind": Journal.Kind.CONTRA}, name="contra"),

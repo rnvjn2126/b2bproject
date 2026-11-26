@@ -1,0 +1,20 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Day book</h1>
+  <form method="get" class="inline-form">
+    {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+    <button type="submit">Apply filters</button>
+  </form>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Journal</th><th scope="col">Date</th><th scope="col">Type</th><th scope="col">External reference</th><th scope="col">Debit (INR)</th><th scope="col">Credit (INR)</th></tr></thead>
+    <tbody>{% for journal, debit, credit in rows %}
+      <tr><th scope="row"><a href="{% url 'accounting:journal' journal.pk %}">{{ journal.transaction_reference }}</a></th>
+        <td>{{ journal.date|date:"d M Y" }}</td><td>{{ journal.get_kind_display }}</td><td>{{ journal.reference|default:"—" }}</td><td>{{ debit|floatformat:2 }}</td><td>{{ credit|floatformat:2 }}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6">No posted transactions for these filters.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}
+  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <div class="section-heading"><h1>Voucher review</h1><a class="button" href="{% url 'accounting:voucher_create' %}">New voucher draft</a></div>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Number</th><th scope="col">Date</th><th scope="col">Type</th><th scope="col">External reference</th><th scope="col">Status</th></tr></thead>
+    <tbody>{% for draft in page %}
+      <tr><th scope="row"><a href="{% url 'accounting:voucher' draft.pk %}">{{ draft.number }}</a></th><td>{{ draft.date|date:"d M Y" }}</td><td>{{ draft.get_kind_display }}</td><td>{{ draft.reference|default:"—" }}</td>
+      <td>{% if draft.journal %}Posted · {{ draft.journal.transaction_reference }}{% else %}Draft{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5">No vouchers saved for review.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}
+  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}
+</section>
+{% endblock %}

@@ -30,3 +30,9 @@
 - 14 targeted accounting tests passed. Full run 1 passed 123 tests in 127.419 seconds. Full run 2 passed 123 tests in reverse order in 126.062 seconds.
 - Django check and migration drift check passed. A populated synthetic SQLite database upgraded from accounting migration 0002 and retained its journal and lines. Guards rejected edits, deletes and appends affecting posted journals or locked periods.
 - Chrome verified a native journal submission, reconciled trial balance and the accounting audit screen. PostgreSQL trigger execution and concurrency remain unverified.
+
+## Overnight Checkpoint 02
+
+- 16 targeted accounting tests passed. Tests cover all eight review voucher types, exact allocations, draft and approval replays, stale revisions, imbalance rejection, isolation and day book output.
+- Run 1 passed all 125 tests in 132.136 seconds. Reverse run 2 passed all 125 tests in 131.931 seconds. Django and migration checks passed.
+- Chrome verified owner draft entry, explicit approval, and the resulting day book on mobile.

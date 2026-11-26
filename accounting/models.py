@@ -80,6 +80,10 @@ class Journal(models.Model):
         RECEIPT = "receipt", "Receipt voucher"
         PAYMENT = "payment", "Payment voucher"
         CONTRA = "contra", "Contra voucher"
+        SALES = "sales", "Sales voucher"
+        PURCHASE = "purchase", "Purchase voucher"
+        DEBIT_NOTE = "debit_note", "Debit note"
+        CREDIT_NOTE = "credit_note", "Credit note"
         REVERSAL = "reversal", "Reversal"
 
     workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
@@ -126,3 +130,29 @@ class JournalLine(models.Model):
         constraints = [
             models.CheckConstraint(condition=Q(amount__gt=0, side__in=["D", "C"]), name="accounting_valid_line"),
         ]
+
+
+class VoucherDraft(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=12, choices=Journal.Kind.choices)
+    date = models.DateField()
+    reference = models.CharField(max_length=100, blank=True)
+    narration = models.CharField(max_length=500)
+    branch = models.ForeignKey(Branch, null=True, blank=True, on_delete=models.PROTECT)
+    cost_centre = models.ForeignKey(CostCentre, null=True, blank=True, on_delete=models.PROTECT)
+    # Draft-only payload. Posted data lives in the sealed, relational journal.
+    allocations = models.JSONField()
+    revision = models.PositiveIntegerField(default=1)
+    posting_key = models.UUIDField(default=uuid.uuid4, editable=False)
+    journal = models.OneToOneField(Journal, null=True, on_delete=models.PROTECT, related_name="voucher_draft")
+
+    class Meta:
+        ordering = ["-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "posting_key"], name="accounting_unique_draft_key"),
+        ]
+
+    @property
+    def number(self):
+        return f"VCH-{self.pk}"

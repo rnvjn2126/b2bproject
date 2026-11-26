@@ -3,6 +3,7 @@
 <section class="card">
   <h1>Journal {{ journal.transaction_reference }}</h1>
   <p>{{ journal.date|date:"d M Y" }} · {{ journal.get_kind_display }}</p>
+  {% if journal.voucher_draft %}<p>Approved voucher {{ journal.voucher_draft.number }} · Created by {{ journal.voucher_draft.creator.get_username }}</p>{% endif %}
   <p>{{ journal.narration }}</p>
   <p>External reference: {{ journal.reference|default:"—" }} · Branch: {{ journal.branch.name|default:"—" }} · Cost centre: {{ journal.cost_centre.name|default:"—" }}</p>
   <p>Posted by {{ journal.submitted_by.get_username }} on {{ journal.posted_at|date:"d M Y, H:i T" }}.</p>

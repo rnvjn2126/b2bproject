@@ -8,22 +8,22 @@ from django.core.validators import DecimalValidator
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AccountGroup, FinancialYear, Journal, JournalLine, Ledger, Period
+from .models import AccountGroup, FinancialYear, Journal, JournalLine, Ledger, Period, VoucherDraft
 
 
 STARTER_GROUPS = {
-    "asset": ("Current assets", "Fixed assets"),
-    "liability": ("Current liabilities", "Secured loans", "Unsecured loans"),
+    "asset": ("Current assets", "Fixed assets", "Sundry debtors", "Bank accounts", "Cash accounts", "Input duties and taxes"),
+    "liability": ("Current liabilities", "Secured loans", "Unsecured loans", "Sundry creditors", "Duties and taxes"),
     "equity": ("Capital accounts", "Reserves and surplus"),
     "income": ("Sales accounts", "Direct income", "Indirect income"),
     "expense": ("Purchase accounts", "Direct expenses", "Indirect expenses"),
 }
 STARTER_LEDGERS = (
-    ("1000", "Cash", "Current assets"), ("1010", "Bank", "Current assets"),
-    ("1100", "Sundry debtors", "Current assets"), ("1200", "Stock-in-hand", "Current assets"),
-    ("1300", "Input GST", "Current assets"), ("1500", "Fixed assets", "Fixed assets"),
-    ("2000", "Sundry creditors", "Current liabilities"), ("2100", "Output GST", "Current liabilities"),
-    ("2110", "Duties and taxes", "Current liabilities"), ("2200", "Secured loans", "Secured loans"),
+    ("1000", "Cash", "Cash accounts"), ("1010", "Bank", "Bank accounts"),
+    ("1100", "Sundry debtors", "Sundry debtors"), ("1200", "Stock-in-hand", "Current assets"),
+    ("1300", "Input GST", "Input duties and taxes"), ("1500", "Fixed assets", "Fixed assets"),
+    ("2000", "Sundry creditors", "Sundry creditors"), ("2100", "Output GST", "Duties and taxes"),
+    ("2110", "Duties and taxes", "Duties and taxes"), ("2200", "Secured loans", "Secured loans"),
     ("2300", "Unsecured loans", "Unsecured loans"), ("3000", "Capital", "Capital accounts"),
     ("3100", "Reserves", "Reserves and surplus"), ("4000", "Steel sales", "Sales accounts"),
     ("4100", "Other income", "Indirect income"), ("5000", "Steel purchases", "Purchase accounts"),
@@ -33,6 +33,8 @@ STARTER_LEDGERS = (
 MANUAL_JOURNAL_KINDS = (Journal.Kind.GENERAL, Journal.Kind.OPENING, Journal.Kind.ADJUSTMENT)
 CASH_VOUCHER_KINDS = (Journal.Kind.RECEIPT, Journal.Kind.PAYMENT, Journal.Kind.CONTRA)
 CASH_LEDGER_CODES = ("1000", "1010")
+TRADE_VOUCHER_KINDS = (Journal.Kind.SALES, Journal.Kind.PURCHASE, Journal.Kind.DEBIT_NOTE, Journal.Kind.CREDIT_NOTE)
+REVIEW_VOUCHER_KINDS = (Journal.Kind.GENERAL,) + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS
 
 
 def lock_books(workspace, actor):
@@ -92,7 +94,7 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
         kind = Journal.Kind.REVERSAL
         branch, cost_centre = reverses.branch, reverses.cost_centre
         lines = [(line.ledger, "C" if line.side == "D" else "D", line.amount) for line in reverses.lines.all()]
-    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS:
+    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS:
         raise ValidationError("Choose a valid journal type.")
 
     if any(item and item.workspace_id != workspace.pk for item in (branch, cost_centre)):
@@ -120,6 +122,16 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
         }
         if cash_sides != required_sides[kind]:
             raise ValidationError("The cash or bank ledger must match the voucher type.")
+    if kind in TRADE_VOUCHER_KINDS:
+        groups = {side: {ledger.group.kind for ledger, entry_side, _ in lines if side == entry_side} for side in ("D", "C")}
+        expected = {
+            Journal.Kind.SALES: ({"asset"}, {"income"}),
+            Journal.Kind.PURCHASE: ({"asset", "expense"}, {"asset", "liability"}),
+            Journal.Kind.DEBIT_NOTE: ({"liability"}, {"asset", "expense"}),
+            Journal.Kind.CREDIT_NOTE: ({"income"}, {"asset"}),
+        }[kind]
+        if not groups["D"] <= expected[0] or not groups["C"] <= expected[1]:
+            raise ValidationError("Choose account types that match this internal voucher.")
 
     payload = [date.isoformat(), kind, reference, narration, getattr(branch, "pk", None),
                getattr(cost_centre, "pk", None), getattr(reverses, "pk", None), fingerprint_lines]
@@ -153,4 +165,30 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
     # Seal only after every line exists. The database rejects later mutations.
     journal.sealed = True
     journal.save(update_fields=["sealed"])
+    return journal
+
+
+@transaction.atomic
+def approve_voucher(workspace, actor, draft_id, revision):
+    lock_books(workspace, actor)
+    draft = VoucherDraft.objects.filter(workspace=workspace, pk=draft_id).first()
+    if not draft:
+        raise ValidationError("Voucher is unavailable in this workspace.")
+    if draft.journal_id:
+        return draft.journal
+    if draft.revision != revision:
+        raise ValidationError("The draft changed. Review its latest allocations before approving.")
+    if draft.kind not in REVIEW_VOUCHER_KINDS:
+        raise ValidationError("Choose a supported voucher type.")
+    ledgers = Ledger.objects.filter(workspace=workspace).in_bulk(row[0] for row in draft.allocations)
+    if any(row[0] not in ledgers for row in draft.allocations):
+        raise ValidationError("Every voucher ledger must belong to this workspace.")
+    journal = post_journal(
+        workspace, actor, date=draft.date, kind=draft.kind, reference=draft.reference,
+        narration=draft.narration, submission_key=draft.posting_key,
+        branch=draft.branch, cost_centre=draft.cost_centre,
+        lines=[(ledgers[ledger_id], side, Decimal(amount)) for ledger_id, side, amount in draft.allocations],
+    )
+    draft.journal = journal
+    draft.save(update_fields=["journal"])
     return journal

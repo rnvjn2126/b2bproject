@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from dashboard.models import BusinessAccount, Customer, Quote, RFQ, TeamMembership
 
-from .models import Branch, Journal, JournalLine, Ledger
+from .models import Branch, Journal, JournalLine, Ledger, VoucherDraft
 from .services import lock_period, post_journal, setup_books
 
 
@@ -255,3 +255,65 @@ class AccountingTests(TestCase):
         self.assertContains(response, "Period locked")
         self.client.force_login(self.outsider)
         self.assertNotContains(self.client.get(url), journal.transaction_reference)
+
+    def voucher_payload(self, kind, debit, credit):
+        return {
+            "date": self.day.isoformat(), "kind": kind, "revision": 1, "reference": "SYNTHETIC",
+            "narration": "Voucher review example", "submission_key": str(uuid.uuid4()),
+            "lines-TOTAL_FORMS": 2, "lines-INITIAL_FORMS": 0,
+            "lines-0-ledger": debit.pk, "lines-0-side": "D", "lines-0-amount": "123.45",
+            "lines-1-ledger": credit.pk, "lines-1-side": "C", "lines-1-amount": "123.45",
+        }
+
+    def test_every_draft_type_posts_exact_balanced_allocations_only_after_approval(self):
+        ledgers = {ledger.code: ledger for ledger in Ledger.objects.filter(workspace=self.workspace)}
+        samples = {
+            "general": ("1000", "3000"), "receipt": ("1000", "1100"), "payment": ("2000", "1010"),
+            "contra": ("1010", "1000"), "sales": ("1100", "4000"), "purchase": ("5000", "2000"),
+            "debit_note": ("2000", "5000"), "credit_note": ("4000", "1100"),
+        }
+        create = reverse("accounting:voucher_create")
+        for number, (kind, (debit, credit)) in enumerate(samples.items(), 1):
+            with self.subTest(kind=kind):
+                payload = self.voucher_payload(kind, ledgers[debit], ledgers[credit])
+                response = self.client.post(create, payload)
+                self.assertEqual(response.status_code, 302)
+                self.assertRedirects(self.client.post(create, payload), response.url)
+                draft = VoucherDraft.objects.get(posting_key=payload["submission_key"])
+                self.assertIsNone(draft.journal_id)
+                self.assertEqual(Journal.objects.count(), number - 1)
+                self.assertContains(self.client.get(response.url), "Approve and post")
+                approve = reverse("accounting:voucher_approve", args=[draft.pk])
+                posted = self.client.post(approve, {"revision": 1})
+                self.assertEqual(posted.status_code, 302)
+                self.assertRedirects(self.client.post(approve, {"revision": 1}), posted.url)
+                draft.refresh_from_db()
+                self.assertTrue(draft.journal.sealed)
+                self.assertEqual(list(draft.journal.lines.values_list("ledger__code", "side", "amount")), [
+                    (debit, "D", Decimal("123.45")), (credit, "C", Decimal("123.45")),
+                ])
+                self.assertEqual(Journal.objects.count(), number)
+        report = self.client.get(reverse("accounting:day_book"), {"start": "2026-04-20", "end": "2026-04-20"})
+        self.assertEqual(len(report.context["rows"]), len(samples))
+        self.assertTrue(all(debit == credit == Decimal("123.45") for _, debit, credit in report.context["rows"]))
+
+    def test_voucher_approval_rechecks_the_reviewed_revision_and_rejects_unbalanced_draft(self):
+        payload = self.voucher_payload("general", self.cash, self.capital)
+        self.client.post(reverse("accounting:voucher_create"), payload)
+        draft = VoucherDraft.objects.get()
+        draft_url = reverse("accounting:voucher", args=[draft.pk])
+        edit = reverse("accounting:voucher_edit", args=[draft.pk])
+        approve = reverse("accounting:voucher_approve", args=[draft.pk])
+        self.assertContains(self.client.get(edit), "Edit voucher draft")
+        changed = payload | {"lines-INITIAL_FORMS": 2, "lines-1-amount": "120.00"}
+        self.assertRedirects(self.client.post(edit, changed), draft_url)
+        self.assertContains(self.client.post(approve, {"revision": 1}, follow=True), "The draft changed")
+        self.assertContains(self.client.post(approve, {"revision": 2}, follow=True), "Total debits and credits must be equal")
+        self.assertFalse(Journal.objects.exists())
+        self.client.force_login(self.outsider)
+        self.assertEqual(self.client.get(draft_url).status_code, 404)
+        self.assertEqual(self.client.post(approve, {"revision": 2}).status_code, 404)
+        employee = get_user_model().objects.create_user(username="voucher-employee")
+        TeamMembership.objects.create(account=self.workspace, user=employee, role=TeamMembership.Role.MANAGER)
+        self.client.force_login(employee)
+        self.assertEqual(self.client.post(approve, {"revision": 2}).status_code, 403)

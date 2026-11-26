@@ -1,0 +1,23 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Internal {{ draft.get_kind_display|lower }} invoice draft</h1>
+  <p>For internal review only. This draft has no ledger effect.</p>
+  <dl>
+    <dt>Movement</dt><dd>{{ snapshot.movement_reference }} · {{ draft.supply_on|date:"d M Y" }}</dd>
+    <dt>Company registration</dt><dd>{{ snapshot.company.name }} · {{ snapshot.company.gstin }} · {{ snapshot.company.address }}</dd>
+    <dt>Trading party</dt><dd>{{ snapshot.party.name }} · {{ snapshot.party.gstin }} · {{ snapshot.party.address }}</dd>
+    <dt>Item</dt><dd>{{ snapshot.item.description }} {{ snapshot.item.grade }} {{ snapshot.item.dimensions }} · {{ snapshot.item.quantity }} {{ snapshot.item.unit }} at ₹{{ snapshot.item.unit_price }}</dd>
+    <dt>HSN and rate date</dt><dd>{{ snapshot.rate.hsn }} · {{ snapshot.rate.effective_from }}</dd>
+    <dt>Place of supply</dt><dd>{{ snapshot.place_of_supply }}</dd>
+    <dt>Discount</dt><dd>₹{{ snapshot.discount }}</dd>
+    <dt>Freight</dt><dd>₹{{ snapshot.freight }}</dd>
+    <dt>Round-off</dt><dd>₹{{ snapshot.round_off }}</dd>
+    {% for component, amount in snapshot.tax.items %}
+      <dt>{{ component|upper }}</dt><dd>₹{{ amount }}</dd>
+    {% endfor %}
+    <dt>Total</dt><dd>₹{{ draft.total|floatformat:2 }}</dd>
+  </dl>
+  <a href="{% url 'accounting:invoice_movements' %}">Back to invoice drafts</a>
+</section>
+{% endblock %}

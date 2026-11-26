@@ -1,6 +1,6 @@
 from django.urls import path
 
-from invoicing.views import gst_settings
+from invoicing import views as invoice_views
 
 from . import views, voucher_views
 from .models import Journal
@@ -8,7 +8,10 @@ from .models import Journal
 app_name = "accounting"
 urlpatterns = [
     path("", views.home, name="home"),
-    path("gst-settings/", gst_settings, name="gst_settings"),
+    path("invoice-drafts/", invoice_views.invoice_movements, name="invoice_movements"),
+    path("invoice-drafts/movements/<int:pk>/", invoice_views.invoice_prepare, name="invoice_prepare"),
+    path("invoice-drafts/<int:pk>/", invoice_views.invoice_draft, name="invoice_draft"),
+    path("gst-settings/", invoice_views.gst_settings, name="gst_settings"),
     path("periods/<int:pk>/lock/", views.close_period, name="close_period"),
     path("chart/", views.chart, name="chart"),
     path("chart/groups/new/", views.add_chart_record, {"kind": "group"}, name="add_group"),

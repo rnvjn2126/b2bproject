@@ -1,0 +1,15 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Internal invoice drafts</h1>
+  <p>Select a confirmed dispatch or receipt to prepare or view its draft.</p>
+  <ul>{% for movement in page %}
+    <li><a href="{% url 'accounting:invoice_prepare' movement.pk %}">
+      {% if movement.sales_line_id %}Sales dispatch{% else %}Purchase receipt{% endif %}
+      {{ movement.reference }} · {{ movement.date|date:"d M Y" }}
+    </a></li>
+  {% empty %}<li>No confirmed movements are available.</li>{% endfor %}</ul>
+  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}">Previous</a>{% endif %}
+  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}">Next</a>{% endif %}
+</section>
+{% endblock %}

@@ -52,3 +52,5 @@
 
 - 04C: Nine focused invoicing tests passed, including owner GST registration/rate creation, validation, duplicate rejection, tenant boundaries, manager denial, CSRF and no-store headers.
 - 04C full run 1 passed 140 tests in 132.872 seconds. Reverse run 2 passed 140 tests in 133.848 seconds. Django and migration checks passed. Native Chrome verified registration submission and the layout at a 390 px viewport.
+
+- 04D: 17 invoicing and order tests passed, including sales/purchase draft preparation and preview, replay, workspace and manager denial, CSRF and no ledger writes. The first targeted run had an assertion mismatch on Django's invalid-choice message. The corrected test checks the error code. Django and migration checks passed. Full and browser runs for 04D are pending.

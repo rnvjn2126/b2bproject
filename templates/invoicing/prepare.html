@@ -1,0 +1,13 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Prepare internal invoice draft</h1>
+  <p>Movement {{ movement.reference }} · {{ movement.date|date:"d M Y" }}</p>
+  <p>Drafts use the stored order price and have no ledger effect. Set up registrations and dated rates in <a href="{% url 'accounting:gst_settings' %}">GST settings</a>.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save internal draft</button>
+  </form>
+</section>
+{% endblock %}

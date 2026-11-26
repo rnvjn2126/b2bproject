@@ -180,6 +180,59 @@ class InvoiceDraftTests(TestCase):
         self.assertFalse(InvoiceDraft.objects.exists())
 
 
+    def invoice_payload(self):
+        return {
+            "registration_id": self.registration.pk, "party_gstin": "24BBBBB0000B1Z0", "item_code": "000000",
+            "place_of_supply": "27", "local_component": "sgst", "discount": "0", "freight": "0", "round_off": "0",
+        }
+
+    def test_owner_prepares_and_reopens_sales_and_purchase_drafts(self):
+        self.client.force_login(self.owner)
+        movements = reverse("accounting:invoice_movements")
+        self.assertContains(self.client.get(movements), "SYN-D1")
+        self.assertContains(self.client.get(movements), "SYN-R1")
+        for movement, title, total in ((self.dispatch, "sales", "336.00"), (self.receipt, "purchase", "448.00")):
+            with self.subTest(kind=title):
+                prepare = reverse("accounting:invoice_prepare", args=[movement.pk])
+                self.assertContains(self.client.get(prepare), "Save internal draft")
+                response = self.client.post(prepare, self.invoice_payload())
+                draft = InvoiceDraft.objects.get(movement=movement)
+                detail = reverse("accounting:invoice_draft", args=[draft.pk])
+                self.assertRedirects(response, detail)
+                self.assertRedirects(self.client.post(prepare, self.invoice_payload()), detail)
+                preview = self.client.get(detail)
+                self.assertContains(preview, f"Internal {title} invoice draft")
+                self.assertContains(preview, total)
+                self.assertIn("no-store", preview.headers["Cache-Control"])
+                self.assertEqual(self.client.post(detail).status_code, 405)
+        self.assertEqual(InvoiceDraft.objects.count(), 2)
+        self.assertFalse(Journal.objects.exists())
+
+    def test_http_paths_enforce_owner_company_scope_and_csrf(self):
+        movement = reverse("accounting:invoice_prepare", args=[self.dispatch.pk])
+        self.client.force_login(self.owner)
+        other_registration = CompanyGSTRegistration.objects.create(
+            workspace=self.other_workspace, gstin="24BBBBB0000B1Z0", registered_name="Other", registered_address="Other",
+        )
+        response = self.client.post(movement, self.invoice_payload() | {"registration_id": other_registration.pk})
+        self.assertTrue(response.context["form"].has_error("registration_id", "invalid_choice"))
+        self.assertFalse(InvoiceDraft.objects.exists())
+        valid_client = Client(enforce_csrf_checks=True)
+        valid_client.force_login(self.owner)
+        self.assertEqual(valid_client.post(movement, self.invoice_payload()).status_code, 403)
+        draft = self.draft(self.dispatch)
+        detail = reverse("accounting:invoice_draft", args=[draft.pk])
+        self.client.force_login(self.other)
+        self.assertNotContains(self.client.get(reverse("accounting:invoice_movements")), "SYN-D1")
+        self.assertEqual(self.client.post(movement, self.invoice_payload()).status_code, 404)
+        self.assertEqual(self.client.get(detail).status_code, 404)
+        manager = get_user_model().objects.create_user(username="draft-manager")
+        TeamMembership.objects.create(account=self.workspace, user=manager, role=TeamMembership.Role.MANAGER)
+        self.client.force_login(manager)
+        self.assertEqual(self.client.get(detail).status_code, 403)
+        self.assertEqual(self.client.post(movement, self.invoice_payload()).status_code, 403)
+
+
 class GSTSettingsTests(TestCase):
     @classmethod
     def setUpTestData(cls):

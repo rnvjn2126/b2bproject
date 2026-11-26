@@ -1,14 +1,17 @@
+from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods
 
 from accounting.services import lock_books
 from accounting.views import owner_only
 from dashboard.accounts import business_account_for
 
-from .forms import RegistrationForm, TaxRateForm
-from .models import CompanyGSTRegistration, TaxRate
+from .forms import InvoiceDraftForm, RegistrationForm, TaxRateForm
+from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .services import eligible_movements, prepare_draft
 
 
 @owner_only
@@ -44,3 +47,39 @@ def gst_settings(request, workspace):
         "registrations": CompanyGSTRegistration.objects.filter(workspace=workspace).order_by("gstin"),
         "rates": TaxRate.objects.filter(workspace=workspace).order_by("-effective_from", "item_code")[:50],
     })
+
+
+@owner_only
+@never_cache
+@require_GET
+def invoice_movements(request, workspace):
+    movements = eligible_movements(workspace).order_by("-date", "-pk")
+    page = Paginator(movements, 25).get_page(request.GET.get("page"))
+    return render(request, "invoicing/movements.html", {"page": page})
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def invoice_prepare(request, workspace, pk):
+    movement = get_object_or_404(eligible_movements(workspace), pk=pk)
+    existing = InvoiceDraft.objects.filter(workspace=workspace, movement=movement).first()
+    if existing:
+        return redirect("accounting:invoice_draft", pk=existing.pk)
+    form = InvoiceDraftForm(request.POST if request.method == "POST" else None, workspace=workspace)
+    if request.method == "POST" and form.is_valid():
+        try:
+            draft = prepare_draft(workspace, request.user, movement_id=movement.pk, **form.cleaned_data)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            return redirect("accounting:invoice_draft", pk=draft.pk)
+    return render(request, "invoicing/prepare.html", {"movement": movement, "form": form})
+
+
+@owner_only
+@never_cache
+@require_GET
+def invoice_draft(request, workspace, pk):
+    draft = get_object_or_404(InvoiceDraft, workspace=workspace, pk=pk)
+    return render(request, "invoicing/draft.html", {"draft": draft, "snapshot": draft.snapshot})

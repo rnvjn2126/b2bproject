@@ -11,6 +11,19 @@ from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
 from .tax import calculate_line, invoice_total, validate_gstin
 
 
+def eligible_movements(workspace):
+    if workspace is None:
+        return OrderMovement.objects.none()
+    approved = SalesOrder.Status.APPROVED
+    return OrderMovement.objects.filter(
+        Q(sales_line__order__workspace=workspace, sales_line__order__status=approved,
+          sales_line__order__customer__owner_id=workspace.owner_id)
+        | Q(purchase_order__requirement__order__workspace=workspace,
+            purchase_order__requirement__order__status=approved, purchase_order__status=approved,
+            purchase_order__supplier__owner_id=workspace.owner_id),
+    ).select_related("sales_line__order", "purchase_order__requirement", "purchase_order__supplier")
+
+
 @transaction.atomic
 def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin, item_code,
                   place_of_supply, local_component, inclusive, discount, freight, round_off):
@@ -18,15 +31,7 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
     lock_books(workspace, actor)
     if not isinstance(inclusive, bool):
         raise ValidationError("Choose tax-inclusive or tax-exclusive pricing.")
-    approved = SalesOrder.Status.APPROVED
-    movement = OrderMovement.objects.filter(
-        Q(sales_line__order__workspace=workspace, sales_line__order__status=approved,
-          sales_line__order__customer__owner_id=workspace.owner_id)
-        | Q(purchase_order__requirement__order__workspace=workspace,
-            purchase_order__requirement__order__status=approved, purchase_order__status=approved,
-            purchase_order__supplier__owner_id=workspace.owner_id),
-        pk=movement_id,
-    ).select_related("sales_line__order", "purchase_order__requirement", "purchase_order__supplier").first()
+    movement = eligible_movements(workspace).filter(pk=movement_id).first()
     registration = CompanyGSTRegistration.objects.filter(workspace=workspace, pk=registration_id).first()
     if not movement or not registration:
         raise ValidationError("Choose a confirmed movement and GST registration in this workspace.")

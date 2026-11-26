@@ -59,3 +59,5 @@
 - 04F: 31 focused invoicing and accounting tests passed. Django and migration checks passed. Full run 1 passed 146 in 81.715 seconds. Reverse run 2 passed 146 in 81.984 seconds.
 
 - The purchase mapping follow-up at `50f785ecd64e93a64853900afb90f0e9fa4575a8` passed 32 focused tests and both 147-test regressions (80.751 seconds normal, 80.623 seconds reverse). The follow-up tested missing or misclassified input-tax ledgers and the different recoverable-tax and cost allocations. Runtime code and migrations were unchanged by this follow-up.
+
+- 04G: 37 invoicing and accounting tests passed. Full runs passed 152 each in 80.726 and 80.427 seconds. Django and migration drift checks passed. Two concurrent SQLite issue requests returned one issued invoice and one sealed journal on a disposable file-backed database. Verified snapshot immutability, execution rollback, sequence reuse after rollback, ordinary journal link rejection, default gating and replay after closing its period.

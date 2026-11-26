@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `50f785ecd64e93a64853900afb90f0e9fa4575a8`. Both invoice draft screens and posting proposals have focused verification.
-- **Active checkpoint:** 04, Invoicing and Indian GST. Checkpoint 04 remains partial.
-- **Last verified task:** calculate balanced, write-free invoice posting proposals and validate the selected ledger mappings. The owner draft screens are browser-tested.
-- **Changed files:** `invoicing/posting.py`, `invoicing/tests.py` and accounting, GST and recovery documentation.
-- **Migrations:** none for 04D–04F. Invoicing migrations 0001 and 0002 have been exercised on disposable SQLite.
-- **Latest tests:** 04D passed 142 tests twice and Chrome draft checks. 04E passed 145 tests twice. 04F passed 31 focused invoicing and accounting tests. Django and migration checks passed. 04F full runs passed 146 tests in 81.715 and 81.984 seconds. The purchase mapping follow-up at `50f785ecd64e93a64853900afb90f0e9fa4575a8` passed 32 focused tests and both 147-test regressions (80.751 seconds normal, 80.623 seconds reverse).
-- **Known issues and release gates:** statutory issue, posting, regulated workflows, professional review, complete financial month reconciliation and PostgreSQL execution remain open. No issue or posting endpoint is present.
-- **Exact next task:** create an internal issue service that can atomically preserve an immutable invoice snapshot, allocate workspace/financial-year numbering and link to one sealed journal. Use synthetic data, enforce owner authorization and period locks, and gate production issue pending professional review. Notes, returns, A4 print and Checkpoints 05–14 remain pending.
+- **Latest implementation commit:** `e9294f86fa5814a8c0d0d59134d9cefb51d69255`.
+- **Active checkpoint:** 04, Invoicing and Indian GST. Partial.
+- **Last verified task:** gated internal sales issue creates one immutable snapshot and one balanced journal from a confirmed dispatch in one transaction.
+- **Changed files:** accounting and invoicing models/services, issuance service, tests, settings and verification documentation.
+- **Migrations:** accounting 0006 and invoicing 0003 and 0004. Applied to disposable SQLite. Accounting 0006 is a SQLite schema no-op for the guarded journal table.
+- **Latest tests:** 37 focused passed. Full runs passed 152 each in 80.726 and 80.427 seconds. Django and migration checks passed. SQLite file-backed concurrent replay produced one record and journal.
+- **Pending:** purchase issue service, invoice corrections and A4 printing. Prior professional statutory review and PostgreSQL execution remain open. No live issue interface is present.
+- **Exact next task:** capture supplier actual price and documents, then add gated purchase recording with same-company validation, input-tax treatment, external reference deduplication and immutable journal linkage. Run normal and reverse tests before closing the slice.
 
 ## Resume on Windows
 

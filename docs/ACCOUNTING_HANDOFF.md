@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 04G · Gated internal sales issue
+
+- **Completed:** same-company owner sales issuance from a confirmed dispatch. An atomic service assigns one internal financial-year number, copies the reviewed draft and links one balanced, sealed journal. The database rejects issued-row writes/deletes and incompatible journal links. Unchanged retries return the original. Generic journal reversal rejects invoice journals until invoice corrections are implemented.
+- **Pending:** purchase documents and actuals, invoice corrections, print and statutory review. The feature flag is false by default and no issue endpoint is exposed.
+- **Changed files:** accounting journal kind and posting service, invoicing models, issuance service, tests and GST/tracker/handoff documents. **Migrations:** accounting `0006_alter_journal_kind`, invoicing `0003_issuedinvoice` and `0004_issued_invoice_guards`.
+- **Tests:** 37 invoicing and accounting tests passed. Normal and reverse full runs passed 152 each in 80.726 s and 80.427 s. Django and migration checks passed. A disposable file-backed SQLite concurrency probe ran two simultaneous issue requests and got one issued record and one sealed journal. PostgreSQL guard execution remains pending.
+- **Assumptions:** the internal posting date equals the confirmed dispatch date. The company financial-year series is internal. It does not determine statutory invoice timing, registrations, numbering or filing applicability.
+- **Verified commit:** `e9294f86fa5814a8c0d0d59134d9cefb51d69255`.
+- **Next task:** implement gated purchase recording with actual supplier invoice reference, date, price and confirmed total. Deduplicate by company, supplier GSTIN, supplier financial year and document reference. Validate purchase ledger lines and explicit input-tax treatment. Keep purchase and sales issue actions internal and update the immutable-record guard safely.
+
 ## Checkpoints 04E–04F · GST posting proposals and ledger mapping
 
 - **Completed:** validate saved invoice amounts and propose balanced Decimal debit/credit lines for sales and purchase invoices. Verify totals, mutually exclusive GST components and signed round-off. Purchase proposals require an explicitly selected input-tax treatment. Resolve required ledger roles only to distinct, correctly classified same-company ledgers.

@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoints 04E–04F · GST posting proposals and ledger mapping
+
+- **Completed:** validate saved invoice amounts and propose balanced Decimal debit/credit lines for sales and purchase invoices. Verify totals, mutually exclusive GST components and signed round-off. Purchase proposals require an explicitly selected input-tax treatment. Resolve required ledger roles only to distinct, correctly classified same-company ledgers.
+- **Pending:** authorised atomic invoice issue and posting, financial-year numbering, immutable issued snapshots, approved GST policies, purchase invoice references and actual amounts, notes, returns and A4 printing. The proposal service has no write path or public interface.
+- **Changed files:** `invoicing/posting.py`, `invoicing/tests.py` and GST/checkpoint documentation. **Migrations:** none.
+- **Tests:** 04E passed 14 focused invoicing tests and both full runs of 145 tests (80.401 and 80.720 seconds). 04F passed 31 focused invoicing and accounting tests. Django check and migration drift check passed. 04F full results are pending.
+- **Security and accounting:** reject damaged snapshots and foreign-company/misclassified ledgers. The modelled input-tax treatments are full recovery or inclusion in cost. Eligibility, partial credit, reverse charge, freight and legal purchase invoice treatment require further review. No statutory issue or journal write has been enabled.
+- **Implementation commits:** 04E `d4fd30d7ee596a5aaacb58708b69cd8e0fd9e4a5`; 04F `7fae3d26d82954a799fc77e95630b0cb2125c4f1`.
+- **Exact next task:** record both 04F regression results, then implement a guarded service for immutable issued invoice records. Use an approved date, a workspace/financial-year sequence, a unique source draft, a snapshot and an idempotent, sealed journal link. Test concurrency, rollback, date locks and audit behaviour before exposing any issue action. See [Windows resume commands](OVERNIGHT_PROGRESS.md).
+
 ## Checkpoint 04D · Owner invoice draft screens
 
 - **Completed:** Accounting lists eligible confirmed dispatches and receipts. Owners can submit an internal draft and reopen its saved sales or purchase snapshot. A repeated submission opens the existing draft. No journal is posted.

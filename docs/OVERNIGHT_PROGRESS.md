@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `326c86d374afd18ca29b96a416c65c985a35df35`. Verified with focused, full and browser tests.
+- **Latest implementation commit:** `7fae3d26d82954a799fc77e95630b0cb2125c4f1`. Both invoice draft screens and posting proposals have focused verification.
 - **Active checkpoint:** 04, Invoicing and Indian GST. Checkpoint 04 remains partial.
-- **Last verified task:** owner-only internal draft creation and preview from confirmed sales dispatches and purchase receipts. Replay opens the existing draft and writes no journal.
-- **Changed files:** accounting routes and navigation, invoicing forms, service, views and tests, three templates under `templates/invoicing/` and accounting documentation.
-- **Migrations:** none in 04D. Invoicing migrations 0001 and 0002 have been exercised on disposable SQLite.
-- **Latest tests:** 17 invoicing/order tests passed, plus Django and migration drift checks. 04D full runs passed 142 tests in 84.230 seconds (normal) and 84.471 seconds (reverse). Chrome verified both draft types.
-- **Known issues and release gates:** the initial targeted 04D run had an assertion mismatch, corrected before the passing targeted run. Statutory review, invoice posting, full-month reconciliation and PostgreSQL execution remain open.
-- **Exact next task:** validate exact debit and credit allocations from saved draft snapshots, then design immutable issue records and connect approved GST postings through the shared posting service. Follow with reversals, returns, notes and A4 print. Keep statutory release gated on professional review. Checkpoints 05–14 remain pending.
+- **Last verified task:** calculate balanced, write-free invoice posting proposals and validate the selected ledger mappings. The owner draft screens are browser-tested.
+- **Changed files:** `invoicing/posting.py`, `invoicing/tests.py` and accounting, GST and recovery documentation.
+- **Migrations:** none for 04D–04F. Invoicing migrations 0001 and 0002 have been exercised on disposable SQLite.
+- **Latest tests:** 04D passed 142 tests twice and Chrome draft checks. 04E passed 145 tests twice. 04F passed 31 focused invoicing and accounting tests. Django and migration checks passed. 04F full results are pending.
+- **Known issues and release gates:** statutory issue, posting, regulated workflows, professional review, complete financial month reconciliation and PostgreSQL execution remain open. No issue or posting endpoint is present.
+- **Exact next task:** confirm the 04F regression results, then create an internal issue service that can atomically preserve an immutable invoice snapshot, allocate workspace/financial-year numbering and link to one sealed journal. Use synthetic data, enforce owner authorization and period locks, and gate production issue pending professional review. Notes, returns, A4 print and Checkpoints 05–14 remain pending.
 
 ## Resume on Windows
 

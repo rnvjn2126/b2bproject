@@ -27,3 +27,7 @@ One confirmed dispatch or goods receipt can seed one owner-only draft. The dispa
 ## Checkpoint 04C · Draft settings
 
 Accounting owners can add draft registration records and dated rates. The settings capture a source URL as text and use the calculation module's supported range and classification rules. Recording a source is an audit aid. Verify its relevance, effective period and the applicable commodity classification before statutory use.
+
+## Checkpoints 04E–04F · Proposed journal lines
+
+The invoice posting service currently computes balanced proposals and validates ledger mappings without issuing an invoice or posting accounting entries. Explicit purchase input-tax treatment in a proposal represents an accounting choice for testing. Establish the legal entitlement, treatment of partial recovery, actual purchase invoice value and posting policy before connecting this to a user-facing issue action.

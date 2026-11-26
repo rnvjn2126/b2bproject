@@ -42,3 +42,10 @@
 - 6 focused order tests passed after correcting an expected text substring. Covered enquiry and accepted quote conversion, snapshots, gross-margin approval, tenant isolation, CSRF, approvals, partial receipts/dispatch and split suppliers.
 - Run 1 passed 131 tests in 84.364 seconds. Reverse run 2 passed 131 tests in 84.370 seconds. Configuration and migration drift checks passed.
 - Native Chrome verified quote acceptance, conversion, sales approval and mobile detail. Order PDF assertions covered procurement/customer boundaries. Orders and goods movements created no journals.
+
+## Overnight Checkpoint 04, partial
+
+- 04A: Four GST calculator, rate and format tests passed. Full runs passed 135 tests in 132.120 seconds and 132.417 seconds.
+- 04B: Seven focused tests passed after correcting a synthetic quote fixture. Tests cover sales and purchase snapshots, effective GST component amounts, cross-company inputs, replay rejection and no ledger posting.
+- 04B full run 1 passed 138 in 133.842 seconds. Reverse full run 2 passed 138 in 134.857 seconds.
+- Django and migration drift checks passed after both slices. These runs used synthetic SQLite test databases. The draft service has no browser workflow and PostgreSQL has not been executed.

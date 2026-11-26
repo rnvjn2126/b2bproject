@@ -19,3 +19,7 @@ Open reviews include registration and place-of-supply mappings, rate effective d
 - Invoice and note requirements and electronic invoice applicability need a separate review against amended rules and current notifications for each company. GSTIN validation here checks the regular registration format only. Registration status and ownership require independent confirmation. [CBIC invoice rules](https://cbic-gst.gov.in/gst-invoice-rules.html) · [GST e-invoice portal guidance](https://einvoice6.gst.gov.in/content/e-invoice-printing-process-mandatory-fields-modes-of-irn-generation/)
 
 The calculation module supports company-specific, dated HSN/SAC rates, one domestic GST regime per line, percentage cess and rounding. It contains no statutory rate seed data. GST rates, place of supply, party registration, tax treatment and rules for rounding, discounts, freight, returns and notes require approval before production use.
+
+## Checkpoint 04B · Internal invoice drafts
+
+One confirmed dispatch or goods receipt can seed one owner-only draft. The dispatch uses the sales order price. The receipt uses the purchase order price as an estimate. Rate selection uses the movement date. Confirm the legally relevant tax time, actual supplier invoice amount, registered parties, treatment of partial deliveries, credit/debit notes and returns before adding statutory issuance. Draft snapshots preserve the inputs and results but are not issued invoice records. The current service has no UI, print, issuance or journal path.

@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
@@ -57,3 +58,25 @@ class TaxRate(models.Model):
     def effective_for(cls, workspace, item_kind, item_code, supply_date):
         return cls.objects.filter(workspace=workspace, item_kind=item_kind, item_code=item_code,
                                   effective_from__lte=supply_date).order_by("-effective_from").first()
+
+
+class InvoiceDraft(models.Model):
+    class Kind(models.TextChoices):
+        SALES = "sales", "Sales"
+        PURCHASE = "purchase", "Purchase"
+
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    movement = models.OneToOneField("orders.OrderMovement", on_delete=models.PROTECT)
+    registration = models.ForeignKey(CompanyGSTRegistration, on_delete=models.PROTECT)
+    rate = models.ForeignKey(TaxRate, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    supply_on = models.DateField()
+    total = models.DecimalField(max_digits=24, decimal_places=2)
+    snapshot = models.JSONField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(total__gte=0), name="invoicing_draft_nonnegative_total"),
+        ]

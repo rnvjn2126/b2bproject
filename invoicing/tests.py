@@ -1,14 +1,18 @@
 from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from dashboard.models import BusinessAccount
+from accounting.models import Journal
+from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer
+from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
-from .models import CompanyGSTRegistration, TaxRate
+from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .services import prepare_draft
 from .tax import calculate_line, invoice_total, validate_gstin
 from .words import rupees_in_words
 
@@ -81,3 +85,95 @@ class GSTCalculationTests(TestCase):
         registration.full_clean()
         self.assertEqual(rupees_in_words(Decimal("12102034.05")),
                          "One crore twenty one lakh two thousand thirty four rupees and five paise only")
+
+
+class InvoiceDraftTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        users = get_user_model().objects
+        cls.owner = users.create_user(username="draft-owner")
+        cls.other = users.create_user(username="draft-other")
+        cls.workspace = BusinessAccount.objects.create(owner=cls.owner, name="Synthetic drafts")
+        cls.other_workspace = BusinessAccount.objects.create(owner=cls.other, name="Other draft workspace")
+        cls.registration = CompanyGSTRegistration.objects.create(
+            workspace=cls.workspace, gstin="27AAAAA0000A1Z0", registered_name="Synthetic Company",
+            registered_address="Synthetic Company Address",
+        )
+        cls.rate = TaxRate.objects.create(
+            workspace=cls.workspace, item_kind="goods", item_code="000000", effective_from=date(2026, 4, 1),
+            source_url="https://example.test/synthetic-only", integrated_rate="12", central_rate="6", local_rate="6",
+        )
+        buyer = Customer.objects.create(owner=cls.owner, name="Synthetic Customer")
+        supplier = Supplier.objects.create(owner=cls.owner, name="Synthetic Supplier", address="Synthetic Mill Address")
+        day = date(2026, 5, 1)
+        rfq = RFQ.objects.create(owner=cls.owner, customer=buyer, received_on=day)
+        item = RFQLine.objects.create(owner=cls.owner, rfq=rfq, description="Synthetic steel", quantity="10", unit="kg")
+        offer = SupplierOffer.objects.create(owner=cls.owner, rfq_line=item, supplier=supplier, available_quantity="10",
+                                             unit_price="80", unit="kg", delivery_days=3)
+        quote = Quote.objects.create(owner=cls.owner, rfq=rfq, number="SYN-1", target_margin_percent="20",
+                                     minimum_margin_percent="10", maximum_discount_percent="5")
+        quote_line = QuoteLine.objects.create(owner=cls.owner, quote=quote, rfq_line=item, supplier_offer=offer,
+                                              quantity="10", unit="kg", selling_price_per_unit="100",
+                                              landed_cost_per_unit="80", discount_percent="0")
+        cls.order = SalesOrder.objects.create(
+            workspace=cls.workspace, source_quote=quote, quotation_number=quote.number, quotation_revision=1,
+            customer=buyer, customer_name=buyer.name, customer_address="Synthetic Customer Address",
+            created_by=cls.owner, status=SalesOrder.Status.APPROVED,
+        )
+        sales_line = SalesOrderLine.objects.create(order=cls.order, quote_line=quote_line, description=item.description,
+                                                   quantity="10", unit="kg", unit_price="100")
+        purchase = PurchaseOrder.objects.create(
+            requirement=sales_line, offer=offer, supplier=supplier, supplier_name=supplier.name, quantity="10",
+            unit_price="80", delivery_on=day, submission_key=uuid4(), created_by=cls.owner, status=SalesOrder.Status.APPROVED,
+        )
+        cls.receipt = OrderMovement.objects.create(purchase_order=purchase, quantity="5", date=day, reference="SYN-R1",
+                                                   recorded_by=cls.owner)
+        cls.dispatch = OrderMovement.objects.create(sales_line=sales_line, quantity="3", date=day, reference="SYN-D1",
+                                                    recorded_by=cls.owner)
+
+    def draft(self, movement, workspace=None, actor=None, **overrides):
+        args = {
+            "movement_id": movement.pk, "registration_id": self.registration.pk, "party_gstin": "24BBBBB0000B1Z0",
+            "item_code": "000000", "place_of_supply": "27", "local_component": "sgst", "inclusive": False,
+            "discount": Decimal(0), "freight": Decimal(0), "round_off": Decimal(0),
+        }
+        return prepare_draft(workspace or self.workspace, actor or self.owner, **(args | overrides))
+
+    def test_sales_and_purchase_drafts_use_confirmed_quantities_and_different_prices(self):
+        sale = self.draft(self.dispatch)
+        purchase = self.draft(self.receipt)
+        self.assertEqual((sale.kind, sale.total, sale.snapshot["item"]["quantity"]), ("sales", Decimal("336"), "3.000"))
+        self.assertEqual((purchase.kind, purchase.total), ("purchase", Decimal("448")))
+        self.assertEqual(sale.snapshot["tax"]["sgst"], "18.00")
+        self.assertEqual(purchase.snapshot["tax"]["igst"], "48.00")
+        self.assertNotIn("Synthetic Supplier", str(sale.snapshot))
+        self.assertFalse(Journal.objects.exists())
+
+    def test_snapshot_survives_source_changes_and_rejects_duplicate_drafts(self):
+        draft = self.draft(self.dispatch)
+        TaxRate.objects.filter(pk=self.rate.pk).update(local_rate="5")
+        CompanyGSTRegistration.objects.filter(pk=self.registration.pk).update(registered_name="Changed registration")
+        draft.refresh_from_db()
+        self.assertEqual(draft.snapshot["rate"]["local"], "6.0000")
+        self.assertEqual(draft.snapshot["company"]["name"], "Synthetic Company")
+        with self.assertRaisesMessage(ValidationError, "already has an internal invoice draft"):
+            self.draft(self.dispatch)
+        self.assertEqual(InvoiceDraft.objects.count(), 1)
+
+    def test_draft_rejects_foreign_actor_foreign_sources_and_unapproved_order(self):
+        with self.assertRaises(PermissionDenied):
+            self.draft(self.dispatch, actor=self.other)
+        with self.assertRaises(ValidationError):
+            self.draft(self.dispatch, workspace=self.other_workspace, actor=self.other)
+        other_reg = CompanyGSTRegistration.objects.create(
+            workspace=self.other_workspace, gstin=self.registration.gstin, registered_name="Other",
+            registered_address="Other Address",
+        )
+        with self.assertRaises(ValidationError):
+            self.draft(self.dispatch, registration_id=other_reg.pk)
+        with self.assertRaises(ValidationError):
+            self.draft(self.dispatch, item_code="000001")
+        SalesOrder.objects.filter(pk=self.order.pk).update(status=SalesOrder.Status.DRAFT)
+        with self.assertRaises(ValidationError):
+            self.draft(self.receipt)
+        self.assertFalse(InvoiceDraft.objects.exists())

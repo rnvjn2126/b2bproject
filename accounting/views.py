@@ -15,7 +15,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from dashboard.accounts import business_account_for
 
-from .forms import BalanceForm, ChartForm, GroupForm, JournalForm, JournalLines, LedgerForm, PostingForm, YearForm
+from .forms import BalanceForm, CashVoucherForm, ChartForm, GroupForm, JournalForm, JournalLines, LedgerForm, PostingForm, YearForm
 from .models import AccountGroup, Branch, CostCentre, FinancialYear, Journal, JournalLine, Ledger, Period
 from .services import lock_books, lock_period, post_journal, setup_books
 
@@ -130,6 +130,30 @@ def journal_create(request, workspace):
             messages.success(request, "Journal posted.")
             return redirect("accounting:journal", pk=journal.pk)
     return render(request, "accounting/form.html", {"form": form, "lines": lines, "title": "Post journal", "submit": "Post journal"})
+
+
+@owner_only
+@require_http_methods(["GET", "POST"])
+def cash_voucher_create(request, workspace, kind):
+    if workspace is None or not FinancialYear.objects.filter(workspace=workspace).exists():
+        return redirect("accounting:home")
+    form = CashVoucherForm(request.POST if request.method == "POST" else None, workspace=workspace, kind=kind,
+                           initial={"date": timezone.localdate(), "submission_key": uuid.uuid4()})
+    if request.method == "POST" and form.is_valid():
+        debits, credits, amount = (form.cleaned_data[field] for field in ("debit", "credit", "amount"))
+        fields = {key: value for key, value in form.cleaned_data.items() if key not in ("debit", "credit", "amount")}
+        try:
+            journal = post_journal(workspace, request.user, kind=kind,
+                                   lines=[(debits, "D", amount), (credits, "C", amount)], **fields)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Voucher posted.")
+            return redirect("accounting:journal", pk=journal.pk)
+    return render(request, "accounting/form.html", {
+        "form": form, "title": kind.label, "submit": "Post voucher",
+        "note": "Record a movement already confirmed in your books. Choose the ledgers and enter the INR amount.",
+    })
 
 
 @owner_only

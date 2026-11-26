@@ -2,6 +2,7 @@
 {% block books %}
 <section class="card">
   <div class="section-heading"><h1>Posted journals</h1><a class="button" href="{% url 'accounting:journal_create' %}">Post journal</a></div>
+  <p><a href="{% url 'accounting:receipt' %}">New receipt</a> · <a href="{% url 'accounting:payment' %}">New payment</a> · <a href="{% url 'accounting:contra' %}">New contra transfer</a></p>
   <div class="table-scroll" tabindex="0"><table>
     <thead><tr><th scope="col">Journal</th><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Reference</th><th scope="col">Branch</th></tr></thead>
     <tbody>{% for journal in page %}<tr>

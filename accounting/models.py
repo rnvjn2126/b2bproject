@@ -77,6 +77,9 @@ class Journal(models.Model):
         GENERAL = "general", "General journal"
         OPENING = "opening", "Opening balances"
         ADJUSTMENT = "adjustment", "Adjustment"
+        RECEIPT = "receipt", "Receipt voucher"
+        PAYMENT = "payment", "Payment voucher"
+        CONTRA = "contra", "Contra voucher"
         REVERSAL = "reversal", "Reversal"
 
     workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)

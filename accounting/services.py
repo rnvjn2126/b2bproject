@@ -30,6 +30,9 @@ STARTER_LEDGERS = (
     ("5100", "Freight and transportation", "Direct expenses"), ("5200", "Operating expenses", "Indirect expenses"),
     ("5210", "Discounts allowed", "Indirect expenses"), ("5220", "Round-off adjustments", "Indirect expenses"),
 )
+MANUAL_JOURNAL_KINDS = (Journal.Kind.GENERAL, Journal.Kind.OPENING, Journal.Kind.ADJUSTMENT)
+CASH_VOUCHER_KINDS = (Journal.Kind.RECEIPT, Journal.Kind.PAYMENT, Journal.Kind.CONTRA)
+CASH_LEDGER_CODES = ("1000", "1010")
 
 
 def lock_books(workspace, actor):
@@ -89,7 +92,7 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
         kind = Journal.Kind.REVERSAL
         branch, cost_centre = reverses.branch, reverses.cost_centre
         lines = [(line.ledger, "C" if line.side == "D" else "D", line.amount) for line in reverses.lines.all()]
-    elif kind not in {Journal.Kind.GENERAL, Journal.Kind.OPENING, Journal.Kind.ADJUSTMENT}:
+    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS:
         raise ValidationError("Choose a valid journal type.")
 
     if any(item and item.workspace_id != workspace.pk for item in (branch, cost_centre)):
@@ -108,6 +111,15 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
         fingerprint_lines.append((ledger.pk, side, str(amount.quantize(Decimal("0.01")))))
     if totals["D"] != totals["C"]:
         raise ValidationError("Total debits and credits must be equal.")
+    if kind in CASH_VOUCHER_KINDS:
+        if len(lines) != 2 or lines[0][0].pk == lines[1][0].pk:
+            raise ValidationError("Cash vouchers need two distinct ledgers.")
+        cash_sides = {side for ledger, side, _ in lines if ledger.code in CASH_LEDGER_CODES}
+        required_sides = {
+            Journal.Kind.RECEIPT: {"D"}, Journal.Kind.PAYMENT: {"C"}, Journal.Kind.CONTRA: {"D", "C"},
+        }
+        if cash_sides != required_sides[kind]:
+            raise ValidationError("The cash or bank ledger must match the voucher type.")
 
     payload = [date.isoformat(), kind, reference, narration, getattr(branch, "pk", None),
                getattr(cost_centre, "pk", None), getattr(reverses, "pk", None), fingerprint_lines]

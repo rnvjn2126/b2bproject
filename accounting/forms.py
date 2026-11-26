@@ -4,6 +4,7 @@ from django import forms
 from django.forms import formset_factory
 
 from .models import AccountGroup, Branch, CostCentre, Journal, JournalLine, Ledger
+from .services import CASH_LEDGER_CODES, MANUAL_JOURNAL_KINDS
 
 
 class YearForm(forms.Form):
@@ -17,8 +18,7 @@ class PostingForm(forms.Form):
     submission_key = forms.UUIDField(widget=forms.HiddenInput)
 
 
-class JournalForm(PostingForm):
-    kind = forms.ChoiceField(choices=[(value, label) for value, label in Journal.Kind.choices if value != Journal.Kind.REVERSAL])
+class AllocatedPostingForm(PostingForm):
     branch = forms.ModelChoiceField(queryset=Branch.objects.none(), required=False)
     cost_centre = forms.ModelChoiceField(queryset=CostCentre.objects.none(), required=False)
 
@@ -26,6 +26,29 @@ class JournalForm(PostingForm):
         super().__init__(*args, **kwargs)
         self.fields["branch"].queryset = Branch.objects.filter(workspace=workspace)
         self.fields["cost_centre"].queryset = CostCentre.objects.filter(workspace=workspace)
+
+
+class JournalForm(AllocatedPostingForm):
+    kind = forms.ChoiceField(choices=[(value, label) for value, label in Journal.Kind.choices if value in MANUAL_JOURNAL_KINDS])
+
+
+class CashVoucherForm(AllocatedPostingForm):
+    debit = forms.ModelChoiceField(queryset=Ledger.objects.none())
+    credit = forms.ModelChoiceField(queryset=Ledger.objects.none())
+    amount = forms.DecimalField(max_digits=15, decimal_places=2, min_value=Decimal("0.01"))
+
+    def __init__(self, *args, workspace, kind, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        ledgers = Ledger.objects.filter(workspace=workspace)
+        cash = ledgers.filter(code__in=CASH_LEDGER_CODES)
+        other = ledgers.exclude(code__in=CASH_LEDGER_CODES)
+        self.fields["debit"].queryset = other if kind == Journal.Kind.PAYMENT else cash
+        self.fields["credit"].queryset = other if kind == Journal.Kind.RECEIPT else cash
+        self.fields["debit"].label, self.fields["credit"].label = {
+            Journal.Kind.RECEIPT: ("Receive into", "Credit ledger"),
+            Journal.Kind.PAYMENT: ("Debit ledger", "Pay from"),
+            Journal.Kind.CONTRA: ("Transfer into", "Transfer from"),
+        }[kind]
 
 
 class JournalLineForm(forms.Form):

@@ -137,3 +137,47 @@ class AccountingTests(TestCase):
         Quote.objects.create(owner=self.owner, rfq=enquiry, number="QT-SAMPLE", status=Quote.Status.ACCEPTED,
                              target_margin_percent=12, minimum_margin_percent=8, maximum_discount_percent=5)
         self.assertFalse(Journal.objects.exists())
+
+    def test_cash_vouchers_post_expected_sides_and_reconcile(self):
+        bank = Ledger.objects.get(workspace=self.workspace, code="1010")
+        for kind, debit, credit, amount in (
+            ("receipt", self.cash, self.capital, "500.10"),
+            ("payment", self.freight, self.cash, "120.15"),
+            ("contra", bank, self.cash, "99.95"),
+        ):
+            with self.subTest(kind=kind):
+                url = reverse(f"accounting:{kind}")
+                self.assertContains(self.client.get(url), "Post voucher")
+                submission = {
+                    "date": self.day.isoformat(), "submission_key": str(uuid.uuid4()), "narration": "Synthetic movement",
+                    "debit": debit.pk, "credit": credit.pk, "amount": amount, "reference": "SOURCE-124",
+                }
+                response = self.client.post(url, submission)
+                self.assertEqual(response.status_code, 302)
+                self.assertRedirects(self.client.post(url, submission), response.url)
+                journal = Journal.objects.get(kind=kind)
+                self.assertEqual(list(journal.lines.values_list("ledger_id", "side", "amount")), [
+                    (debit.pk, "D", Decimal(amount)), (credit.pk, "C", Decimal(amount)),
+                ])
+        report = self.client.get(reverse("accounting:trial_balance"), {"start": "2026-04-01", "end": "2026-04-30"})
+        self.assertEqual(report.context["totals"]["debit"], Decimal("720.20"))
+        self.assertEqual(report.context["totals"]["debit"], report.context["totals"]["credit"])
+        cash = next(row for row in report.context["rows"] if row["ledger"] == self.cash)
+        self.assertEqual(cash["closing_debit"], Decimal("280.00"))
+        self.assertEqual(Journal.objects.count(), 3)
+
+    def test_cash_vouchers_reject_bad_allocations_and_locked_periods(self):
+        with self.assertRaisesMessage(ValidationError, "distinct"):
+            self.post(kind="contra", lines=[(self.cash, "D", Decimal("100")), (self.cash, "C", Decimal("100"))])
+        with self.assertRaisesMessage(ValidationError, "match"):
+            self.post(kind="payment")
+        foreign = Ledger.objects.get(workspace=self.other, code="1000")
+        payload = {
+            "date": self.day.isoformat(), "submission_key": str(uuid.uuid4()), "narration": "Synthetic movement",
+            "debit": foreign.pk, "credit": self.capital.pk, "amount": "100",
+        }
+        url = reverse("accounting:receipt")
+        self.assertContains(self.client.post(url, payload), "Select a valid choice")
+        lock_period(self.workspace, self.owner, self.year.periods.first().pk)
+        self.assertContains(self.client.post(url, payload | {"debit": self.cash.pk}), "open period")
+        self.assertFalse(Journal.objects.exists())

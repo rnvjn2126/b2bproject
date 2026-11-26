@@ -9,6 +9,7 @@
 - **Tests:** 6 focused order tests passed. The first targeted run found an assertion text mismatch, corrected before verification. Full run 1 passed 131 tests in 84.364 seconds. Reverse run 2 passed 131 in 84.370 seconds. Django and migration checks passed. Chrome verified native quote acceptance, conversion, approval and mobile order detail.
 - **Known errors and security concerns:** no final test failures. Owners and managers can view orders. Mutations require a valid owner or manager seat. Supplier PDFs exclude buyer details and customer order PDFs exclude procurement and margin data. PostgreSQL and full integration remain unverified.
 - **Accounting assumptions:** one sales order per quote series. One purchase order per sales requirement and selected offer, with multiple orders for split suppliers. PO rates represent normalized material before tax and freight. Dispatch requires recorded receipts through the dispatch date. Orders and movements do not create journals or warehouse stock.
+- **Latest verified implementation commit:** `c66732c217dc916b8eb82f5935d9669bb428593c`.
 - **Next instructions:** read Checkpoint 04 and the GST source register. Start with statutory source review and a synthetic, versioned tax calculation slice. Invoice issuance and posting must be separate from accepted orders and tied to explicit eligible quantities. Keep statutory functionality disabled or separate until professional review and verification.
 
 ## Checkpoint 02 · Ledgers and voucher management

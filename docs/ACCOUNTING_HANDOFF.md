@@ -1,5 +1,17 @@
 # Accounting handoff
 
+## Checkpoint 04B · Internal invoice drafts
+
+- **Completed:** the owner-only preparation service links one confirmed dispatch or receipt to one draft. Sales drafts use the accepted selling price, purchase drafts use the PO price, and both preserve quantity, party and company details, the dated rate and component amounts. Duplicate drafts and foreign workspace input are rejected.
+- **Pending:** owner screens for GST registration, rate setup and draft preview, plus issue numbering, ledger posting, immutable issued snapshots, logo and letterhead, A4 print, notes and returns. Checkpoints 05–14 have not started.
+- **Changed files:** `invoicing/models.py`, `invoicing/services.py`, `invoicing/tests.py`, migration 0002, the tracker, handoff, test record, GST source register and recovery documents.
+- **Migrations:** invoicing `0002_invoicedraft` adds a draft table. Both invoicing migrations were checked with synthetic disposable test databases.
+- **Tests:** seven focused tests passed. Run 1 passed 138 tests in 133.842 seconds. Reverse run 2 passed 138 tests in 134.857 seconds. Django check and migration drift check passed.
+- **Known issues and security:** initial focused setup omitted mandatory synthetic quotation fields, then passed after correcting the fixture. Drafts need an owner, a confirmed movement and same-company registration and rate. There are no UI, issue, export, filing or ledger endpoints in this slice.
+- **Accounting assumptions:** one movement per draft, movement date used to choose the indicative rate, stored order price. Supplier invoice values, actual tax treatment, registered party details and production release require verification.
+- **Latest verified implementation commit:** `c504e0b1addf90e0abc7531ef59973b683b71297`.
+- **Next instructions:** read the Checkpoint 04 specification. Add an owner-only internal workflow for registration and rate setup and a connected draft preview via `prepare_draft`. Keep issuance and ledger writing out of that slice. Use the branch and commands in [overnight progress](OVERNIGHT_PROGRESS.md).
+
 ## Checkpoint 04A · GST calculation foundation
 
 - **Completed:** introduced company GST registration records, dated HSN/SAC rate lookup and a Decimal calculator for domestic CGST/SGST/UTGST/IGST, percentage cess, discounts, freight, inclusive pricing and round-off. Added Indian amount in words and recorded official sources.

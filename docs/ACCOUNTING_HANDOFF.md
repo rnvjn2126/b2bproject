@@ -1,5 +1,18 @@
 # Accounting handoff
 
+Current branch: `ai/accounting-overnight`.
+
+## Checkpoint 04C · Owner GST settings
+
+- **Completed:** owners can record company GST registrations and append dated GST rate versions in Accounting. The form records the rate source and checks GSTIN format, HSN/SAC fields, date, percentages and duplicates. It uses company-scoped queries, CSRF and no-store headers.
+- **Pending:** connect the internal draft preparation service to a movement selector and private draft preview. Official issue numbering, immutable issued snapshots, balanced GST posting, A4 print, notes and returns remain open. Downstream checkpoints remain pending.
+- **Changed files:** `accounting/urls.py`, `invoicing/forms.py`, `invoicing/views.py`, `invoicing/tests.py`, `templates/accounting/base.html`, `templates/invoicing/settings.html`, and checkpoint and GST documentation.
+- **Migrations:** none in this slice. The previously added invoicing migrations 0001 and 0002 remain necessary on databases that predate Checkpoint 04.
+- **Tests:** nine focused invoicing tests passed. Run 1 passed 140 tests in 132.872 seconds. Reverse run 2 passed 140 tests in 133.848 seconds. Django and migration checks passed. Native Chrome verified registration submission and the settings layout at a 390 px viewport.
+- **Security and assumptions:** manager and other workforce roles cannot use settings. The list shows only the signed-in owner's company. Registration and rate setup are append-only through this page. The source is recorded as text, and the registration format check does not verify ownership or GST status. Verify statutory decisions with an Indian accounting professional.
+- **Latest verified implementation commit:** `69711d4225fee84994db1df728ad08baf505ea67`.
+- **Exact next task:** add the owner-only draft creation and preview screens. Select an eligible same-company movement and registration, call `prepare_draft` from a CSRF-protected POST, and preview the stored snapshot as an internal draft. Test cross-company IDs, duplicate submissions, CSRF and absence of ledger writes. Follow the commands in [overnight progress](OVERNIGHT_PROGRESS.md).
+
 ## Checkpoint 04B · Internal invoice drafts
 
 - **Completed:** the owner-only preparation service links one confirmed dispatch or receipt to one draft. Sales drafts use the accepted selling price, purchase drafts use the PO price, and both preserve quantity, party and company details, the dated rate and component amounts. Duplicate drafts and foreign workspace input are rejected.

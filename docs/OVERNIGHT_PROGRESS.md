@@ -2,15 +2,15 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest verified implementation commit:** `c504e0b1addf90e0abc7531ef59973b683b71297`
+- **Latest verified implementation commit:** `69711d4225fee84994db1df728ad08baf505ea67`
 - **Active checkpoint:** 04, Invoicing and Indian GST. Checkpoint 04 remains partial.
-- **Last verified task:** owner-only, company-scoped internal sales and purchase draft preparation for one confirmed dispatch or receipt. A snapshot preserves the pricing, quantities, GST inputs, rate version and calculated amounts at preparation. The internal service creates no journal.
-- **Changed files:** `invoicing/models.py`, `invoicing/services.py`, `invoicing/tests.py`, `invoicing/migrations/0002_invoicedraft.py`, and the GST and checkpoint records. The previous slice added the `invoicing` app and migration 0001.
-- **Migrations:** 0001 and 0002 are exercised by the synthetic test suite. Apply them to a dedicated development database when running a local preview.
-- **Latest tests:** 7 focused tests passed. Full run 1 passed 138 tests in 133.842 seconds. Reverse run 2 passed 138 tests in 134.857 seconds. Django and migration checks passed.
-- **Known issues and release gates:** the initial focused 04B run had a synthetic fixture error, fixed before verification. No open test failure is known. Drafts are indicative and use one movement, movement date, and stored sales/PO price. Party GSTIN is format-only. The statutory review, invoice posting, full-month simulations and PostgreSQL execution are open.
-- **Exact next task:** 04C, add an owner-only internal draft workflow using `prepare_draft`. Begin with registration and dated rate setup with source recording, then show a draft preview for an eligible movement. Use server-side company scoping, CSRF-protected POST and a durable internal-draft label. Keep issuance and financial posting disabled until their own tested slice.
-- **After 04C:** implement approved, immutable issue snapshots and transactionally post balanced sales/purchase and GST ledger entries using the existing posting service. Implement reversal and returns, statutory notes and A4 print. Consult official sources and gate production use pending professional verification. Run regression twice before closing 04. Then resume Checkpoint 05.
+- **Last verified task:** owner-only GST settings for company registrations and append-only dated rates. The earlier owner-only draft service creates one sales or purchase draft from a confirmed dispatch or receipt and has no ledger effect.
+- **Changed files:** `accounting/urls.py`, `invoicing/forms.py`, `invoicing/views.py`, `invoicing/tests.py`, `templates/accounting/base.html`, `templates/invoicing/settings.html` and the GST and recovery documentation.
+- **Migrations:** no new migration in 04C. Invoicing migrations 0001 and 0002 were exercised on disposable SQLite. Apply them to a dedicated development database when previewing from an older checkout.
+- **Latest tests:** nine focused tests passed. Full run 1 passed 140 tests in 132.872 seconds. Reverse run 2 passed 140 tests in 133.848 seconds. Django and migration checks passed. Native Chrome verified registration submission and the settings layout at a 390 px viewport.
+- **Known issues and release gates:** the earlier 04B synthetic fixture error was corrected. GSTIN validation covers the regular format. Statutory review, invoice posting, full-month reconciliation and PostgreSQL execution remain open.
+- **Exact next task:** add owner-only draft creation and preview. Use a company-scoped eligible movement selector, validate the registration and HSN, call `prepare_draft` on POST and render the saved draft clearly labelled 'Internal draft'. Test cross-company access, replay, CSRF and absence of ledger writes.
+- **After the preview:** implement approved, immutable issue snapshots and balanced sales/purchase and GST ledger entries through the shared posting service. Add reversals, returns, notes and A4 print. Consult official sources and require professional review before production. Run full regression twice before closing 04 and resuming 05.
 
 ## Resume on Windows
 

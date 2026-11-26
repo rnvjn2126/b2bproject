@@ -84,6 +84,7 @@ class Journal(models.Model):
         PURCHASE = "purchase", "Purchase voucher"
         DEBIT_NOTE = "debit_note", "Debit note"
         CREDIT_NOTE = "credit_note", "Credit note"
+        SALES_INVOICE = "sale_invoice", "Internal sales invoice"
         REVERSAL = "reversal", "Reversal"
 
     workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
@@ -135,7 +136,9 @@ class JournalLine(models.Model):
 class VoucherDraft(models.Model):
     workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    kind = models.CharField(max_length=12, choices=Journal.Kind.choices)
+    kind = models.CharField(max_length=12, choices=[
+        (value, label) for value, label in Journal.Kind.choices if value != Journal.Kind.SALES_INVOICE
+    ])
     date = models.DateField()
     reference = models.CharField(max_length=100, blank=True)
     narration = models.CharField(max_length=500)

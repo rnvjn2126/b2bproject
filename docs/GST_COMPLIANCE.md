@@ -39,3 +39,9 @@ The invoice posting service currently computes balanced proposals and validates 
 3. Add invoice-specific posting validation in the shared engine. Existing manual trade vouchers continue to enforce their current account rules. A failure in validation, numbering, persistence or journal sealing must roll back the whole issue operation.
 4. Guard issued records and their journal relationship against updates and deletions through normal application and database writes. Handle corrections through linked reversal and note workflows. Verify SQLite migration triggers and run PostgreSQL integration tests when available.
 5. Keep these operations internal while sale numbering, supplier document dates/references and input-tax eligibility are being verified. Do not route public invoice output or GST filings through an unreviewed implementation.
+
+## Checkpoint 04G · Gated internal sales issuance
+
+The internal service posts one confirmed dispatch snapshot and one journal. Its reference uses the workspace financial-year series. A caller must confirm the total and use the dispatch date as the internal accounting date. The workflow stays disabled by default and has no issue button or external output. This accounting date and reference do not establish the statutory timing or number of a tax invoice. Confirm issue timing, registered-person numbering series, print fields and electronic invoicing before introducing any statutory action. [CBIC invoice rules](https://cbic-gst.gov.in/gst-invoice-rules.html) · [CBIC sectoral guidance on invoicing](https://cbic-gst.gov.in/hindi/sectoral-faq.html?ld=SDINSOADirect)
+
+Use a later purchase slice to validate the supplier's actual document date, number and amount. The preparatory purchase estimate uses the purchase order price. When the supplier amount differs, preserve explicit actual amounts and require review before journal posting. [CBIC input-tax credit rules](https://cbic-gst.gov.in/input-tax-credit-rules.html)

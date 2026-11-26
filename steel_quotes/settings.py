@@ -161,3 +161,6 @@ BILLING_SANDBOX_ENABLED = DEBUG
 BILLING_WEBHOOK_SECRET = os.environ.get("BILLING_TEST_WEBHOOK_SECRET", "")
 # Public signup needs email verification and abuse controls before a hosted launch.
 PUBLIC_SIGNUP_ENABLED = DEBUG
+
+# Internal issue requires review before it can be exposed to business users.
+INTERNAL_INVOICE_ISSUANCE = False

@@ -1,18 +1,21 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from accounting.models import AccountGroup, Journal, Ledger
+from accounting.services import lock_period, post_journal, setup_books
 from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer, TeamMembership
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
-from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .issuance import issue_internal_sale
+from .models import CompanyGSTRegistration, InvoiceDraft, IssuedInvoice, TaxRate
 from .posting import plan_invoice_posting, resolve_invoice_lines
 from .services import prepare_draft
 from .tax import calculate_line, invoice_total, validate_gstin
@@ -265,6 +268,111 @@ class InvoiceDraftTests(TestCase):
         self.assertEqual(expense, [(accounts["PAY"], "C", Decimal("448.00")),
                                    (accounts["EXP"], "D", Decimal("448.00"))])
         self.assertFalse(Journal.objects.exists())
+
+    def issue_inputs(self, draft):
+        year = setup_books(self.workspace, self.owner, 2026)
+        duties = AccountGroup.objects.get(workspace=self.workspace, name="Duties and taxes")
+        cgst, sgst = [Ledger.objects.get_or_create(workspace=self.workspace, code=code,
+                                                 defaults={"name": code, "group": duties})[0]
+                      for code in ("OUT-CGST", "OUT-SGST")]
+        ledger_ids = dict(Ledger.objects.filter(workspace=self.workspace, code__in=("1100", "4000")).values_list(
+            "code", "pk",
+        ))
+        return year, {
+            "draft_id": draft.pk, "posting_on": draft.supply_on, "confirmed_total": draft.total,
+            "ledger_ids": {"receivable": ledger_ids["1100"], "sales": ledger_ids["4000"],
+                           "output_cgst": cgst.pk, "output_sgst": sgst.pk},
+        }
+
+    def test_internal_issuance_disabled_by_default(self):
+        draft = self.draft(self.dispatch)
+        _, inputs = self.issue_inputs(draft)
+        with self.assertRaises(PermissionDenied):
+            issue_internal_sale(self.workspace, self.owner, **inputs)
+        self.assertFalse(IssuedInvoice.objects.exists())
+        self.assertFalse(Journal.objects.exists())
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_owner_issues_one_immutable_snapshot_and_balanced_journal(self):
+        draft = self.draft(self.dispatch)
+        year, inputs = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **inputs)
+        self.assertEqual(invoice.number, "INT-SI-2026-1")
+        self.assertEqual(invoice.year, year)
+        self.assertEqual(invoice.snapshot, draft.snapshot)
+        self.assertTrue(invoice.journal.sealed)
+        amounts = invoice.journal.lines.values_list("side", "amount")
+        for side in ("D", "C"):
+            self.assertEqual(sum(amount for line_side, amount in amounts if side == line_side), Decimal("336.00"))
+        lock_period(self.workspace, self.owner, invoice.journal.period_id)
+        self.assertEqual(issue_internal_sale(self.workspace, self.owner, **inputs), invoice)
+        with self.assertRaisesMessage(ValidationError, "already issued"):
+            issue_internal_sale(self.workspace, self.owner, **(inputs | {"ledger_ids": {}}))
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            IssuedInvoice.objects.filter(pk=invoice.pk).update(snapshot={})
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            IssuedInvoice.objects.filter(pk=invoice.pk).delete()
+        with self.assertRaisesMessage(ValidationError, "invoice correction workflow"):
+            post_journal(self.workspace, self.owner, date=draft.supply_on, kind=Journal.Kind.REVERSAL,
+                         reference="VOID", narration="Synthetic reversal", submission_key=uuid4(), reverses=invoice.journal)
+        self.assertEqual(IssuedInvoice.objects.count(), 1)
+        self.assertEqual(Journal.objects.count(), 1)
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_issue_rolls_back_journal_and_number_on_failed_record_creation(self):
+        draft = self.draft(self.dispatch)
+        _, inputs = self.issue_inputs(draft)
+        with patch("invoicing.issuance.IssuedInvoice.objects.create", side_effect=IntegrityError):
+            with self.assertRaises(IntegrityError):
+                issue_internal_sale(self.workspace, self.owner, **inputs)
+        self.assertFalse(Journal.objects.exists())
+        self.assertFalse(IssuedInvoice.objects.exists())
+        self.assertEqual(issue_internal_sale(self.workspace, self.owner, **inputs).sequence, 1)
+        second = OrderMovement.objects.create(sales_line=self.dispatch.sales_line, quantity="1",
+                                              date=draft.supply_on, reference="SYN-D2", recorded_by=self.owner)
+        second_draft = self.draft(second)
+        issue = issue_internal_sale(self.workspace, self.owner, **(inputs | {
+            "draft_id": second_draft.pk, "confirmed_total": second_draft.total,
+        }))
+        self.assertEqual(issue.number, "INT-SI-2026-2")
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_issue_rejects_foreign_actor_wrong_date_and_locked_period(self):
+        draft = self.draft(self.dispatch)
+        year, inputs = self.issue_inputs(draft)
+        with self.assertRaises(PermissionDenied):
+            issue_internal_sale(self.workspace, self.other, **inputs)
+        with self.assertRaises(ValidationError):
+            issue_internal_sale(self.other_workspace, self.other, **inputs)
+        with self.assertRaises(ValidationError):
+            issue_internal_sale(self.workspace, self.owner, **(inputs | {
+                "posting_on": draft.supply_on + timedelta(days=1),
+            }))
+        with self.assertRaises(ValidationError):
+            issue_internal_sale(self.workspace, self.owner, **(inputs | {"confirmed_total": Decimal("0.01")}))
+        lock_period(self.workspace, self.owner, year.periods.get(starts_on=date(2026, 5, 1)).pk)
+        with self.assertRaisesMessage(ValidationError, "open period"):
+            issue_internal_sale(self.workspace, self.owner, **inputs)
+        self.assertFalse(IssuedInvoice.objects.exists())
+        self.assertFalse(Journal.objects.exists())
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_issue_database_guard_rejects_ordinary_journal_link(self):
+        draft = self.draft(self.dispatch)
+        year, inputs = self.issue_inputs(draft)
+        journal = post_journal(
+            self.workspace, self.owner, date=draft.supply_on, kind=Journal.Kind.GENERAL,
+            reference="INT-SI-2026-1", narration="Synthetic ordinary journal", submission_key=uuid4(),
+            lines=resolve_invoice_lines(self.workspace, draft, inputs["ledger_ids"]),
+        )
+        with self.assertRaisesMessage(IntegrityError, "Invalid issued invoice journal link"), transaction.atomic():
+            IssuedInvoice.objects.create(
+                workspace=self.workspace, draft=draft, year=year, sequence=1, number="INT-SI-2026-1",
+                posting_on=draft.supply_on, journal=journal, total=draft.total, snapshot=draft.snapshot,
+                ledger_ids=inputs["ledger_ids"], issued_by=self.owner,
+            )
+        self.assertFalse(IssuedInvoice.objects.exists())
+        self.assertTrue(Journal.objects.get(pk=journal.pk).sealed)
 
     def invoice_payload(self):
         return {

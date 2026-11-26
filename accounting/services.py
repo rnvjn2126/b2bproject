@@ -3,6 +3,7 @@ import json
 from datetime import date
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import DecimalValidator
 from django.db import transaction
@@ -34,6 +35,7 @@ MANUAL_JOURNAL_KINDS = (Journal.Kind.GENERAL, Journal.Kind.OPENING, Journal.Kind
 CASH_VOUCHER_KINDS = (Journal.Kind.RECEIPT, Journal.Kind.PAYMENT, Journal.Kind.CONTRA)
 CASH_LEDGER_CODES = ("1000", "1010")
 TRADE_VOUCHER_KINDS = (Journal.Kind.SALES, Journal.Kind.PURCHASE, Journal.Kind.DEBIT_NOTE, Journal.Kind.CREDIT_NOTE)
+INVOICE_JOURNAL_KINDS = (Journal.Kind.SALES_INVOICE,)
 REVIEW_VOUCHER_KINDS = (Journal.Kind.GENERAL,) + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS
 
 
@@ -86,15 +88,19 @@ def lock_period(workspace, actor, period_id):
 def post_journal(workspace, actor, *, date, kind, reference, narration, submission_key,
                  lines=(), branch=None, cost_centre=None, reverses=None):
     lock_books(workspace, actor)
+    if kind in INVOICE_JOURNAL_KINDS and not settings.INTERNAL_INVOICE_ISSUANCE:
+        raise PermissionDenied("Internal invoice issuance is disabled.")
     if reverses is not None:
         if not reverses.sealed or reverses.workspace_id != workspace.pk or reverses.kind == Journal.Kind.REVERSAL:
             raise ValidationError("Choose an original journal in your workspace.")
+        if reverses.kind in INVOICE_JOURNAL_KINDS:
+            raise ValidationError("Invoice journals require the invoice correction workflow.")
         if date < reverses.date:
             raise ValidationError("A reversal cannot be dated before the original journal.")
         kind = Journal.Kind.REVERSAL
         branch, cost_centre = reverses.branch, reverses.cost_centre
         lines = [(line.ledger, "C" if line.side == "D" else "D", line.amount) for line in reverses.lines.all()]
-    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS:
+    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS + INVOICE_JOURNAL_KINDS:
         raise ValidationError("Choose a valid journal type.")
 
     if any(item and item.workspace_id != workspace.pk for item in (branch, cost_centre)):

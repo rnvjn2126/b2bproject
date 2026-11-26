@@ -80,3 +80,28 @@ class InvoiceDraft(models.Model):
         constraints = [
             models.CheckConstraint(condition=Q(total__gte=0), name="invoicing_draft_nonnegative_total"),
         ]
+
+
+class IssuedInvoice(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    draft = models.OneToOneField(InvoiceDraft, on_delete=models.PROTECT)
+    year = models.ForeignKey("accounting.FinancialYear", on_delete=models.PROTECT)
+    sequence = models.PositiveBigIntegerField()
+    number = models.CharField(max_length=32)
+    posting_on = models.DateField()
+    journal = models.OneToOneField("accounting.Journal", on_delete=models.PROTECT)
+    total = models.DecimalField(max_digits=15, decimal_places=2)
+    snapshot = models.JSONField()
+    ledger_ids = models.JSONField()
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def number_for(start_year, sequence):
+        return f"INT-SI-{start_year}-{sequence}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "year", "sequence"], name="invoicing_unique_issue_number"),
+            models.CheckConstraint(condition=Q(sequence__gt=0, total__gt=0), name="invoicing_valid_issued_invoice"),
+        ]

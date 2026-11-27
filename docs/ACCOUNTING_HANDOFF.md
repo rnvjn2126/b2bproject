@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06D · Private bank reconciliation
+
+- **Completed:** ranked candidate matching by reference and date for equal amounts and directions, explicit owner confirmation, immutable one-to-one match records and an unmatched movement report. The gated owner screen lists suggested candidates and requires CSRF for confirmation. Neither suggestions nor confirmation create a journal or independently verify payment.
+- **Changed files:** banking models, migration 0004, reconciliation service and views, tests, accounting routes and banking/settlement templates.
+- **Tests:** 47 focused tests passed. Django and migration checks passed. The initial reverse regression passed 195 tests on the service slice. The initial normal run saw an in-progress template update and failed three URL reversals. Both full suites were restarted against the finished routes and templates. Final rerun results pending.
+- **Gaps:** PostgreSQL guards and browser review remain unverified. The screen only offers the top 20 candidates within seven days. Match corrections and a broader manual selector are pending.
+- **Implementation commit:** `979e6d435076f6914b8db62cc1c1087eb6306f00`.
+- **Exact next task:** expose the owner CSV upload/preview/confirm flow, then add bounded Excel parsing and reconciliation corrections. Keep imports separate from journal posting.
+
 ## Checkpoint 06C · Bank statement CSV staging
 
 - **Completed:** bounded UTF-8 CSV validation and read-only preview, followed by explicit digest-confirmed import. Preview binds the file to one bank account. Imports save normalized statement lines and audit batches atomically. Exact replay returns the existing batch. Overlap is account-scoped and requires explicit confirmation to skip known rows. Staging creates no journal and does not verify payment.

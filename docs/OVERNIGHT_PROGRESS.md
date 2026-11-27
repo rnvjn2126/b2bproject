@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `fb74ec69e71d715bef600653ced98cacb60281f2`.
-- **Active checkpoint:** 06, Banking and reconciliation. Partial. Checkpoints 00–03 and 05 are verified for local scope. Checkpoint 04 remains partial with statutory work gated. Checkpoints 07–14 remain pending.
-- **Last verified task:** account-bound bank statement CSV preview and immutable-by-service staging, overlap controls and atomic confirmation.
-- **Changed files:** banking models, `statement_csv.py`, `statements.py`, tests, migration and checkpoint/assumption documents.
-- **Migrations:** banking 0001–0003 were exercised on disposable SQLite. Apply them to a separate development database when previewing the branch. No production migration was performed.
-- **Latest tests:** 45 focused and both 194-test suites passed (85.976 and 85.390 seconds). Django and migration drift checks passed.
-- **Known issues and gates:** CSV has no browser route yet. Excel import, suggested and manual matches and unmatched reports remain open. OpenPyXL is unavailable in the current virtual environment. PostgreSQL and statutory release remain pending.
-- **Exact next task:** add account-scoped reconciliation between a staged statement line and one sealed journal line, with reviewable candidate suggestions and unmatched totals. Keep all matching separate from posting and independent payment verification. Follow with private CSV preview/import and Excel support, then checkpoint 07.
+- **Latest implementation commit:** `979e6d435076f6914b8db62cc1c1087eb6306f00`.
+- **Active checkpoint:** 06, Banking and reconciliation. Partial.
+- **Last verified task:** gated bank reconciliation suggestions, owner confirmation and unmatched report. Match record is protected against invalid or repeated links and silent changes.
+- **Changed files:** banking models, reconciliation, tests, views, templates, accounting URL wiring and settlement navigation.
+- **Migrations:** banking 0004, exercised on disposable SQLite.
+- **Latest tests:** 47 focused passed. Django and migration checks passed. Both final full regressions restarted and results pending.
+- **Pending:** CSV upload screen, Excel parsing, match corrections, wider date search and PostgreSQL/browser verification.
+- **Exact next task:** record final full test results if still pending, then connect the existing CSV preview/import service to a private owner upload and confirmation view.
 
 ## Resume on Windows
 

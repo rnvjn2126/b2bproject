@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 05B · Party receipts and payments
+
+- **Completed:** owner-scoped customer receipts and supplier payments post sealed cash/bank journals with party/control account linkage. Records are immutable. Equal retries return the original and duplicate external references on a funds ledger are rejected. Reversal visibility follows the reversal journal date.
+- **Pending:** allocations, advances, adjusted balances and posting/report forms. No settlement UI yet and no independent bank verification.
+- **Changed files:** settlement models, services, projections, tests and documentation. **Migration:** settlements 0002.
+- **Tests:** 56 focused passed. Both full runs passed 171 (83.060 s normal, 83.065 s reverse). Django/migration checks passed. Two concurrent requests returned one payment and one sealed journal on disposable file-backed SQLite.
+- **Verified commit:** `c415398b06457ab227fa03c676c240b8572f3847`.
+- **Exact next task:** add append-only payment allocations and adjustment records. Enforce matching workspace, party and control ledger, positive Decimal amounts and available balances. Project allocation activity by date and replay/reversal state. Show unapplied funds and invoice credits without silently moving them.
+
 ## Checkpoint 05A · Contractual due dates and ageing foundation
 
 - **Completed:** settlement module records a company-owner contractual due date once per issued invoice. Its as-of projection reads sealed invoices and applies posted returns and cancellations on their effective dates. Age buckets cover current, 1–30, 31–60, 61–90 and over 90 days. Missing due dates are identified separately.

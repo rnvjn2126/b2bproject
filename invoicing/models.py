@@ -131,3 +131,23 @@ class InvoiceCancellation(models.Model):
     reason = models.CharField(max_length=500)
     cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     cancelled_at = models.DateTimeField(auto_now_add=True)
+
+
+class InvoiceReturn(models.Model):
+    invoice = models.ForeignKey(IssuedInvoice, on_delete=models.PROTECT, related_name="returns")
+    journal = models.OneToOneField("accounting.Journal", on_delete=models.PROTECT)
+    sequence = models.PositiveIntegerField()
+    submission_key = models.UUIDField()
+    quantity = models.DecimalField(max_digits=14, decimal_places=3)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    reason = models.CharField(max_length=500)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["invoice", "sequence"], name="invoicing_unique_return_number"),
+            models.UniqueConstraint(fields=["invoice", "submission_key"], name="invoicing_unique_return_submission"),
+            models.CheckConstraint(condition=Q(quantity__gt=0, amount__gt=0, sequence__gt=0),
+                                   name="invoicing_valid_return_amount"),
+        ]

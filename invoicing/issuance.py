@@ -122,6 +122,8 @@ def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason)
         if existing.reason != reason or existing.reversal.date != posting_on:
             raise ValidationError("This invoice was already cancelled with different inputs.")
         return existing
+    if invoice.returns.exists():
+        raise ValidationError("An invoice with recorded returns cannot be fully cancelled.")
 
     reversal = post_journal(
         workspace, actor, date=posting_on, kind=Journal.Kind.REVERSAL, reference=f"VOID-{invoice.number}",

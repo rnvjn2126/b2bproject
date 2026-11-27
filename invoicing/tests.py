@@ -15,8 +15,9 @@ from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, R
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
 from .issuance import cancel_internal_invoice, issue_internal_purchase, issue_internal_sale
-from .models import CompanyGSTRegistration, InvoiceCancellation, InvoiceDraft, IssuedInvoice, TaxRate
+from .models import CompanyGSTRegistration, InvoiceCancellation, InvoiceDraft, InvoiceReturn, IssuedInvoice, TaxRate
 from .posting import plan_invoice_posting, resolve_invoice_lines
+from .returns import record_invoice_return
 from .services import prepare_draft
 from .tax import calculate_line, invoice_total, validate_gstin
 from .words import rupees_in_words
@@ -496,6 +497,72 @@ class InvoiceDraftTests(TestCase):
             InvoiceCancellation.objects.create(invoice=invoice, reversal=invoice.journal,
                                                reason="Synthetic invalid link", cancelled_by=self.owner)
         self.assertEqual(Journal.objects.count(), 2)
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_partial_sales_returns_reverse_every_paise_and_prevent_full_cancellation(self):
+        draft = self.draft(self.dispatch, round_off=Decimal("-0.01"))
+        _, issue = self.issue_inputs(draft)
+        round_off = Ledger.objects.get(workspace=self.workspace, code="5220")
+        issue["ledger_ids"]["round_off"] = round_off.pk
+        invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+        values = {"invoice_id": invoice.pk, "posting_on": draft.supply_on, "quantity": Decimal("1"),
+                  "reason": "Synthetic customer return", "submission_key": uuid4()}
+        first = record_invoice_return(self.workspace, self.owner, **values)
+        self.assertEqual(first.journal.kind, Journal.Kind.SALES_RETURN)
+        self.assertEqual(first.journal.reference, "INT-SI-2026-1-CN-1")
+        self.assertEqual(record_invoice_return(self.workspace, self.owner, **values), first)
+        with self.assertRaisesMessage(ValidationError, "different return"):
+            record_invoice_return(self.workspace, self.owner, **(values | {"quantity": Decimal("2")}))
+        with self.assertRaisesMessage(ValidationError, "remaining invoiced quantity"):
+            record_invoice_return(self.workspace, self.owner, **(values | {"quantity": Decimal("3"), "submission_key": uuid4()}))
+        with self.assertRaisesMessage(ValidationError, "recorded returns"):
+            cancel_internal_invoice(self.workspace, self.owner, invoice_id=invoice.pk,
+                                    posting_on=draft.supply_on, reason="Invalid cancellation")
+        second = record_invoice_return(self.workspace, self.owner,
+                                       **(values | {"quantity": Decimal("2"), "submission_key": uuid4()}))
+        self.assertEqual(first.amount + second.amount, invoice.total)
+        for line in invoice.journal.lines.all():
+            amounts = [journal_line.amount for note in [first, second] for journal_line in note.journal.lines.all()
+                       if journal_line.ledger_id == line.ledger_id and journal_line.side != line.side]
+            self.assertEqual(sum(amounts), line.amount)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            InvoiceReturn.objects.filter(pk=second.pk).update(quantity="1")
+        self.assertEqual(Journal.objects.count(), 3)
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_purchase_return_uses_credit_amount_and_rolls_back_if_link_fails(self):
+        day = self.receipt.date
+        draft = self.draft(self.receipt, purchase_unit_price=Decimal("75"), supplier_invoice_date=day)
+        invoice = issue_internal_purchase(self.workspace, self.owner, **self.purchase_issue_inputs(draft))
+        values = {"invoice_id": invoice.pk, "posting_on": day, "quantity": Decimal("5"),
+                  "reason": "Synthetic supplier return", "submission_key": uuid4()}
+        with self.assertRaises(PermissionDenied):
+            record_invoice_return(self.workspace, self.other, **values)
+        with self.assertRaises(ValidationError):
+            record_invoice_return(self.other_workspace, self.other, **values)
+        with patch("invoicing.returns.InvoiceReturn.objects.create", side_effect=IntegrityError), self.assertRaises(IntegrityError):
+            record_invoice_return(self.workspace, self.owner, **values)
+        self.assertEqual(Journal.objects.count(), 1)
+        entry = record_invoice_return(self.workspace, self.owner, **values)
+        self.assertEqual(entry.journal.kind, Journal.Kind.PURCHASE_RETURN)
+        self.assertEqual(entry.journal.reference, "INT-PI-2026-1-DN-1")
+        self.assertEqual(entry.amount, invoice.total)
+        self.assertEqual(list(entry.journal.lines.values_list("ledger__code", "side", "amount")), [
+            ("2000", "D", Decimal("420")), ("5000", "C", Decimal("375")), ("1300", "C", Decimal("45")),
+        ])
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_cancelled_invoice_cannot_receive_return(self):
+        draft = self.draft(self.dispatch)
+        _, issue = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+        cancel_internal_invoice(self.workspace, self.owner, invoice_id=invoice.pk,
+                                posting_on=draft.supply_on, reason="Synthetic cancellation")
+        with self.assertRaisesMessage(ValidationError, "cancelled invoice"):
+            record_invoice_return(self.workspace, self.owner, invoice_id=invoice.pk,
+                                  posting_on=draft.supply_on, quantity=Decimal("1"),
+                                  reason="Invalid return", submission_key=uuid4())
+        self.assertFalse(InvoiceReturn.objects.exists())
 
     def invoice_payload(self):
         return {

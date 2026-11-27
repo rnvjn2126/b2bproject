@@ -1,0 +1,13 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Payment reminder draft</h1>
+  <p>Review the recipient and message before sharing.</p>
+  <label for="reminder-text">Draft message</label>
+  <textarea id="reminder-text" rows="8" readonly>{{ draft }}</textarea>
+  <div class="actions">
+    {% if whatsapp %}<a href="{{ whatsapp }}" rel="noopener noreferrer" target="_blank">Open WhatsApp draft</a>{% endif %}
+    <a href="{% url 'accounting:settlements:statement' %}">Back to receivables and payables</a>
+  </div>
+</section>
+{% endblock %}

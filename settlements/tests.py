@@ -6,10 +6,12 @@ from uuid import uuid4
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from accounting.models import Journal, Ledger
 from accounting.services import post_journal, setup_books
 
+from dashboard.models import Customer, TeamMembership
 from invoicing.issuance import cancel_internal_invoice, issue_internal_purchase, issue_internal_sale
 from invoicing.returns import record_invoice_return
 from invoicing.test_data import InvoiceFixture
@@ -268,3 +270,60 @@ class CreditTermsTests(InvoiceFixture, TestCase):
             accepted_on=accepted, written_due_on=written, evidence_reference="Synthetic written terms",
         )
         self.assertEqual((result.written_due_on, result.deadline), (written, accepted + timedelta(days=45)))
+
+
+@override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+class SettlementStatementTests(SettlementFixture, TestCase):
+    def setUp(self):
+        self.client.force_login(self.owner)
+
+    def statement_invoice(self):
+        draft = self.draft(self.dispatch)
+        _, issue = self.issue_inputs(draft)
+        return issue_internal_sale(self.workspace, self.owner, **issue)
+
+    def test_statement_reports_allocations_due_dates_and_unassigned_advance(self):
+        invoice = self.statement_invoice()
+        payment = record_party_payment(self.workspace, self.owner, **(self.payment_values() | {"amount": Decimal("250")}))
+        due = invoice.posting_on + timedelta(days=1)
+        set_invoice_due_date(self.workspace, self.owner, invoice_id=invoice.pk, due_on=due)
+        record_payment_allocation(self.workspace, self.owner, invoice_id=invoice.pk, payment_id=payment.pk,
+                                  posted_on=due, amount=Decimal("100"), submission_key=uuid4())
+        url = reverse("accounting:settlements:statement")
+        response = self.client.get(url, {"as_of": (due + timedelta(days=1)).isoformat(), "customer": self.order.customer_id})
+        self.assertContains(response, "Ageing")
+        self.assertContains(response, "236.00")
+        self.assertContains(response, "150.00")
+        self.assertContains(response, "DEMO/100")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        empty = self.client.get(url, {"as_of": (invoice.posting_on - timedelta(days=1)).isoformat()})
+        self.assertNotContains(empty, invoice.number)
+        self.assertEqual(self.client.post(url).status_code, 405)
+
+    def test_reminder_is_manual_and_uses_current_outstanding(self):
+        invoice = self.statement_invoice()
+        Customer.objects.filter(pk=self.order.customer_id).update(phone="+12025550101")
+        url = reverse("accounting:settlements:reminder", args=[invoice.pk])
+        self.assertEqual(self.client.get(url).status_code, 404)
+        set_invoice_due_date(self.workspace, self.owner, invoice_id=invoice.pk, due_on=invoice.posting_on)
+        response = self.client.get(url)
+        self.assertContains(response, f"INR 336.00 due on invoice {invoice.number}")
+        self.assertContains(response, "https://wa.me/12025550101?text=")
+        self.assertContains(response, 'rel="noopener noreferrer"')
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(self.client.post(url).status_code, 405)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_statements_enforce_owner_gate_and_company_filter(self):
+        invoice = self.statement_invoice()
+        url = reverse("accounting:settlements:statement")
+        with self.settings(INTERNAL_INVOICE_ISSUANCE=False):
+            self.assertEqual(self.client.get(url).status_code, 404)
+        self.client.force_login(self.other)
+        self.assertNotContains(self.client.get(url), invoice.number)
+        self.assertNotContains(self.client.get(url, {"customer": self.order.customer_id}), invoice.number)
+        staff = type(self.owner).objects.create_user(username="settlement-team")
+        TeamMembership.objects.create(account=self.workspace, user=staff, role=TeamMembership.Role.MANAGER)
+        self.client.force_login(staff)
+        self.assertEqual(self.client.get(url).status_code, 403)

@@ -27,6 +27,7 @@
   {% elif issue_enabled %}
   <a href="{% url 'accounting:invoice_issue' draft.pk %}">Review for internal posting</a>
   {% endif %}
+  {% if issue_enabled %}<a href="{% url 'accounting:settlements:statement' %}">Receivables and payables</a>{% endif %}
   <a href="{% url 'accounting:invoice_movements' %}">Back to invoice drafts</a>
 </section>
 {% endblock %}

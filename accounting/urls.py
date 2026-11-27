@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from invoicing import views as invoice_views
 
@@ -8,6 +8,7 @@ from .models import Journal
 app_name = "accounting"
 urlpatterns = [
     path("", views.home, name="home"),
+    path("settlements/", include("settlements.urls")),
     path("invoice-drafts/", invoice_views.invoice_movements, name="invoice_movements"),
     path("invoice-drafts/movements/<int:pk>/", invoice_views.invoice_prepare, name="invoice_prepare"),
     path("invoice-drafts/<int:pk>/", invoice_views.invoice_draft, name="invoice_draft"),

@@ -48,7 +48,7 @@ def invoice_balances(workspace, as_of, *, invoice_id=None, customer_id=None, sup
         invoices = invoices.filter(draft__movement__sales_line__order__customer_id=customer_id)
     if supplier_id is not None:
         invoices = invoices.filter(draft__movement__purchase_order__supplier_id=supplier_id)
-    invoices = invoices.select_related("due_date", "cancellation__reversal").prefetch_related(
+    invoices = invoices.select_related("due_date", "mse_deadline", "cancellation__reversal").prefetch_related(
         Prefetch("returns", queryset=returns, to_attr="posted_returns"),
         Prefetch("allocations", queryset=active_allocations(workspace, as_of), to_attr="posted_allocations"),
     ).order_by("posting_on", "id")
@@ -78,9 +78,14 @@ def active_allocations(workspace, as_of):
     )
 
 
-def unallocated_payments(workspace, as_of):
-    payments = active_payments(workspace, as_of).prefetch_related(
+def unallocated_payments(workspace, as_of, *, customer_id=None, supplier_id=None):
+    payments = active_payments(workspace, as_of)
+    if customer_id is not None:
+        payments = payments.filter(customer_id=customer_id)
+    if supplier_id is not None:
+        payments = payments.filter(supplier_id=supplier_id)
+    payments = payments.prefetch_related(
         Prefetch("allocations", queryset=active_allocations(workspace, as_of), to_attr="posted_allocations"),
-    ).select_related("journal", "customer", "supplier")
+    ).select_related("journal", "customer", "supplier").order_by("journal__date", "id")
     return [(payment, payment.amount - sum((entry.signed_amount for entry in payment.posted_allocations), Decimal(0)))
             for payment in payments]

@@ -2,13 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `a0c3ede01ee35287d53d61088f3b17bca61f3a70`.
-- **Active checkpoint:** 06, Banking and reconciliation. Partial.
-- **Last verified task:** staff-entered electronic payment references and cheque event history, with optional validated journal association.
-- **Changed files:** banking model, instrument service, tests, migration and documentation.
-- **Migrations:** banking 0002, verified on disposable SQLite.
-- **Latest tests:** 41 focused and both 190-test runs passed (83.736 and 83.720 seconds). Django and migration checks passed.
-- **Exact next task:** implement bounded CSV preview/import and account-scoped overlap detection without posting, then Excel, reconciliation and owner screens.
+- **Latest implementation commit:** `fb74ec69e71d715bef600653ced98cacb60281f2`.
+- **Active checkpoint:** 06, Banking and reconciliation. Partial. Checkpoints 00–03 and 05 are verified for local scope. Checkpoint 04 remains partial with statutory work gated. Checkpoints 07–14 remain pending.
+- **Last verified task:** account-bound bank statement CSV preview and immutable-by-service staging, overlap controls and atomic confirmation.
+- **Changed files:** banking models, `statement_csv.py`, `statements.py`, tests, migration and checkpoint/assumption documents.
+- **Migrations:** banking 0001–0003 were exercised on disposable SQLite. Apply them to a separate development database when previewing the branch. No production migration was performed.
+- **Latest tests:** 45 focused and both 194-test suites passed (85.976 and 85.390 seconds). Django and migration drift checks passed.
+- **Known issues and gates:** CSV has no browser route yet. Excel import, suggested and manual matches and unmatched reports remain open. OpenPyXL is unavailable in the current virtual environment. PostgreSQL and statutory release remain pending.
+- **Exact next task:** add account-scoped reconciliation between a staged statement line and one sealed journal line, with reviewable candidate suggestions and unmatched totals. Keep all matching separate from posting and independent payment verification. Follow with private CSV preview/import and Excel support, then checkpoint 07.
 
 ## Resume on Windows
 

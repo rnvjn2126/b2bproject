@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06C · Bank statement CSV staging
+
+- **Completed:** bounded UTF-8 CSV validation and read-only preview, followed by explicit digest-confirmed import. Preview binds the file to one bank account. Imports save normalized statement lines and audit batches atomically. Exact replay returns the existing batch. Overlap is account-scoped and requires explicit confirmation to skip known rows. Staging creates no journal and does not verify payment.
+- **Pending:** matching suggestions, manual reconciliation, unmatched review, Excel parsing and owner banking pages. Checkpoint 06 remains partial. Checkpoints 07–14 remain pending.
+- **Changed files:** banking models, CSV parser, statement service, tests, migration and required progress documents. **Migration:** banking `0003_statementbatch_statementline_and_more`.
+- **Tests:** 45 focused tests passed. Both full suites passed 194 (85.976 s normal and 85.390 s reverse). Django and migration checks passed. Tests cover malformed/future rows, repeat source lines, overlap, replay, account/actor boundaries, preview digests, rollback and no ledger effects.
+- **Known gaps:** CSV preview/import currently has no website endpoint. Excel support requires evaluation of a safe, bounded reader. The current interpreter has no OpenPyXL. PostgreSQL guards/concurrency and actual statutory release remain pending. No real banking data or connections were used.
+- **Verified implementation commit:** `fb74ec69e71d715bef600653ced98cacb60281f2`.
+- **Exact next task:** match one staged bank line to one existing sealed bank-account journal line. Suggest candidates based on amount, direction, date and reference. A scoped owner must confirm each match, preserve dated review evidence, and see unmatched statement and ledger totals. Then expose private preview and match screens and add bounded Excel support.
+
 ## Checkpoint 06B · Manual payment references and cheque events
 
 - **Completed:** scoped UPI, NEFT, RTGS, IMPS and cheque reference recording. Optional journal-line associations require the same bank account, amount and direction. Dated cheque events record staff-reported presentation, clearing and return without ledger changes.

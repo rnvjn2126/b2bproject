@@ -10,7 +10,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 03 Sales and purchase orders | Complete for operational orders | Accepted quotation conversion, split procurement, approvals, cancellation, partial movements, pending reports and private PDFs. Orders do not create journals. |
 | 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations, owner-only movement-based draft screens and balanced GST posting proposals with company ledger mapping. Gated sales and purchase issue adds immutable records and sealed journals. Internal cancellation preserves original records and posts a separate reversing journal. Internal return credits/debits reconcile to the original invoice. Branded A4 preview passes browser verification. Gated owner forms verified. Non-return statutory notes and statutory release remain open. |
 | 05 Receivables and payables | Complete for the gated local pilot | Contractual due dates and as-of invoice ageing are verified. Immutable party receipts and payments are verified. Allocation, reversal and unallocated funds are verified. Credit profiles and reviewed MSE date capture are verified. Private statements and manual reminder drafts are verified. Owner actions and credit warnings are verified. PostgreSQL and production release remain gated. |
-| 06 Banking | Partial | Scoped funds accounts, transfers and ledger books are verified. Manual references and cheque event tracking are verified. Statement import and reconciliation remain open. |
+| 06 Banking | Partial | Scoped funds accounts, transfers and ledger books are verified. Manual references and cheque event tracking are verified. CSV preview/staging is verified. Excel, reconciliation and owner UI remain open. |
 | 07 Inventory | Pending | Goods receipts and dispatch exist operationally. The stock ledger is pending. |
 | 08 Valuation and procurement | Pending | Requires verified inventory movements and accounting integration. |
 | 09 Financial reports | Pending | Core statements predate this run. Complete reporting and cross-module reconciliation remain open. |
@@ -49,8 +49,9 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 05F | 69 passed (settlement, invoicing and accounting) | 184 passed, 90.558 s | 184 passed, 90.334 s |
 | 06A | 38 passed (banking, settlement and accounting) | 187 passed, 87.988 s | 187 passed, 87.855 s |
 | 06B | 41 passed (banking, settlement and accounting) | 190 passed, 83.736 s | 190 passed, 83.720 s |
+| 06C | 45 passed (banking, settlement and accounting) | 194 passed, 85.976 s | 194 passed, 85.390 s |
 
-Django and migration drift checks passed through 06B. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
+Django and migration drift checks passed through 06C. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 
 ## Reconciliation, security and release gates
 
@@ -71,4 +72,4 @@ See the [tracker](ACCOUNTING_CHECKPOINTS.md) for granular progress and the [hand
 
 Settlement foundations are in `settlements/` with migrations 0001–0004 and shared synthetic invoice fixtures in `invoicing/test_data.py`.
 
-Banking foundations are in `banking/` with migrations 0001–0002 and shared funding-ledger integration in accounting and settlements.
+Banking foundations are in `banking/` with migrations 0001–0003 and shared funding-ledger integration in accounting and settlements.

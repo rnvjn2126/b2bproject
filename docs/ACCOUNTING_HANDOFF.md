@@ -2,6 +2,14 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoints 07B–07C · Traceable locations and stock movements
+
+- Company warehouses and storage locations can hold isolated catalogue lot positions. Lots snapshot unit, grade and weight and hold heat, batch, mill and manufacturer details with bounded PDF evidence.
+- Receipts, issues and transfers validate the company and available quantity and atomically adjust positions and append immutable movements. A movement can link once to a compatible approved order receipt or dispatch. Measured kilograms and theoretical weights are recorded separately. No general ledger entries are posted.
+- Inventory migrations 0002 and 0003. Implementation commits `a522242131516d0742a50bcea0cb418763d4854f` and `5c93e4c9b3c32c0400d63e3e1c7ef1fd2f9543e9`.
+- Seven focused tests passed for 07B and eleven for 07C after reloading a synthetic OrderMovement so its persisted quantity deserializes as Decimal. Django and migration checks passed. The last full 206-test runs apply to 07A. PostgreSQL and the rest of the warehouse workflow remain open.
+- Exact next task is atomic stock reservations, releases and reservation-backed issues. Then add physical counts, reorder/ageing and owner screens. Mill certificates are opaque downloads. Header and size checks identify accepted files. Supplier provenance and malware screening require separate release review.
+
 ## Checkpoint 07A · Structured steel specifications
 
 - Added catalogue-linked grade, geometry and density records for bars, TMT, sheet, plate, pipe, coil, angle, channel and beam. Conversions support kg, tonne, metre and piece and distinguish theoretical and explicitly measured weight.

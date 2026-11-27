@@ -105,3 +105,6 @@
 ## Overnight Checkpoint 07, partial
 
 - 07A: Four focused inventory tests and both full 206-test suites passed (292.799 s normal, 285.192 s reverse). Django and migration checks passed.
+
+- 07B: 7 focused inventory tests passed. Django and migration checks passed.
+- 07C: 11 focused inventory tests passed after correcting a fixture to reload the Decimal quantity. Django and migration checks passed. Full regression last ran at 07A.

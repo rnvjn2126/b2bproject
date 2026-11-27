@@ -2,12 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `ec4d114ec2c83944cc18895334dde38cbb1e7652`.
+- **Latest implementation commit:** `5c93e4c9b3c32c0400d63e3e1c7ef1fd2f9543e9`.
 - **Active checkpoint:** 07, Steel-specific inventory. Partial.
-- **Last verified task:** structured grades, profile geometry, theoretical weights and explicit measured/theoretical unit conversions.
-- **Changed files:** inventory geometry, models, service, tests, app settings and inventory 0001 migration.
-- **Latest tests:** 4 focused and both 206-test suites passed (292.799 and 285.192 seconds). Django and migration checks passed.
-- **Exact next task:** warehouse/storage registration, traceable lot snapshots and safe mill certification evidence. Then build stock movements and reservations before report UI.
+- **Last verified task:** company warehouse and lot setup, stock receipts/issues/transfers, isolated balances and exact order-document linkage.
+- **Changed files and migrations:** inventory models/setup/movement services and tests, migrations 0002–0003.
+- **Latest tests:** 11 focused passed. Django and migration checks passed. Both 206-test full runs apply to 07A.
+- **Exact next task:** reservations, dated release/fulfilment, then physical count/reorder/ageing and gated owner screens. PostgreSQL trigger execution remains pending.
 
 ## Resume on Windows
 

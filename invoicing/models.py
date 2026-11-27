@@ -104,6 +104,9 @@ class IssuedInvoice(models.Model):
     issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     issued_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return self.number
+
     @staticmethod
     def number_for(kind, start_year, sequence):
         series = "SI" if kind == InvoiceDraft.Kind.SALES else "PI"

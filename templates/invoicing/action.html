@@ -3,6 +3,13 @@
 <section class="card">
   <h1>{{ title }}</h1>
   <p>Internal use only. Saved total INR {{ total|floatformat:2 }}.</p>
+  {% if credit_warning.exceeds_limit %}
+    <p role="status">Projected customer exposure INR {{ credit_warning.projected|floatformat:2 }}
+      exceeds the configured limit of INR {{ credit_warning.limit|floatformat:2 }}. Review before posting.</p>
+  {% endif %}
+  {% if credit_warning.overdue %}
+    <p role="status">Customer's past-due balance is INR {{ credit_warning.overdue|floatformat:2 }}.</p>
+  {% endif %}
   {% if blocked %}
     <p role="status">{{ blocked }}</p>
   {% else %}

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from accounting.models import Journal, Ledger
@@ -327,3 +327,68 @@ class SettlementStatementTests(SettlementFixture, TestCase):
         TeamMembership.objects.create(account=self.workspace, user=staff, role=TeamMembership.Role.MANAGER)
         self.client.force_login(staff)
         self.assertEqual(self.client.get(url).status_code, 403)
+
+
+@override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+class SettlementActionTests(SettlementFixture, TestCase):
+    def setUp(self):
+        self.client.force_login(self.owner)
+
+    def test_owner_records_receipt_allocates_and_releases_funds(self):
+        draft = self.draft(self.dispatch)
+        _, issue = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+        values = self.payment_values()
+        payment_url = reverse("accounting:settlements:payment_create")
+        self.assertContains(self.client.get(payment_url), "Bank or cash ledger")
+        self.assertFalse(PartyPayment.objects.exists())
+        form_data = {
+            "customer": self.order.customer_id, "posting_on": invoice.posting_on.isoformat(), "amount": "150.25",
+            "funds_ledger": values["funds_ledger_id"], "control_ledger": values["control_ledger_id"],
+            "external_reference": "SYN-WEB", "submission_key": uuid4(),
+        }
+        response = self.client.post(payment_url, form_data)
+        self.assertEqual(response.status_code, 302, response.context["form"].errors if response.context else "")
+        payment = PartyPayment.objects.get()
+        detail = reverse("accounting:settlements:payment_detail", args=[payment.pk])
+        self.assertRedirects(response, detail)
+        self.assertRedirects(self.client.post(payment_url, form_data), detail)
+        assign = reverse("accounting:settlements:payment_allocate", args=[payment.pk])
+        posted = {"posted_on": invoice.posting_on.isoformat(), "amount": "100", "submission_key": uuid4()}
+        self.assertContains(self.client.get(assign), invoice.number)
+        self.assertRedirects(self.client.post(assign, posted | {"invoice": invoice.pk}), detail)
+        entry = PaymentAllocation.objects.get()
+        release = reverse("accounting:settlements:payment_release", args=[payment.pk, entry.pk])
+        self.assertRedirects(self.client.post(release, posted | {
+            "amount": "20", "submission_key": uuid4(), "reason": "Synthetic reassignment",
+        }), detail)
+        self.assertContains(self.client.get(detail), "Unassigned INR 70.25")
+        self.assertEqual(Journal.objects.count(), 2)
+
+    def test_credit_warning_and_due_date_form_use_private_profiles(self):
+        credit_url = reverse("accounting:settlements:credit_profile")
+        self.assertRedirects(self.client.post(credit_url, {
+            "customer": self.order.customer_id, "credit_days": "15", "credit_limit": "300",
+        }), reverse("accounting:settlements:statement"))
+        draft = self.draft(self.dispatch)
+        self.assertContains(self.client.get(reverse("accounting:invoice_issue", args=[draft.pk])),
+                            "exceeds the configured limit of INR 300.00")
+        _, issue = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+        due = reverse("accounting:settlements:invoice_due", args=[invoice.pk])
+        self.assertRedirects(self.client.post(due, {"use_default": "on"}), reverse("accounting:settlements:statement"))
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.due_date.due_on, invoice.posting_on + timedelta(days=15))
+        self.assertEqual(self.client.get(reverse("accounting:settlements:invoice_mse", args=[invoice.pk])).status_code, 404)
+
+    def test_settlement_mutations_require_csrf_and_company_scope(self):
+        values = self.payment_values()
+        payment = record_party_payment(self.workspace, self.owner, **values)
+        url = reverse("accounting:settlements:payment_allocate", args=[payment.pk])
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.owner)
+        self.assertEqual(client.post(url).status_code, 403)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.post(url).status_code, 404)
+        self.assertFalse(PaymentAllocation.objects.exists())

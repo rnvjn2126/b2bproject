@@ -1,0 +1,33 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>{{ payment.journal.get_kind_display }}</h1>
+  <p>{% if payment.customer %}{{ payment.customer }}{% else %}{{ payment.supplier }}{% endif %}
+    · {{ payment.journal.date|date:"d M Y" }} · INR {{ payment.amount|floatformat:2 }}</p>
+  <div class="actions">
+    <a href="{% url 'accounting:journal' payment.journal_id %}">View posted journal</a>
+    <a href="{% url 'accounting:settlements:statement' %}">Back to receivables and payables</a>
+  </div>
+  {% if payment.journal.reversal %}
+    <p>Reversed on {{ payment.journal.reversal.date|date:"d M Y" }}.</p>
+  {% else %}
+    <p>Unassigned INR {{ unassigned|floatformat:2 }}</p>
+    {% if unassigned > 0 %}<a href="{% url 'accounting:settlements:payment_allocate' payment.pk %}">Assign funds to invoice</a>{% endif %}
+  {% endif %}
+</section>
+<section class="card">
+  <h2>Allocation history</h2>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Date</th><th scope="col">Invoice</th><th scope="col">Amount (INR)</th><th scope="col">Reason</th><th scope="col">Action</th></tr></thead>
+    <tbody>{% for entry in entries %}
+      <tr><td>{{ entry.posted_on|date:"d M Y" }}</td>
+        <th scope="row"><a href="{% url 'accounting:invoice_print' entry.invoice_id %}">{{ entry.invoice.number }}</a></th>
+        <td>{{ entry.signed_amount|floatformat:2 }}</td><td>{{ entry.reason|default:"—" }}</td>
+        <td>{% if not payment.journal.reversal and not entry.reverses_id %}
+          <a href="{% url 'accounting:settlements:payment_release' payment.pk entry.pk %}">Release allocation</a>
+        {% else %}—{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="5">No allocations yet.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

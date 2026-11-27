@@ -2,10 +2,13 @@
 {% block books %}
 <section class="card">
   <h1>Receivables and payables</h1>
+  <div class="actions"><a href="{% url 'accounting:settlements:payment_create' %}">Record receipt or payment</a>
+    <a href="{% url 'accounting:settlements:credit_profile' %}">Set party credit terms</a></div>
   <form method="get" class="inline-form">
     {{ form.as_p }}
     <button type="submit">Show statement</button>
   </form>
+  {% if profile %}<p>Selected party terms · {{ profile.credit_days }} days{% if profile.credit_limit is not None %} · Limit INR {{ profile.credit_limit|floatformat:2 }}{% endif %}</p>{% endif %}
 </section>
 {% if as_of %}
 <section class="card">
@@ -27,9 +30,15 @@
         <td>{{ row.invoice.posting_on|date:"d M Y" }}</td>
         <td>{{ row.due_on|date:"d M Y"|default:"No due date" }}{% if row.invoice.mse_deadline %}<br>MSE tracking {{ row.invoice.mse_deadline.deadline|date:"d M Y" }}{% endif %}</td>
         <td>{{ row.allocated|floatformat:2 }}</td><td>{{ row.outstanding|floatformat:2 }}{% if row.outstanding < 0 %} (credit){% endif %}</td>
-        <td>{% if row.invoice.kind == "sales" and row.outstanding > 0 and row.due_on and row.due_on < today and as_of == today %}
-          <a href="{% url 'accounting:settlements:reminder' row.invoice.pk %}">Payment reminder</a>
-        {% else %}—{% endif %}</td>
+        <td>
+          {% if not row.due_on %}<a href="{% url 'accounting:settlements:invoice_due' row.invoice.pk %}">Record due date</a>{% endif %}
+          {% if row.invoice.kind == "purchase" and not row.invoice.mse_deadline %}
+            <a href="{% url 'accounting:settlements:invoice_mse' row.invoice.pk %}">Review MSE deadline</a>
+          {% endif %}
+          {% if row.invoice.kind == "sales" and row.outstanding > 0 and row.due_on and row.due_on < today and as_of == today %}
+            <a href="{% url 'accounting:settlements:reminder' row.invoice.pk %}">Payment reminder</a>
+          {% endif %}
+        </td>
       </tr>
     {% empty %}<tr><td colspan="7">No posted invoices match these filters.</td></tr>{% endfor %}</tbody>
   </table></div>
@@ -40,7 +49,7 @@
     <thead><tr><th scope="col">Posted</th><th scope="col">Party</th><th scope="col">Reference</th><th scope="col">Amount (INR)</th><th scope="col">Unassigned (INR)</th></tr></thead>
     <tbody>{% for payment, unassigned in payments %}
       <tr><td>{{ payment.journal.date|date:"d M Y" }}</td><td>{% if payment.customer %}{{ payment.customer }}{% else %}{{ payment.supplier }}{% endif %}</td>
-        <th scope="row"><a href="{% url 'accounting:journal' payment.journal_id %}">{{ payment.external_reference|default:payment.journal.transaction_reference }}</a></th>
+        <th scope="row"><a href="{% url 'accounting:settlements:payment_detail' payment.pk %}">{{ payment.external_reference|default:payment.journal.transaction_reference }}</a></th>
         <td>{{ payment.amount|floatformat:2 }}</td><td>{{ unassigned|floatformat:2 }}</td></tr>
     {% empty %}<tr><td colspan="5">No active payments match these filters.</td></tr>{% endfor %}</tbody>
   </table></div>

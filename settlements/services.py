@@ -49,7 +49,7 @@ def record_party_payment(workspace, actor, *, posting_on, amount, funds_ledger_i
     if not isinstance(submission_key, UUID) or not isinstance(external_reference, str) or not isinstance(narration, str):
         raise ValidationError("Enter a valid payment reference, narration and submission key.")
     external_reference = external_reference.strip().upper()
-    narration = narration.strip()
+    narration = narration.strip() or ("Customer receipt" if receipt else "Supplier payment")
     if len(external_reference) > 100 or len(narration) > 500:
         raise ValidationError("The payment reference or narration is too long.")
     expected_party = {"customer_id": customer_id, "supplier_id": supplier_id}

@@ -13,6 +13,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from accounting.services import lock_books
 from accounting.views import owner_only
 from dashboard.accounts import business_account_for
+from settlements.terms import customer_credit_exposure
 
 from .forms import (
     InvoiceCancelForm, InvoiceDraftForm, InvoiceIssueForm, InvoiceReturnForm, RegistrationBrandingForm,
@@ -178,8 +179,14 @@ def invoice_issue(request, workspace, pk):
             form.add_error(None, error.messages)
         else:
             return redirect("accounting:invoice_print", pk=invoice.pk)
+    credit_warning = None
+    if form is not None and not purchase:
+        credit_warning = customer_credit_exposure(
+            workspace, customer_id=draft.movement.sales_line.order.customer_id, proposed_total=draft.total,
+            as_of=timezone.localdate(),
+        )
     return render(request, "invoicing/action.html", {
-        "draft": draft, "form": form, "blocked": blocked, "title": "Review internal invoice",
+        "draft": draft, "form": form, "blocked": blocked, "credit_warning": credit_warning, "title": "Review internal invoice",
         "submit": "Confirm and post", "total": draft.total,
     })
 

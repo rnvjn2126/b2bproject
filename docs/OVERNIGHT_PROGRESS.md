@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `c415398b06457ab227fa03c676c240b8572f3847`.
+- **Latest implementation commit:** `1a8f03e1226a100ba311557f2d6ab29399e1dd1d`.
 - **Active checkpoint:** 05, Receivables, payables and payments. Partial.
-- **Last verified task:** immutable company party receipts/payment linked to correct sealed ledger journals with retry and reference protection.
-- **Changed files:** settlement models, services, projections, tests and documentation.
-- **Migrations:** settlements 0002, verified on SQLite.
-- **Latest tests:** 56 focused. Both 171-test runs passed (83.060 and 83.065 seconds). Django and migration checks passed, plus a file-backed SQLite duplicate posting probe.
-- **Pending:** bill-wise allocations, adjustments, statements, terms/credit limits, reminders and verified MSME tracking.
-- **Exact next task:** add append-only allocations with seller/customer and ledger matching, caps, idempotency, adjustments and historical reversal handling.
+- **Last verified task:** append-only customer/supplier bill allocation and reversal-aware as-of outstanding and unassigned balances.
+- **Changed files:** settlement models, allocation service, projections, tests and checkpoint documentation.
+- **Migrations:** settlements 0003, verified on disposable SQLite.
+- **Latest tests:** 60 focused. Both full suites passed 175 (83.100 and 83.078 seconds). Checks passed. File-backed SQLite competing allocations were correctly capped.
+- **Pending:** terms, credit limits, MSE tracking, private statements and action pages, and reminder drafts.
+- **Exact next task:** add contractual credit defaults and reviewed MSE deadline inputs, then connect owner-only statements and settlement operations. Use official sources and keep statutory classification opt-in.
 
 ## Resume on Windows
 

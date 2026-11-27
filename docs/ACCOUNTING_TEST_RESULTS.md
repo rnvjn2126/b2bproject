@@ -77,3 +77,5 @@
 - 05A: 53 focused tests passed. Full normal/reverse runs passed 168 in 84.823 and 84.381 seconds. Django and migration checks passed. Tests cover due-date boundaries, owner and company scope, supplier dates and as-of return/cancellation adjustments.
 
 - 05B: 56 focused tests passed. Full runs passed 171 in 83.060 and 83.065 seconds. Django and migration checks passed. Two concurrent receipts on file-backed SQLite returned the same payment with one journal. Verified reversal dates, parties, ledger classifications, retry/reference checks and rollback.
+
+- 05C: 60 focused tests passed. Full normal/reverse runs passed 175 in 83.100 and 83.078 seconds. Django and migration checks passed. A file-backed concurrency probe accepted one competing allocation and preserved caps. Tests cover advances, unused funds, matched control accounts, invoice credits, explicit release and dated reversals.

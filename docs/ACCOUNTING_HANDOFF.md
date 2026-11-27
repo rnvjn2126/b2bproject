@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 05C · Bill allocations and released credits
+
+- **Completed:** allocate current customer/supplier funds against matching posted invoices and control ledgers within an open period. Bound receipt/payout and invoice amounts, enforce retries and chronological events, and record append-only partial allocation reversals. As-of projections show invoice outstanding or credit and unassigned funds. A later return keeps the invoice credit visible until explicitly released.
+- **Pending:** owner-facing statements and operations, configurable credit terms/limits, reminders and verified-eligibility MSE deadlines. Bank verification remains out of scope.
+- **Changed files:** settlement allocation service, balances, models, tests and documentation. **Migration:** settlements 0003.
+- **Tests:** 60 focused passed. Both full runs passed 175 (83.100 s normal, 83.078 s reverse). Django and migration checks passed. File-backed SQLite accepted only one of two competing excess allocations.
+- **Assumptions:** allocation and release have no cash-ledger write. The original payment's posted reversal date controls settlement visibility. Credits and unallocated funds are separate and never moved automatically. PostgreSQL trigger and concurrency execution remain a release gate.
+- **Verified commit:** `1a8f03e1226a100ba311557f2d6ab29399e1dd1d`.
+- **Exact next task:** add contractual party credit settings and reviewed MSE deadline inputs using official sources. Then connect the verified services to private statements, ageing and payment/adjustment actions and manual reminder drafts.
+
 ## Checkpoint 05B · Party receipts and payments
 
 - **Completed:** owner-scoped customer receipts and supplier payments post sealed cash/bank journals with party/control account linkage. Records are immutable. Equal retries return the original and duplicate external references on a funds ledger are rejected. Reversal visibility follows the reversal journal date.

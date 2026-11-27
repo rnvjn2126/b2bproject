@@ -2,6 +2,14 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 07D · Atomic stock reservations
+
+- Verified company-scoped reservations, release and optional reservation-backed stock issue. Stock, reservation balances and audit evidence update in one transaction. Inventory movements do not post financial journals.
+- Changed inventory models, stock services and tests. Added inventory migration 0004. Implementation commit: 17c690dfa87b67433e36954716bafb7a62873a02.
+- Thirteen focused tests passed. Both full runs passed 215 tests (240.590 s normal, 240.969 s reverse). Django and migration drift checks passed. A disposable SQLite two-thread probe admitted one of two competing reservations and one of two competing issues, leaving eight on hand, eight reserved and zero available.
+- PostgreSQL concurrency and browser verification remain pending. Untracked drafts in inventory/counts.py, inventory/reports.py and inventory/forms.py have not been integrated or tested.
+- Next task is to connect physical stock counts and reorder/ageing reports to the inventory models and migrations, verify them, then connect the gated owner screens.
+
 ## Checkpoints 07B–07C · Traceable locations and stock movements
 
 - Company warehouses and storage locations can hold isolated catalogue lot positions. Lots snapshot unit, grade and weight and hold heat, batch, mill and manufacturer details with bounded PDF evidence.

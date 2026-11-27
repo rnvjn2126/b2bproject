@@ -134,3 +134,61 @@ class LotCertificate(models.Model):
     digest = models.CharField(max_length=64)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+class StockPosition(models.Model):
+    lot = models.ForeignKey(StockLot, on_delete=models.PROTECT, related_name="positions")
+    location = models.ForeignKey(StorageLocation, on_delete=models.PROTECT, related_name="positions")
+    on_hand = models.DecimalField(max_digits=14, decimal_places=3, default=0)
+    reserved = models.DecimalField(max_digits=14, decimal_places=3, default=0)
+
+    @property
+    def available(self):
+        return self.on_hand - self.reserved
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["lot", "location"], name="inventory_unique_stock_position"),
+            models.CheckConstraint(condition=Q(reserved__gte=0, on_hand__gte=models.F("reserved")),
+                                   name="inventory_nonnegative_stock_position"),
+        ]
+
+
+class StockMovement(models.Model):
+    class Kind(models.TextChoices):
+        RECEIPT = "receipt", "Receipt"
+        ISSUE = "issue", "Issue"
+        TRANSFER = "transfer", "Warehouse transfer"
+
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    lot = models.ForeignKey(StockLot, on_delete=models.PROTECT, related_name="movements")
+    source = models.ForeignKey(StorageLocation, on_delete=models.PROTECT, related_name="+", null=True)
+    destination = models.ForeignKey(StorageLocation, on_delete=models.PROTECT, related_name="+", null=True)
+    order_movement = models.OneToOneField("orders.OrderMovement", on_delete=models.PROTECT, null=True,
+                                         related_name="stock_movement")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    quantity = models.DecimalField(max_digits=14, decimal_places=3)
+    actual_kg = models.DecimalField(max_digits=18, decimal_places=6, null=True)
+    theoretical_kg = models.DecimalField(max_digits=18, decimal_places=6, null=True)
+    posted_on = models.DateField()
+    reference = models.CharField(max_length=100)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["posted_on", "pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "submission_key"], name="inventory_unique_stock_submit"),
+            models.CheckConstraint(condition=Q(quantity__gt=0) & (
+                Q(kind="receipt", source__isnull=True, destination__isnull=False)
+                | Q(kind="issue", source__isnull=False, destination__isnull=True)
+                | (Q(kind="transfer", source__isnull=False, destination__isnull=False, order_movement__isnull=True)
+                   & ~Q(source=models.F("destination")))
+            ), name="inventory_valid_stock_route"),
+            models.CheckConstraint(
+                condition=(Q(actual_kg__isnull=True) | Q(actual_kg__gt=0))
+                & (Q(theoretical_kg__isnull=True) | Q(theoretical_kg__gte=0)),
+                name="inventory_valid_stock_weights",
+            ),
+        ]

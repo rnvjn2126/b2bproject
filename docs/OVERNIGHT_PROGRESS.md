@@ -2,14 +2,13 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `1d9b004d46d40113ffe2abfb658f586e74f17154`.
+- **Latest implementation commit:** `badcb3ed350fa02c405c0da80d526131e6d92f51`.
 - **Active checkpoint:** 06, Banking and reconciliation. Partial.
-- **Last verified task:** gated bank reconciliation suggestions, owner confirmation and unmatched report. Match record is protected against invalid or repeated links and silent changes.
-- **Changed files:** banking models, reconciliation, tests, views, templates, accounting URL wiring and settlement navigation.
-- **Migrations:** banking 0004, exercised on disposable SQLite.
-- **Latest tests:** 47 focused passed. Django and migration checks passed. Both final full runs passed 196 (139.831 s normal and 139.012 s reverse).
-- **Pending:** CSV upload screen, Excel parsing, match corrections, wider date search and PostgreSQL/browser verification.
-- **Exact next task:** finish the XLSX upload integration, then verify bank review in a synthetic browser session.
+- **Last verified task:** CSV and bounded XLSX staging, duplicate preview and private owner reconciliation.
+- **Changed files:** banking statement reader, forms/services/tests and upload templates. OpenPyXL and defusedxml are installed in the project's virtual environment and declared in requirements.
+- **Migrations:** latest is banking 0004. No migration in 06E or 06F.
+- **Latest tests:** 15 banking tests passed. Both 199-test suites, migration drift, dependency checks and the phone-width XLSX confirmation and matching passed.
+- **Exact next task:** wire private account/book/transfer and reference/cheque controls. Then complete Checkpoint 06 verification and proceed to structured steel inventory.
 
 ## Resume on Windows
 

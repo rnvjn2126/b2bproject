@@ -97,3 +97,5 @@
 - 06D: 47 focused tests passed. The first normal run overlapped a URL/template change and failed three URL reversals. On the final workflow both full runs passed 196 tests (139.831 s normal and 139.012 s reverse). Django and migration checks passed. Browser review remains pending.
 
 - 06E: Both full runs passed 197 (204.046 s normal, 204.360 s reverse). Django and migration checks passed. Multipart CSV preview, file binding and cross-company validation were exercised.
+
+- 06F: 15 focused banking tests passed. Both full runs passed 199 (237.205 s normal, 236.546 s reverse). Django, migration drift and dependency checks passed. Chrome confirmed a synthetic workbook and matched the staged line at 390 px after a startup timeout and retry.

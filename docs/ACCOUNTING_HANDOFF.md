@@ -2,6 +2,13 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06F · Excel statement import
+
+- Bounded XLSX parsing shares the CSV row validation, preview and duplicate detection. Formulas, external links, macros and unsupported archives are rejected.
+- Both full suites passed 199 tests (237.205 s normal, 236.546 s reverse). Django, migration drift and dependency checks passed. Chrome verified XLSX upload, confirmation and manual matching at 390 px after a synthetic server startup retry.
+- Implementation commit `badcb3ed350fa02c405c0da80d526131e6d92f51`. No migration. Added OpenPyXL and defusedxml to the requirements.
+- Next task is to expose safe owner controls for bank/cash/petty cash account registration and books, internal transfers and manually reported instruments and cheque history.
+
 ## Checkpoint 06E · Private statement upload
 
 - Owners can preview and confirm CSV imports. The confirmation binds account and file and reports already imported rows. The upload remains internal and posts no ledger entries.

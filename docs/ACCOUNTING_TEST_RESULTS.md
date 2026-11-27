@@ -95,3 +95,5 @@
 - 06C: 45 focused passed. Both full runs passed 194 (85.976 and 85.390 seconds). Django and migration checks passed. Bounded duplicate-aware CSV preview/import, account-bound confirmation, foreign-account rejection, no posting and all-or-nothing writes were tested.
 
 - 06D: 47 focused tests passed. The first normal run overlapped a URL/template change and failed three URL reversals. On the final workflow both full runs passed 196 tests (139.831 s normal and 139.012 s reverse). Django and migration checks passed. Browser review remains pending.
+
+- 06E: Both full runs passed 197 (204.046 s normal, 204.360 s reverse). Django and migration checks passed. Multipart CSV preview, file binding and cross-company validation were exercised.

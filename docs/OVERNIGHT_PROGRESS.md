@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `979e6d435076f6914b8db62cc1c1087eb6306f00`.
+- **Latest implementation commit:** `1d9b004d46d40113ffe2abfb658f586e74f17154`.
 - **Active checkpoint:** 06, Banking and reconciliation. Partial.
 - **Last verified task:** gated bank reconciliation suggestions, owner confirmation and unmatched report. Match record is protected against invalid or repeated links and silent changes.
 - **Changed files:** banking models, reconciliation, tests, views, templates, accounting URL wiring and settlement navigation.
 - **Migrations:** banking 0004, exercised on disposable SQLite.
 - **Latest tests:** 47 focused passed. Django and migration checks passed. Both final full runs passed 196 (139.831 s normal and 139.012 s reverse).
 - **Pending:** CSV upload screen, Excel parsing, match corrections, wider date search and PostgreSQL/browser verification.
-- **Exact next task:** connect the existing CSV preview/import service to a private owner upload and confirmation view.
+- **Exact next task:** finish the XLSX upload integration, then verify bank review in a synthetic browser session.
 
 ## Resume on Windows
 

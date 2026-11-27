@@ -2,6 +2,13 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06E · Private statement upload
+
+- Owners can preview and confirm CSV imports. The confirmation binds account and file and reports already imported rows. The upload remains internal and posts no ledger entries.
+- Both full regression runs passed 197 tests (204.046 s normal, 204.360 s reverse). Django and migration checks passed. Browser review is pending.
+- Implementation commit `1d9b004d46d40113ffe2abfb658f586e74f17154`. No database migration.
+- Next task is to plug bounded XLSX support into the same preview and staging service, then verify cross-format overlap and browser behavior.
+
 ## Checkpoint 06D · Private bank reconciliation
 
 - **Completed:** ranked candidate matching by reference and date for equal amounts and directions, explicit owner confirmation, immutable one-to-one match records and an unmatched movement report. The gated owner screen lists suggested candidates and requires CSRF for confirmation. Neither suggestions nor confirmation create a journal or independently verify payment.

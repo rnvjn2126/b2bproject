@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 05E · Private statements and reminder drafts
+
+- **Completed:** owner-only dated customer/supplier statements, receivable/payable ageing, invoice balances and active unassigned funds. Overdue customer invoices offer a reviewable reminder with an explicitly clicked WhatsApp draft link. No external messages were sent.
+- **Pending:** settlement posting/credit and assignment actions for the internal pilot. Production release remains gated.
+- **Changed files:** settlement forms, URLs, views, balances, tests and templates, accounting URLs and invoice navigation. **Migrations:** none.
+- **Tests:** 16 settlement tests passed. Both full runs passed 181 (94.815 s normal, 94.654 s reverse). Django and migration checks passed. A test assertion quoting error was fixed. The browser harness timed out because a variable hid its path module, then timed out at sign-in under regression load. After correction and standalone retry, Chrome verified balances and the reminder at phone width.
+- **Verified commit:** `d6849344edd02d4fa07dd3dc5ef6dcfa009a1de0`.
+- **Exact next task:** finish owner-only POST forms for receipt/payment, bill allocation, release, contractual due dates, credit terms and reviewed MSE dates. Connect the sales credit warning without changing existing quotation approval logic.
+
 ## Checkpoint 05D · Credit controls and reviewed MSE dates
 
 - **Completed:** company party credit terms and limits, one-time contractual default application, credit exposure and past-due calculations. Reviewed supplier invoices can record a separate MSE deadline with acceptance, written terms and evidence.

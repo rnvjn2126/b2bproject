@@ -2,13 +2,13 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `d2ba18f4911c53ebffd7ef276fdfb807a9b49a4e`.
+- **Latest implementation commit:** `d6849344edd02d4fa07dd3dc5ef6dcfa009a1de0`.
 - **Active checkpoint:** 05, Receivables, payables and payments. Partial.
-- **Last verified task:** contractual credit settings and projected exposure, plus opt-in documented MSE payment-deadline capture.
-- **Changed files:** settlement models, projections, terms service, tests and documentation.
-- **Migrations:** settlements 0004, verified on disposable SQLite.
-- **Latest tests:** 63 focused and both 178-test suites passed (83.850 and 83.726 seconds). Django and migration checks passed.
-- **Exact next task:** build private owner statements/ageing, date/party filters, overdue/manual reminder drafts and payment/assignment/terms actions. Preserve no-store and CSRF. Leave regulated workflows and eligibility conclusions with professional review.
+- **Last verified task:** private dated party statements and ageing, unassigned payment totals and manual overdue reminder preparation.
+- **Changed files:** settlement forms/views/URLs, projections, tests/templates and accounting navigation.
+- **Migrations:** none for 05E.
+- **Latest tests:** 16 settlement tests and both 181-test suites passed (94.815 and 94.654 seconds). Django and migration checks passed. Chrome verified statement balances and reminder preview at 390 px.
+- **Exact next task:** verify owner-only settlement operation forms and sales credit warning. Then use the internal journals for independently testable Checkpoint 06 work.
 
 ## Resume on Windows
 

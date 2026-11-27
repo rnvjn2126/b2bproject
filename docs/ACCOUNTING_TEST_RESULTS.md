@@ -81,3 +81,5 @@
 - 05C: 60 focused tests passed. Full normal/reverse runs passed 175 in 83.100 and 83.078 seconds. Django and migration checks passed. A file-backed concurrency probe accepted one competing allocation and preserved caps. Tests cover advances, unused funds, matched control accounts, invoice credits, explicit release and dated reversals.
 
 - 05D: 63 focused tests passed. Both full runs passed 178 (83.850 and 83.726 seconds). Django and migration checks passed. Tests verify exposure, due defaults, foreign-party rejection, reviewed date evidence, the 15-day no-agreement date and the 45-day written cap.
+
+- 05E: 16 settlement tests passed after correcting a test assertion. Full runs passed 181 (94.815 and 94.654 seconds). Checks passed. After fixing the browser harness and retrying without parallel tests, Chrome verified filtered statements, unassigned balances and manual reminder preview at phone width.

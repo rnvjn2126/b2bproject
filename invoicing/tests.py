@@ -13,15 +13,15 @@ from django.urls import reverse
 from PIL import Image
 
 from accounting.models import AccountGroup, Journal, Ledger
-from accounting.services import lock_period, post_journal, setup_books
-from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer, TeamMembership
-from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
+from accounting.services import lock_period, post_journal
+from dashboard.models import BusinessAccount, TeamMembership
+from orders.models import OrderMovement, SalesOrder
 
 from .issuance import cancel_internal_invoice, issue_internal_purchase, issue_internal_sale
 from .models import CompanyGSTRegistration, InvoiceCancellation, InvoiceDraft, InvoiceReturn, IssuedInvoice, TaxRate
 from .posting import plan_invoice_posting, resolve_invoice_lines
 from .returns import record_invoice_return
-from .services import prepare_draft
+from .test_data import InvoiceFixture
 from .tax import calculate_line, invoice_total, validate_gstin
 from .words import rupees_in_words
 
@@ -96,58 +96,7 @@ class GSTCalculationTests(TestCase):
                          "One crore twenty one lakh two thousand thirty four rupees and five paise only")
 
 
-class InvoiceDraftTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        users = get_user_model().objects
-        cls.owner = users.create_user(username="draft-owner")
-        cls.other = users.create_user(username="draft-other")
-        cls.workspace = BusinessAccount.objects.create(owner=cls.owner, name="Synthetic drafts")
-        cls.other_workspace = BusinessAccount.objects.create(owner=cls.other, name="Other draft workspace")
-        cls.registration = CompanyGSTRegistration.objects.create(
-            workspace=cls.workspace, gstin="27AAAAA0000A1Z0", registered_name="Synthetic Company",
-            registered_address="Synthetic Company Address",
-        )
-        cls.rate = TaxRate.objects.create(
-            workspace=cls.workspace, item_kind="goods", item_code="000000", effective_from=date(2026, 4, 1),
-            source_url="https://example.test/synthetic-only", integrated_rate="12", central_rate="6", local_rate="6",
-        )
-        buyer = Customer.objects.create(owner=cls.owner, name="Synthetic Customer")
-        supplier = Supplier.objects.create(owner=cls.owner, name="Synthetic Supplier", address="Synthetic Mill Address")
-        day = date(2026, 5, 1)
-        rfq = RFQ.objects.create(owner=cls.owner, customer=buyer, received_on=day)
-        item = RFQLine.objects.create(owner=cls.owner, rfq=rfq, description="Synthetic steel", quantity="10", unit="kg")
-        offer = SupplierOffer.objects.create(owner=cls.owner, rfq_line=item, supplier=supplier, available_quantity="10",
-                                             unit_price="80", unit="kg", delivery_days=3)
-        quote = Quote.objects.create(owner=cls.owner, rfq=rfq, number="SYN-1", target_margin_percent="20",
-                                     minimum_margin_percent="10", maximum_discount_percent="5")
-        quote_line = QuoteLine.objects.create(owner=cls.owner, quote=quote, rfq_line=item, supplier_offer=offer,
-                                              quantity="10", unit="kg", selling_price_per_unit="100",
-                                              landed_cost_per_unit="80", discount_percent="0")
-        cls.order = SalesOrder.objects.create(
-            workspace=cls.workspace, source_quote=quote, quotation_number=quote.number, quotation_revision=1,
-            customer=buyer, customer_name=buyer.name, customer_address="Synthetic Customer Address",
-            created_by=cls.owner, status=SalesOrder.Status.APPROVED,
-        )
-        sales_line = SalesOrderLine.objects.create(order=cls.order, quote_line=quote_line, description=item.description,
-                                                   quantity="10", unit="kg", unit_price="100")
-        purchase = PurchaseOrder.objects.create(
-            requirement=sales_line, offer=offer, supplier=supplier, supplier_name=supplier.name, quantity="10",
-            unit_price="80", delivery_on=day, submission_key=uuid4(), created_by=cls.owner, status=SalesOrder.Status.APPROVED,
-        )
-        cls.receipt = OrderMovement.objects.create(purchase_order=purchase, quantity="5", date=day, reference="SYN-R1",
-                                                   recorded_by=cls.owner)
-        cls.dispatch = OrderMovement.objects.create(sales_line=sales_line, quantity="3", date=day, reference="SYN-D1",
-                                                    recorded_by=cls.owner)
-
-    def draft(self, movement, workspace=None, actor=None, **overrides):
-        args = {
-            "movement_id": movement.pk, "registration_id": self.registration.pk, "party_gstin": "24BBBBB0000B1Z0",
-            "item_code": "000000", "place_of_supply": "27", "local_component": "sgst", "inclusive": False,
-            "discount": Decimal(0), "freight": Decimal(0), "round_off": Decimal(0),
-        }
-        return prepare_draft(workspace or self.workspace, actor or self.owner, **(args | overrides))
-
+class InvoiceDraftTests(InvoiceFixture, TestCase):
     def test_sales_and_purchase_drafts_use_confirmed_quantities_and_different_prices(self):
         sale = self.draft(self.dispatch)
         purchase = self.draft(self.receipt)
@@ -290,21 +239,6 @@ class InvoiceDraftTests(TestCase):
                                    (accounts["EXP"], "D", Decimal("448.00"))])
         self.assertFalse(Journal.objects.exists())
 
-    def issue_inputs(self, draft):
-        year = setup_books(self.workspace, self.owner, 2026)
-        duties = AccountGroup.objects.get(workspace=self.workspace, name="Duties and taxes")
-        cgst, sgst = [Ledger.objects.get_or_create(workspace=self.workspace, code=code,
-                                                 defaults={"name": code, "group": duties})[0]
-                      for code in ("OUT-CGST", "OUT-SGST")]
-        ledger_ids = dict(Ledger.objects.filter(workspace=self.workspace, code__in=("1100", "4000")).values_list(
-            "code", "pk",
-        ))
-        return year, {
-            "draft_id": draft.pk, "posting_on": draft.supply_on, "confirmed_total": draft.total,
-            "ledger_ids": {"receivable": ledger_ids["1100"], "sales": ledger_ids["4000"],
-                           "output_cgst": cgst.pk, "output_sgst": sgst.pk},
-        }
-
     def test_internal_issuance_disabled_by_default(self):
         draft = self.draft(self.dispatch)
         _, inputs = self.issue_inputs(draft)
@@ -394,18 +328,6 @@ class InvoiceDraftTests(TestCase):
             )
         self.assertFalse(IssuedInvoice.objects.exists())
         self.assertTrue(Journal.objects.get(pk=journal.pk).sealed)
-
-    def purchase_issue_inputs(self, draft):
-        setup_books(self.workspace, self.owner, 2026)
-        ledger_ids = dict(Ledger.objects.filter(workspace=self.workspace, code__in=("2000", "1300", "5000")).values_list(
-            "code", "pk",
-        ))
-        return {
-            "draft_id": draft.pk, "posting_on": draft.supply_on, "confirmed_total": draft.total,
-            "supplier_invoice_date": draft.supply_on, "supplier_reference": "inv/11",
-            "recoverable_input_tax": True,
-            "ledger_ids": {"payable": ledger_ids["2000"], "purchases": ledger_ids["5000"], "input_igst": ledger_ids["1300"]},
-        }
 
     @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
     def test_purchase_issue_snapshots_supplier_document_and_deduplicates_across_receipts(self):

@@ -55,3 +55,31 @@ class PaymentAllocation(models.Model):
             models.CheckConstraint(condition=Q(amount__gt=0), name="settlements_positive_allocation"),
             models.UniqueConstraint(fields=["payment", "submission_key"], name="settlements_unique_allocation_key"),
         ]
+
+
+class PartyCreditProfile(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    customer = models.OneToOneField("dashboard.Customer", on_delete=models.PROTECT, null=True)
+    supplier = models.OneToOneField("dashboard.Supplier", on_delete=models.PROTECT, null=True)
+    credit_days = models.PositiveSmallIntegerField()
+    credit_limit = models.DecimalField(max_digits=15, decimal_places=2, null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(customer__isnull=False, supplier__isnull=True)
+                           | Q(customer__isnull=True, supplier__isnull=False))
+                & Q(credit_days__lte=365) & (Q(credit_limit__isnull=True) | Q(credit_limit__gte=0)),
+                name="settlements_valid_credit_terms",
+            ),
+        ]
+
+
+class MsePaymentDeadline(models.Model):
+    invoice = models.OneToOneField("invoicing.IssuedInvoice", on_delete=models.PROTECT, related_name="mse_deadline")
+    accepted_on = models.DateField()
+    written_due_on = models.DateField(null=True)
+    deadline = models.DateField()
+    evidence_reference = models.CharField(max_length=200)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)

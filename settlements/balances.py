@@ -32,7 +32,7 @@ def ageing_bucket(due_on, as_of):
     return "Over 90"
 
 
-def invoice_balances(workspace, as_of, *, invoice_id=None):
+def invoice_balances(workspace, as_of, *, invoice_id=None, customer_id=None, supplier_id=None):
     """Project sealed invoice amounts as of a date, net of posted corrections."""
     if type(as_of) is not date:
         raise ValidationError("Choose an as-of date.")
@@ -44,6 +44,10 @@ def invoice_balances(workspace, as_of, *, invoice_id=None):
     )
     if invoice_id is not None:
         invoices = invoices.filter(pk=invoice_id)
+    if customer_id is not None:
+        invoices = invoices.filter(draft__movement__sales_line__order__customer_id=customer_id)
+    if supplier_id is not None:
+        invoices = invoices.filter(draft__movement__purchase_order__supplier_id=supplier_id)
     invoices = invoices.select_related("due_date", "cancellation__reversal").prefetch_related(
         Prefetch("returns", queryset=returns, to_attr="posted_returns"),
         Prefetch("allocations", queryset=active_allocations(workspace, as_of), to_attr="posted_allocations"),

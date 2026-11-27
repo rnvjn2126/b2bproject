@@ -18,6 +18,7 @@ from .allocations import record_payment_allocation
 from .balances import active_payments, ageing_bucket, invoice_balances, unallocated_payments
 from .models import PartyPayment, PaymentAllocation
 from .services import record_party_payment, set_invoice_due_date
+from .terms import apply_credit_due_date, customer_credit_exposure, record_mse_deadline, save_credit_profile
 
 
 @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
@@ -213,3 +214,57 @@ class PaymentAllocationTests(SettlementFixture, TestCase):
             record_payment_allocation(self.workspace, self.other, invoice_id=purchase.pk, payment_id=payment.pk,
                                       posted_on=day, amount=Decimal("1"), submission_key=uuid4())
         self.assertEqual(invoice_balances(self.other_workspace, day), [])
+
+
+@override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+class CreditTermsTests(InvoiceFixture, TestCase):
+    def test_credit_defaults_and_advisory_use_posted_exposure(self):
+        customer_id = self.order.customer_id
+        save_credit_profile(self.workspace, self.owner, customer_id=customer_id,
+                            credit_days=15, credit_limit=Decimal("400"))
+        draft = self.draft(self.dispatch)
+        _, issue = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+        due = apply_credit_due_date(self.workspace, self.owner, invoice_id=invoice.pk)
+        self.assertEqual(due.due_on, invoice.posting_on + timedelta(days=15))
+        warning = customer_credit_exposure(self.workspace, customer_id=customer_id, proposed_total=Decimal("100"),
+                                           as_of=due.due_on + timedelta(days=1))
+        self.assertEqual((warning.posted_due, warning.overdue, warning.projected),
+                         (Decimal("336"), Decimal("336"), Decimal("436")))
+        self.assertTrue(warning.exceeds_limit)
+        self.assertFalse(customer_credit_exposure(
+            self.other_workspace, customer_id=customer_id, proposed_total=Decimal("100"), as_of=due.due_on,
+        ).exceeds_limit)
+        with self.assertRaises(ValidationError):
+            save_credit_profile(self.other_workspace, self.other, customer_id=customer_id, credit_days=30)
+        with self.assertRaises(PermissionDenied):
+            save_credit_profile(self.workspace, self.other, customer_id=customer_id, credit_days=30)
+
+    def purchase(self):
+        day = self.receipt.date
+        draft = self.draft(self.receipt, purchase_unit_price=Decimal("75"), supplier_invoice_date=day)
+        return issue_internal_purchase(self.workspace, self.owner, **self.purchase_issue_inputs(draft))
+
+    def test_mse_deadline_requires_review_and_uses_fifteen_days_without_written_terms(self):
+        invoice = self.purchase()
+        accepted = self.receipt.date + timedelta(days=3)
+        values = {"invoice_id": invoice.pk, "accepted_on": accepted,
+                  "evidence_reference": "Synthetic documented acceptance", "eligibility_reviewed": True}
+        with self.assertRaisesMessage(ValidationError, "eligibility"):
+            record_mse_deadline(self.workspace, self.owner, **(values | {"eligibility_reviewed": False}))
+        with self.assertRaises(ValidationError):
+            record_mse_deadline(self.other_workspace, self.other, **values)
+        result = record_mse_deadline(self.workspace, self.owner, **values)
+        self.assertEqual(result.deadline, accepted + timedelta(days=15))
+        self.assertEqual(record_mse_deadline(self.workspace, self.owner, **values), result)
+        self.assertIsNone(invoice.__class__.objects.get(pk=invoice.pk).mse_deadline.written_due_on)
+
+    def test_reviewed_written_terms_are_capped_at_forty_five_days(self):
+        invoice = self.purchase()
+        accepted = self.receipt.date
+        written = accepted + timedelta(days=70)
+        result = record_mse_deadline(
+            self.workspace, self.owner, invoice_id=invoice.pk, eligibility_reviewed=True,
+            accepted_on=accepted, written_due_on=written, evidence_reference="Synthetic written terms",
+        )
+        self.assertEqual((result.written_due_on, result.deadline), (written, accepted + timedelta(days=45)))

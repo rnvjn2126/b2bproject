@@ -1,3 +1,4 @@
+from base64 import b64encode
 from dataclasses import asdict
 from datetime import date
 
@@ -77,7 +78,8 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
         supply_on=movement.date, total=total, created_by=actor,
         snapshot={
             "company": {"gstin": registration.gstin, "name": registration.registered_name,
-                        "address": registration.registered_address},
+                        "address": registration.registered_address, "letterhead": registration.letterhead,
+                        "logo": b64encode(registration.logo_png).decode("ascii")},
             "party": {"gstin": party_gstin, "name": party_name, "address": party_address},
             "movement_reference": movement.reference,
             "tax_rate_date": rate_date.isoformat(),

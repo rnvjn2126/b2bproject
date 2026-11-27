@@ -14,6 +14,8 @@ class CompanyGSTRegistration(models.Model):
     gstin = models.CharField(max_length=15, validators=[validate_gstin])
     registered_name = models.CharField(max_length=160)
     registered_address = models.TextField()
+    letterhead = models.CharField(max_length=240, blank=True)
+    logo_png = models.BinaryField(default=bytes, blank=True)
 
     class Meta:
         constraints = [

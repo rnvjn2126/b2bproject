@@ -1,4 +1,7 @@
+from io import BytesIO
+
 from django import forms
+from PIL import Image
 
 from .models import CompanyGSTRegistration, TaxRate
 from .tax import validate_gstin
@@ -8,6 +11,37 @@ class RegistrationForm(forms.ModelForm):
     class Meta:
         model = CompanyGSTRegistration
         fields = ("gstin", "registered_name", "registered_address")
+
+
+class RegistrationBrandingForm(forms.Form):
+    letterhead = forms.CharField(max_length=240, widget=forms.Textarea(attrs={"rows": 3}), required=False)
+    logo = forms.FileField(required=False, help_text="PNG or JPEG, up to 256 KB and 1024 × 1024 pixels.")
+    remove_logo = forms.BooleanField(required=False)
+
+    def clean_logo(self):
+        upload = self.cleaned_data["logo"]
+        if not upload:
+            return None
+        if upload.size > 256 * 1024:
+            raise forms.ValidationError("Choose a logo up to 256 KB.")
+        try:
+            with Image.open(upload, formats=("PNG", "JPEG")) as source:
+                if max(source.size) > 1024:
+                    raise forms.ValidationError("Choose a logo no larger than 1024 × 1024 pixels.")
+                source.thumbnail((240, 240))
+                logo = source.convert("RGBA")
+                logo.info.clear()
+                result = BytesIO()
+                logo.save(result, format="PNG")
+        except (OSError, ValueError, Image.DecompressionBombError):
+            raise forms.ValidationError("Choose a valid PNG or JPEG logo.") from None
+        return result.getvalue()
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("logo") and cleaned.get("remove_logo"):
+            self.add_error("logo", "Choose a new logo or remove the existing one.")
+        return cleaned
 
 
 class TaxRateForm(forms.ModelForm):

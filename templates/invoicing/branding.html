@@ -1,0 +1,12 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Invoice letterhead</h1>
+  <p>{{ registration.registered_name }} · {{ registration.gstin }}</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save letterhead</button>
+  </form>
+</section>
+{% endblock %}

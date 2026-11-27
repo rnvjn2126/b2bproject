@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods
@@ -9,9 +11,10 @@ from accounting.services import lock_books
 from accounting.views import owner_only
 from dashboard.accounts import business_account_for
 
-from .forms import InvoiceDraftForm, RegistrationForm, TaxRateForm
-from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .forms import InvoiceDraftForm, RegistrationBrandingForm, RegistrationForm, TaxRateForm
+from .models import CompanyGSTRegistration, InvoiceDraft, IssuedInvoice, TaxRate
 from .services import eligible_movements, prepare_draft
+from .words import rupees_in_words
 
 
 @owner_only
@@ -83,4 +86,40 @@ def invoice_prepare(request, workspace, pk):
 @require_GET
 def invoice_draft(request, workspace, pk):
     draft = get_object_or_404(InvoiceDraft, workspace=workspace, pk=pk)
-    return render(request, "invoicing/draft.html", {"draft": draft, "snapshot": draft.snapshot})
+    issued = IssuedInvoice.objects.filter(draft=draft, workspace=workspace).first() if settings.INTERNAL_INVOICE_ISSUANCE else None
+    return render(request, "invoicing/draft.html", {"draft": draft, "snapshot": draft.snapshot, "issued": issued})
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def registration_branding(request, workspace, pk):
+    registration = get_object_or_404(CompanyGSTRegistration, workspace=workspace, pk=pk)
+    if request.method == "POST":
+        form = RegistrationBrandingForm(request.POST, request.FILES)
+        if form.is_valid():
+            fields = {"letterhead": form.cleaned_data["letterhead"]}
+            if form.cleaned_data["logo"]:
+                fields["logo_png"] = form.cleaned_data["logo"]
+            elif form.cleaned_data["remove_logo"]:
+                fields["logo_png"] = b""
+            with transaction.atomic():
+                lock_books(workspace, request.user)
+                CompanyGSTRegistration.objects.filter(workspace=workspace, pk=pk).update(**fields)
+            return redirect("accounting:gst_settings")
+    else:
+        form = RegistrationBrandingForm(initial={"letterhead": registration.letterhead})
+    return render(request, "invoicing/branding.html", {"registration": registration, "form": form})
+
+
+@owner_only
+@never_cache
+@require_GET
+def invoice_print(request, workspace, pk):
+    if not settings.INTERNAL_INVOICE_ISSUANCE:
+        raise Http404
+    invoice = get_object_or_404(IssuedInvoice.objects.select_related("draft", "cancellation"), workspace=workspace, pk=pk)
+    return render(request, "invoicing/print.html", {
+        "invoice": invoice, "snapshot": invoice.snapshot, "amount_words": rupees_in_words(invoice.total),
+        "returned": invoice.returns.exists(),
+    })

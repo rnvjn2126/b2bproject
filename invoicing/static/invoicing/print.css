@@ -1,0 +1,21 @@
+@page { size: A4; margin: 16mm; }
+
+body { font: 15px/1.5 system-ui, sans-serif; color: #162335; background: #fff; margin: 0; }
+main { max-width: 178mm; padding: 20px; margin: auto; overflow-wrap: anywhere; }
+header { display: flex; align-items: center; gap: 18px; border-bottom: 2px solid #243a57; }
+.company-logo { width: 64px; height: 64px; object-fit: contain; }
+.company-name { font-size: 1.2rem; font-weight: 700; }
+h1 { font-size: 1.5rem; margin-bottom: 0; }
+dl { display: grid; grid-template-columns: minmax(6em, 1fr) 2fr; gap: 6px 12px; }
+dt, th { font-weight: 600; text-align: left; }
+dd { margin: 0; }
+table { width: 100%; border-collapse: collapse; }
+td, th { border-bottom: 1px solid #b9c4d0; padding: 4px 6px; }
+thead th:last-child, td { text-align: right; }
+tfoot { font-weight: 700; }
+@media print {
+  body { font-size: 10pt; }
+  main { padding: 0; }
+  .screen-only { display: none; }
+  tr, header { break-inside: avoid; }
+}

@@ -1,0 +1,51 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Internal invoice {{ invoice.number }}</title>
+  <link rel="stylesheet" href="{% static 'invoicing/print.css' %}">
+</head>
+<body>
+<main>
+  <p class="screen-only"><a href="{% url 'accounting:invoice_draft' invoice.draft_id %}">Back to draft</a> · Print using your browser.</p>
+  <header>
+    {% if snapshot.company.logo %}<img class="company-logo" src="data:image/png;base64,{{ snapshot.company.logo }}" alt="">{% endif %}
+    <div>
+      <p class="company-name">{{ snapshot.company.name }}</p>
+      {% if snapshot.company.letterhead %}<p>{{ snapshot.company.letterhead|linebreaksbr }}</p>{% endif %}
+      <p>{{ snapshot.company.address|linebreaksbr }}<br>GSTIN {{ snapshot.company.gstin }}</p>
+    </div>
+  </header>
+  <h1>Internal {{ invoice.get_kind_display|lower }} invoice</h1>
+  <p><strong>Internal use only{% if invoice.cancellation %} · Cancelled{% elif returned %} · Return recorded{% endif %}</strong></p>
+  <dl>
+    <dt>Internal reference</dt><dd>{{ invoice.number }}</dd>
+    <dt>Posted on</dt><dd>{{ invoice.posting_on|date:"d M Y" }}</dd>
+    <dt>Movement</dt><dd>{{ snapshot.movement_reference }}</dd>
+    <dt>Trading party</dt><dd>{{ snapshot.party.name }}<br>{{ snapshot.party.address|linebreaksbr }}<br>GSTIN {{ snapshot.party.gstin }}</dd>
+    {% if invoice.supplier_reference %}
+      <dt>Supplier document</dt><dd>{{ invoice.supplier_reference }} · {{ invoice.supplier_invoice_date|date:"d M Y" }}</dd>
+    {% endif %}
+    <dt>Place of supply</dt><dd>{{ snapshot.place_of_supply }}</dd>
+    <dt>Item description</dt><dd>{{ snapshot.item.description }} {{ snapshot.item.grade }} {{ snapshot.item.dimensions }}</dd>
+    <dt>HSN</dt><dd>{{ snapshot.rate.hsn }}</dd>
+    <dt>Quantity and price</dt><dd>{{ snapshot.item.quantity }} {{ snapshot.item.unit }} at INR {{ snapshot.item.unit_price }}</dd>
+  </dl>
+  <table>
+    <thead><tr><th scope="col">Amount</th><th scope="col">INR</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Discount</th><td>{{ snapshot.discount }}</td></tr>
+      <tr><th scope="row">Freight</th><td>{{ snapshot.freight }}</td></tr>
+      {% for component, amount in snapshot.tax.items %}
+        <tr><th scope="row">{{ component|upper }}</th><td>{{ amount }}</td></tr>
+      {% endfor %}
+      <tr><th scope="row">Round-off</th><td>{{ snapshot.round_off }}</td></tr>
+    </tbody>
+    <tfoot><tr><th scope="row">Total</th><td>{{ invoice.total|floatformat:2 }}</td></tr></tfoot>
+  </table>
+  <p>{{ amount_words }}</p>
+</main>
+</body>
+</html>

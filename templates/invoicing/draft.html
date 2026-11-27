@@ -19,6 +19,7 @@
     {% endfor %}
     <dt>Total</dt><dd>₹{{ draft.total|floatformat:2 }}</dd>
   </dl>
+  {% if issued %}<a href="{% url 'accounting:invoice_print' issued.pk %}">Open printable internal invoice</a>{% endif %}
   <a href="{% url 'accounting:invoice_movements' %}">Back to invoice drafts</a>
 </section>
 {% endblock %}

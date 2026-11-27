@@ -1,13 +1,16 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from io import BytesIO
 from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 
 from accounting.models import AccountGroup, Journal, Ledger
 from accounting.services import lock_period, post_journal, setup_books
@@ -563,6 +566,53 @@ class InvoiceDraftTests(TestCase):
                                   posting_on=draft.supply_on, quantity=Decimal("1"),
                                   reason="Invalid return", submission_key=uuid4())
         self.assertFalse(InvoiceReturn.objects.exists())
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_print_keeps_saved_branding_and_is_owner_only(self):
+        self.client.force_login(self.owner)
+        branding = reverse("accounting:registration_branding", args=[self.registration.pk])
+        source = BytesIO()
+        Image.new("RGB", (300, 100), "navy").save(source, format="JPEG")
+        logo = SimpleUploadedFile("company.jpg", source.getvalue(), content_type="image/jpeg")
+        self.assertRedirects(self.client.post(branding, {"letterhead": "Original <letterhead>", "logo": logo}),
+                             reverse("accounting:gst_settings"))
+        self.registration.refresh_from_db()
+        with Image.open(BytesIO(self.registration.logo_png)) as saved:
+            self.assertEqual((saved.format, saved.size), ("PNG", (240, 80)))
+        draft = self.draft(self.dispatch)
+        _, inputs = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **inputs)
+        self.client.post(branding, {"letterhead": "New letterhead", "remove_logo": True})
+        print_url = reverse("accounting:invoice_print", args=[invoice.pk])
+        response = self.client.get(print_url)
+        self.assertContains(response, "Original &lt;letterhead&gt;")
+        self.assertContains(response, "data:image/png;base64,")
+        self.assertContains(response, "Three hundred thirty six rupees only")
+        self.assertContains(response, "Internal use only")
+        self.assertNotContains(response, "New letterhead")
+        self.assertNotContains(response, "Synthetic Supplier")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(self.client.post(print_url).status_code, 405)
+        with self.settings(INTERNAL_INVOICE_ISSUANCE=False):
+            self.assertEqual(self.client.get(print_url).status_code, 404)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(print_url).status_code, 404)
+        self.assertEqual(self.client.get(branding).status_code, 404)
+
+    def test_branding_rejects_invalid_uploads_and_csrf(self):
+        self.client.force_login(self.owner)
+        branding = reverse("accounting:registration_branding", args=[self.registration.pk])
+        invalid = SimpleUploadedFile("logo.png", b"invalid image", content_type="image/png")
+        self.assertContains(self.client.post(branding, {"logo": invalid}), "Choose a valid PNG or JPEG")
+        oversize = BytesIO()
+        Image.new("RGB", (1025, 1)).save(oversize, format="PNG")
+        oversized = SimpleUploadedFile("logo.png", oversize.getvalue(), content_type="image/png")
+        self.assertContains(self.client.post(branding, {"logo": oversized}), "1024")
+        strict = Client(enforce_csrf_checks=True)
+        strict.force_login(self.owner)
+        self.assertEqual(strict.post(branding, {"letterhead": "Unauthorised"}).status_code, 403)
+        self.registration.refresh_from_db()
+        self.assertEqual((self.registration.letterhead, self.registration.logo_png), ("", b""))
 
     def invoice_payload(self):
         return {

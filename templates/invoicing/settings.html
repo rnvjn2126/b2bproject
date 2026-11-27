@@ -12,7 +12,8 @@
     <button type="submit" name="action" value="registration">Add registration</button>
   </form>
   <ul>{% for registration in registrations %}
-    <li>{{ registration.gstin }} · {{ registration.registered_name }} · {{ registration.registered_address }}</li>
+    <li>{{ registration.gstin }} · {{ registration.registered_name }} · {{ registration.registered_address }} ·
+      <a href="{% url 'accounting:registration_branding' registration.pk %}">Edit letterhead</a></li>
   {% empty %}<li>No company registrations yet.</li>{% endfor %}</ul>
 </section>
 <section class="card">

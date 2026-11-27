@@ -1,0 +1,29 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>{{ account.get_kind_display }} book</h1>
+  <p>{{ account }}</p>
+  <a href="{% url 'accounting:bank_accounts' %}">Back to bank and cash accounts</a>
+  <form method="get" class="inline-form">{{ form.as_p }}<button type="submit">Show entries</button></form>
+  {% if report %}
+  <p>Opening INR {{ report.opening|floatformat:2 }} · Closing INR {{ report.closing|floatformat:2 }}</p>
+  <div class="table-scroll" tabindex="0"><table>
+    <thead><tr><th scope="col">Posted</th><th scope="col">Journal</th><th scope="col">Side</th><th scope="col">Amount (INR)</th><th scope="col">Balance (INR)</th></tr></thead>
+    <tbody>{% for line, balance in report.rows %}
+      <tr><td>{{ line.journal.date|date:"d M Y" }}</td><th scope="row"><a href="{% url 'accounting:journal' line.journal_id %}">{{ line.journal.transaction_reference }}</a></th>
+      <td>{{ line.get_side_display }}</td><td>{{ line.amount|floatformat:2 }}</td><td>{{ balance|floatformat:2 }}</td></tr>
+    {% empty %}<tr><td colspan="5">No posted entries in this period.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+{% if account.kind == "bank" %}
+<section class="card">
+  <h2>Reported payment references</h2>
+  <a href="{% url 'accounting:bank_instrument' account.pk %}">Record payment reference</a>
+  <ul>{% for entry in instruments %}
+    <li>{{ entry.get_method_display }} · {{ entry.reference }} · {{ entry.reported_on|date:"d M Y" }} · INR {{ entry.amount|floatformat:2 }}
+      {% if entry.method == "cheque" %}<a href="{% url 'accounting:bank_cheque' entry.pk %}">Review cheque history</a>{% endif %}</li>
+  {% empty %}<li>No payment references recorded.</li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

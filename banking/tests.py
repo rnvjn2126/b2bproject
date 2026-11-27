@@ -359,3 +359,20 @@ class BankingTests(TestCase):
             with self.subTest(message=message), self.assertRaisesMessage(ValidationError, message):
                 preview_statement(self.workspace, self.owner, account_id=self.bank.pk, content=content, file_format="xlsx")
         self.assertFalse(StatementBatch.objects.exists())
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_owner_can_match_an_older_ledger_entry_by_exact_reference(self):
+        content = self.statement_csv("2026-05-19,BANKREF,Synthetic deposit,,10")
+        upload = {"account_id": self.bank.pk, "content": content}
+        preview = preview_statement(self.workspace, self.owner, **upload)
+        entry = import_statement(self.workspace, self.owner, **upload, preview_digest=preview.digest).lines.get()
+        journal = transfer_funds(self.workspace, self.owner, from_id=self.cash.pk, to_id=self.bank.pk,
+                                 posting_on=date(2026, 5, 1), amount=Decimal("10"), submission_key=uuid4(), reference="SEARCH")
+        line = journal.lines.get(side="D")
+        self.client.force_login(self.owner)
+        url = reverse("accounting:bank_reconciliation_confirm", args=[entry.pk])
+        self.assertContains(self.client.get(url), "No available suggested matches")
+        url = reverse("accounting:bank_reconciliation_confirm", args=[entry.pk], query={"reference": "search"})
+        self.assertContains(self.client.get(url), journal.transaction_reference)
+        self.assertEqual(self.client.post(url, {"journal_line_id": line.pk}).status_code, 302)
+        self.assertEqual(StatementMatch.objects.get().journal_line, line)

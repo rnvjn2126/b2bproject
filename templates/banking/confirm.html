@@ -4,6 +4,7 @@
   <h1>Review bank match</h1>
   <p>{{ entry.account }} · {{ entry.posted_on|date:"d M Y" }} · {{ entry.get_direction_display }} INR {{ entry.amount|floatformat:2 }} · {{ entry.reference }}</p>
   <p>Confirm only after comparing the statement entry with the posted journal.</p>
+  <form method="get">{{ search.as_p }}<button type="submit">Search</button></form>
   {% if candidates %}
   <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Confirm match</button></form>
   {% else %}<p>No available suggested matches.</p>{% endif %}

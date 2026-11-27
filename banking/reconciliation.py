@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from accounting.models import JournalLine
@@ -43,16 +43,24 @@ def _matching_lines(statement):
                                                  amount=statement.amount)
 
 
-def suggest_matches(workspace, actor, *, statement_line_id):
+def suggest_matches(workspace, actor, *, statement_line_id, reference=""):
     _require_owner(workspace, actor)
     statement = get_statement_entry(workspace, statement_line_id)
     if hasattr(statement, "match"):
         return []
-    day = statement.posted_on.toordinal()
-    candidates = _matching_lines(statement).filter(
-        bank_match__isnull=True, journal__date__gte=date.fromordinal(max(1, day - 7)),
-        journal__date__lte=date.fromordinal(min(date.max.toordinal(), day + 7)),
-    ).select_related("journal", "reportedinstrument")
+    candidates = _matching_lines(statement).filter(bank_match__isnull=True).select_related(
+        "journal", "reportedinstrument",
+    )
+    if reference:
+        candidates = candidates.filter(Q(journal__reference__iexact=reference) | Q(
+            reportedinstrument__reference__iexact=reference, reportedinstrument__account_id=statement.account_id,
+        ))
+    else:
+        day = statement.posted_on.toordinal()
+        candidates = candidates.filter(
+            journal__date__gte=date.fromordinal(max(1, day - 7)),
+            journal__date__lte=date.fromordinal(min(date.max.toordinal(), day + 7)),
+        )
 
     def rank(line):
         instrument = getattr(line, "reportedinstrument", None)

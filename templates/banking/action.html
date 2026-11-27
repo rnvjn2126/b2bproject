@@ -1,0 +1,16 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>{{ title }}</h1>
+  {% if note %}<p>{{ note }}</p>{% endif %}
+  {% if cheque %}
+  <p>{{ cheque.reference }} · INR {{ cheque.amount|floatformat:2 }}</p>
+  <ul>{% for event in cheque.cheque_events.all %}
+    <li>{{ event.happened_on|date:"d M Y" }} · {{ event.get_state_display }} · {{ event.reason }}</li>
+  {% empty %}<li>No cheque events recorded.</li>{% endfor %}</ul>
+  {% endif %}
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Save</button></form>
+  {% if account %}<a href="{% url 'accounting:bank_book' account.pk %}">Back to book</a>
+  {% else %}<a href="{% url 'accounting:bank_accounts' %}">Back to bank and cash accounts</a>{% endif %}
+</section>
+{% endblock %}

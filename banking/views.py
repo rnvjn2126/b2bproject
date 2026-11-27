@@ -28,6 +28,10 @@ class ReportFilter(forms.Form):
         self.fields["account"].queryset = company_funds(workspace).filter(kind=FundsAccount.Kind.BANK)
 
 
+class MatchSearchForm(forms.Form):
+    reference = forms.CharField(label="Search by exact journal or payment reference", required=False, max_length=100)
+
+
 class MatchForm(forms.Form):
     journal_line_id = forms.TypedChoiceField(label="Candidate ledger entry", coerce=int)
 
@@ -65,9 +69,11 @@ def reconciliation_report(request, workspace):
 def reconciliation_confirm(request, workspace, pk):
     if workspace is None or not settings.INTERNAL_INVOICE_ISSUANCE:
         raise Http404
+    search = MatchSearchForm(request.GET)
     try:
         entry = get_statement_entry(workspace, pk)
-        candidates = suggest_matches(workspace, request.user, statement_line_id=pk)
+        candidates = (suggest_matches(workspace, request.user, statement_line_id=pk,
+                                      reference=search.cleaned_data["reference"]) if search.is_valid() else [])
     except ValidationError as error:
         raise Http404 from error
     form = MatchForm(request.POST if request.method == "POST" else None, candidates=candidates)
@@ -81,7 +87,7 @@ def reconciliation_confirm(request, workspace, pk):
             return redirect(reverse("accounting:bank_reconciliation", query={
                 "account": entry.account_id, "start_on": entry.posted_on.replace(day=1), "end_on": timezone.localdate(),
             }))
-    return render(request, "banking/confirm.html", {"form": form, "candidates": candidates, "entry": entry})
+    return render(request, "banking/confirm.html", {"form": form, "search": search, "candidates": candidates, "entry": entry})
 
 
 

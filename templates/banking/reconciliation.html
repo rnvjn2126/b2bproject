@@ -2,6 +2,7 @@
 {% block books %}
 <section class="card">
   <h1>Bank reconciliation</h1>
+  <a href="{% url 'accounting:bank_accounts' %}">Bank and cash accounts</a>
   <a href="{% url 'accounting:bank_statement_upload' %}">Upload bank statement</a>
   <form method="get">{{ form.as_p }}<button type="submit">Show unmatched entries</button></form>
 </section>

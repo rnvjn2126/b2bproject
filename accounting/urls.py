@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from banking import views as bank_views
+from banking import account_views, views as bank_views
 from invoicing import views as invoice_views
 
 from . import views, voucher_views
@@ -9,6 +9,11 @@ from .models import Journal
 app_name = "accounting"
 urlpatterns = [
     path("", views.home, name="home"),
+    path("banking/", account_views.accounts, name="bank_accounts"),
+    path("banking/transfer/", account_views.transfer, name="bank_transfer"),
+    path("banking/<int:pk>/", account_views.book, name="bank_book"),
+    path("banking/<int:pk>/reference/", account_views.instrument, name="bank_instrument"),
+    path("banking/cheques/<int:pk>/", account_views.cheque, name="bank_cheque"),
     path("bank-reconciliation/upload/", bank_views.statement_upload, name="bank_statement_upload"),
     path("bank-reconciliation/", bank_views.reconciliation_report, name="bank_reconciliation"),
     path("bank-reconciliation/<int:pk>/confirm/", bank_views.reconciliation_confirm, name="bank_reconciliation_confirm"),

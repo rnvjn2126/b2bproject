@@ -1,0 +1,15 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Bank and cash accounts</h1>
+  <div class="actions"><a href="{% url 'accounting:bank_transfer' %}">Transfer funds</a>
+    <a href="{% url 'accounting:bank_reconciliation' %}">Bank reconciliation</a></div>
+  <ul>{% for account in accounts %}
+    <li><a href="{% url 'accounting:bank_book' account.pk %}">{{ account }}</a> · {{ account.get_kind_display }}</li>
+  {% empty %}<li>No funds accounts registered.</li>{% endfor %}</ul>
+</section>
+<section class="card">
+  <h2>Register funds account</h2>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Register account</button></form>
+</section>
+{% endblock %}

@@ -1,5 +1,6 @@
 from django import forms
 from django.conf import settings
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from django.shortcuts import redirect, render
@@ -13,6 +14,8 @@ from accounting.views import owner_only
 from .models import FundsAccount
 from .reconciliation import confirm_match, get_statement_entry, suggest_matches, unmatched_report
 from .services import company_funds
+from .statement_csv import MAX_STATEMENT_BYTES
+from .statements import import_statement, preview_statement
 
 
 class ReportFilter(forms.Form):
@@ -79,3 +82,68 @@ def reconciliation_confirm(request, workspace, pk):
                 "account": entry.account_id, "start_on": entry.posted_on.replace(day=1), "end_on": timezone.localdate(),
             }))
     return render(request, "banking/confirm.html", {"form": form, "candidates": candidates, "entry": entry})
+
+
+
+class StatementUploadForm(forms.Form):
+    account = forms.ModelChoiceField(queryset=FundsAccount.objects.none())
+    statement = forms.FileField(label="Statement CSV", widget=forms.ClearableFileInput(attrs={"accept": ".csv"}))
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["account"].queryset = company_funds(workspace).filter(kind=FundsAccount.Kind.BANK)
+
+    def clean_statement(self):
+        upload = self.cleaned_data["statement"]
+        if not upload.name.lower().endswith(".csv") or upload.size > MAX_STATEMENT_BYTES:
+            raise ValidationError("Choose a CSV file up to 256 KB.")
+        return upload.read(MAX_STATEMENT_BYTES + 1)
+
+
+class StatementConfirmForm(StatementUploadForm):
+    account = forms.ModelChoiceField(queryset=FundsAccount.objects.none(), widget=forms.HiddenInput)
+    preview_digest = forms.RegexField(r"\A[0-9a-f]{64}\Z", widget=forms.HiddenInput)
+    skip_known = forms.BooleanField(required=False, label="Skip entries already imported for this account")
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def statement_upload(request, workspace):
+    if workspace is None or not settings.INTERNAL_INVOICE_ISSUANCE:
+        raise Http404
+    form = StatementUploadForm(workspace=workspace)
+    confirmation = None
+    preview = None
+    if request.method == "POST":
+        confirming = request.POST.get("action") == "confirm"
+        form_class = StatementConfirmForm if confirming else StatementUploadForm
+        bound = form_class(request.POST, request.FILES, workspace=workspace, prefix="confirm" if confirming else None)
+        if confirming:
+            confirmation = bound
+        else:
+            form = bound
+        if bound.is_valid():
+            data = bound.cleaned_data
+            account = data["account"]
+            inputs = {"account_id": account.pk, "content": data["statement"]}
+            try:
+                if confirming:
+                    batch = import_statement(workspace, request.user, **inputs, preview_digest=data["preview_digest"],
+                                             skip_known=data["skip_known"])
+                    messages.success(request, f"New entries staged: {batch.imported_rows}. "
+                                              f"Entries already present: {batch.duplicate_rows}.")
+                    today = timezone.localdate()
+                    start = batch.lines.order_by("posted_on").values_list("posted_on", flat=True).first()
+                    return redirect(reverse("accounting:bank_reconciliation", query={
+                        "account": account.pk, "start_on": start or today.replace(day=1), "end_on": today,
+                    }))
+                preview = preview_statement(workspace, request.user, **inputs)
+                confirmation = StatementConfirmForm(workspace=workspace, prefix="confirm", initial={
+                    "account": account.pk, "preview_digest": preview.digest,
+                })
+            except ValidationError as error:
+                bound.add_error(None, error.messages)
+    return render(request, "banking/statement_upload.html", {
+        "form": form, "confirmation": confirmation, "preview": preview,
+    })

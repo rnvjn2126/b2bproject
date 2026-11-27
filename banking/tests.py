@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -282,3 +283,32 @@ class BankingTests(TestCase):
         self.assertEqual(StatementMatch.objects.get().journal_line, line)
         self.client.force_login(self.other)
         self.assertEqual(self.client.get(confirm).status_code, 404)
+
+
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_owner_statement_upload_previews_before_confirmation(self):
+        url = reverse("accounting:bank_statement_upload")
+        content = self.statement_csv("2026-05-01,REF,Synthetic deposit,,10")
+
+        def upload(data=content):
+            return SimpleUploadedFile("synthetic.csv", data, content_type="text/csv")
+
+        self.client.force_login(self.owner)
+        response = self.client.post(url, {"action": "preview", "account": self.bank.pk, "statement": upload()})
+        self.assertContains(response, "1 new entry")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertFalse(StatementBatch.objects.exists())
+        digest = response.context["preview"].digest
+        confirmation = {"action": "confirm", "confirm-account": self.bank.pk, "confirm-preview_digest": digest}
+        invalid = self.client.post(url, confirmation | {"confirm-statement": upload(content + bytes([10]))})
+        self.assertContains(invalid, "The file changed after preview")
+        self.assertFalse(StatementBatch.objects.exists())
+        accepted = self.client.post(url, confirmation | {"confirm-statement": upload()}, follow=True)
+        self.assertContains(accepted, "New entries staged: 1")
+        self.assertEqual(StatementLine.objects.get().reference, "REF")
+        self.assertFalse(Journal.objects.exists())
+        self.client.force_login(self.other)
+        self.assertContains(self.client.post(url, {"action": "preview", "account": self.bank.pk,
+                                                   "statement": upload()}), "Select a valid choice")
+        self.assertEqual(StatementBatch.objects.count(), 1)

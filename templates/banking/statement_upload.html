@@ -1,0 +1,34 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Upload bank statement</h1>
+  <p>Use UTF-8 CSV with columns <code>date,reference,description,debit,credit</code>. Enter dates as YYYY-MM-DD and use one amount column per row.</p>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}
+    <button type="submit" name="action" value="preview">Preview statement</button>
+  </form>
+</section>
+{% if confirmation %}
+<section class="card">
+  <h2>Confirm statement import</h2>
+  {% if preview %}
+    <p>{{ preview.new|length }} new entr{{ preview.new|length|pluralize:"y,ies" }} · {{ preview.duplicates|length }} already present</p>
+    <div class="table-scroll" tabindex="0"><table>
+      <thead><tr><th scope="col">Date</th><th scope="col">Reference</th><th scope="col">Amount (INR)</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+      {% for row in preview.new %}
+        <tr><td>{{ row.posted_on|date:"d M Y" }}</td><td>{{ row.reference }} {{ row.description }}</td><td>{{ row.direction }} {{ row.amount|floatformat:2 }}</td><td>New</td></tr>
+      {% endfor %}
+      {% for row in preview.duplicates %}
+        <tr><td>{{ row.posted_on|date:"d M Y" }}</td><td>{{ row.reference }} {{ row.description }}</td><td>{{ row.direction }} {{ row.amount|floatformat:2 }}</td><td>Already present</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  {% endif %}
+  <p>Select the same file again to confirm. The import stages entries for review.</p>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ confirmation.as_p }}
+    <button type="submit" name="action" value="confirm">Stage statement entries</button>
+  </form>
+</section>
+{% endif %}
+<a href="{% url 'accounting:bank_reconciliation' %}">Back to reconciliation</a>
+{% endblock %}

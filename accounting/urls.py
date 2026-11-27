@@ -9,6 +9,7 @@ from .models import Journal
 app_name = "accounting"
 urlpatterns = [
     path("", views.home, name="home"),
+    path("bank-reconciliation/upload/", bank_views.statement_upload, name="bank_statement_upload"),
     path("bank-reconciliation/", bank_views.reconciliation_report, name="bank_reconciliation"),
     path("bank-reconciliation/<int:pk>/confirm/", bank_views.reconciliation_confirm, name="bank_reconciliation_confirm"),
     path("settlements/", include("settlements.urls")),

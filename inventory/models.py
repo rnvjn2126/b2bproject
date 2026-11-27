@@ -5,6 +5,7 @@ from django.db.models import Q
 
 from dashboard.models import Product
 
+from .costing import CostMethod
 from .geometry import MM2_PER_M2, MM_PER_M, cross_section_mm2
 
 
@@ -269,4 +270,51 @@ class ReorderPolicy(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["workspace", "warehouse", "product"], name="inventory_unique_reorder"),
             models.CheckConstraint(condition=Q(minimum_available__gte=0), name="inventory_valid_reorder_threshold"),
+        ]
+
+
+class ValuationPolicy(models.Model):
+    workspace = models.OneToOneField("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    method = models.CharField(max_length=7, choices=CostMethod.choices)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(method__in=CostMethod.values),
+                                              name="inventory_valid_cost_method")]
+
+
+class ValuationEvent(models.Model):
+    movement = models.OneToOneField(StockMovement, related_name="valuation", on_delete=models.PROTECT)
+    method = models.CharField(max_length=7, choices=CostMethod.choices)
+    material = models.DecimalField(max_digits=15, decimal_places=2)
+    freight = models.DecimalField(max_digits=15, decimal_places=2)
+    packaging = models.DecimalField(max_digits=15, decimal_places=2)
+    other = models.DecimalField(max_digits=15, decimal_places=2)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    closing_quantity = models.DecimalField(max_digits=18, decimal_places=3)
+    closing_amount = models.DecimalField(max_digits=18, decimal_places=2)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(method__in=CostMethod.values, material__gte=0, freight__gte=0, packaging__gte=0,
+                            other__gte=0, amount__gte=0, closing_quantity__gte=0, closing_amount__gte=0)
+                & (Q(closing_quantity__gt=0) | Q(closing_amount=0)),
+                name="inventory_valid_cost_event",
+            ),
+        ]
+
+
+class ValuationLayer(models.Model):
+    receipt = models.OneToOneField(ValuationEvent, related_name="cost_layer", on_delete=models.PROTECT)
+    quantity = models.DecimalField(max_digits=14, decimal_places=3)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(quantity__gte=0, amount__gte=0) & (Q(quantity__gt=0) | Q(amount=0)),
+                name="inventory_valid_cost_layer",
+            ),
         ]

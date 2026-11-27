@@ -109,6 +109,11 @@ def record_stock_movement(workspace, actor, *, lot_id, kind, source_id=None, des
         return previous
 
     check_lot_chronology(lot, posted_on)
+    if StockMovement.objects.filter(
+        workspace=workspace, lot__product_id=lot.product_id, lot__unit=lot.unit,
+        posted_on__gt=posted_on, valuation__isnull=False,
+    ).exists():
+        raise ValidationError("This date precedes an existing valuation for this product and unit.")
     if order_movement_id is not None:
         _check_order_movement(workspace, lot, kind, order_movement_id, posted_on, quantity)
 

@@ -15,7 +15,7 @@ class CostMethod(models.TextChoices):
     AVERAGE = "average", "Moving weighted average"
 
 
-def _validate_decimal(value, *, digits, places, label, positive=False):
+def validate_decimal(value, *, digits, places, label, positive=False):
     if not isinstance(value, Decimal) or not value.is_finite() or (value <= 0 if positive else value < 0):
         raise ValidationError(f"Enter a valid {label}.")
     DecimalValidator(digits, places)(value)
@@ -27,8 +27,8 @@ class CostBalance:
     amount: Decimal
 
     def __post_init__(self):
-        _validate_decimal(self.quantity, digits=18, places=3, label="stock quantity", positive=True)
-        _validate_decimal(self.amount, digits=18, places=2, label="stock value")
+        validate_decimal(self.quantity, digits=18, places=3, label="stock quantity", positive=True)
+        validate_decimal(self.amount, digits=18, places=2, label="stock value")
 
 
 def _split(balance, quantity):
@@ -46,7 +46,7 @@ def consume_stock(method, layers, quantity):
     FIFO layers arrive oldest first. A moving-average pool has one quantity and
     value, irrespective of the number of existing receipts.
     """
-    _validate_decimal(quantity, digits=14, places=3, label="issue quantity", positive=True)
+    validate_decimal(quantity, digits=14, places=3, label="issue quantity", positive=True)
     layers = tuple(layers)
     if method not in CostMethod.values or (method == CostMethod.AVERAGE and len(layers) > 1):
         raise ValidationError("Choose a valid valuation method and stock pool.")
@@ -70,12 +70,12 @@ def consume_stock(method, layers, quantity):
 
 def allocate_landed_cost(amount, weights):
     """Distribute one charge to ordered receipt lines without losing a paisa."""
-    _validate_decimal(amount, digits=15, places=2, label="landed cost")
+    validate_decimal(amount, digits=15, places=2, label="landed cost")
     weights = tuple(weights)
     if not weights:
         raise ValidationError("Choose at least one line for landed cost allocation.")
     for weight in weights:
-        _validate_decimal(weight, digits=18, places=6, label="allocation weight")
+        validate_decimal(weight, digits=18, places=6, label="allocation weight")
     total = sum(weights)
     if not total:
         raise ValidationError("At least one allocation weight must be positive.")

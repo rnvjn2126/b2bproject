@@ -14,8 +14,8 @@ from accounting.services import lock_period, post_journal, setup_books
 from dashboard.models import BusinessAccount, Customer, Quote, QuoteLine, RFQ, RFQLine, Supplier, SupplierOffer, TeamMembership
 from orders.models import OrderMovement, PurchaseOrder, SalesOrder, SalesOrderLine
 
-from .issuance import issue_internal_purchase, issue_internal_sale
-from .models import CompanyGSTRegistration, InvoiceDraft, IssuedInvoice, TaxRate
+from .issuance import cancel_internal_invoice, issue_internal_purchase, issue_internal_sale
+from .models import CompanyGSTRegistration, InvoiceCancellation, InvoiceDraft, IssuedInvoice, TaxRate
 from .posting import plan_invoice_posting, resolve_invoice_lines
 from .services import prepare_draft
 from .tax import calculate_line, invoice_total, validate_gstin
@@ -441,6 +441,61 @@ class InvoiceDraftTests(TestCase):
         with self.assertRaisesMessage(ValidationError, "actual purchase draft"):
             issue_internal_purchase(self.workspace, self.owner, **inputs)
         self.assertFalse(Journal.objects.exists())
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_invoice_cancellation_uses_later_open_period_and_reverses_all_lines(self):
+        draft = self.draft(self.dispatch)
+        _, inputs = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **inputs)
+        lock_period(self.workspace, self.owner, invoice.journal.period_id)
+        with self.assertRaisesMessage(ValidationError, "open period"):
+            cancel_internal_invoice(self.workspace, self.owner, invoice_id=invoice.pk,
+                                    posting_on=draft.supply_on, reason="Synthetic cancellation")
+        values = {"invoice_id": invoice.pk, "posting_on": date(2026, 6, 1), "reason": "Synthetic cancellation"}
+        cancellation = cancel_internal_invoice(self.workspace, self.owner, **values)
+        self.assertTrue(cancellation.reversal.sealed)
+        self.assertEqual(cancellation.reversal.reverses_id, invoice.journal_id)
+        self.assertEqual(cancellation.reversal.reference, f"VOID-{invoice.number}")
+        original = invoice.journal.lines.values_list("ledger_id", "side", "amount")
+        reversal = cancellation.reversal.lines.values_list("ledger_id", "side", "amount")
+        self.assertEqual(list(reversal), [
+            (ledger_id, "C" if side == "D" else "D", amount) for ledger_id, side, amount in original
+        ])
+        self.assertEqual(cancel_internal_invoice(self.workspace, self.owner, **values), cancellation)
+        with self.assertRaisesMessage(ValidationError, "already cancelled"):
+            cancel_internal_invoice(self.workspace, self.owner, **(values | {"reason": "Changed"}))
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            InvoiceCancellation.objects.filter(pk=cancellation.pk).update(reason="Changed")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            InvoiceCancellation.objects.filter(pk=cancellation.pk).delete()
+        invoice.refresh_from_db()
+        self.assertEqual((invoice.number, invoice.snapshot), ("INT-SI-2026-1", draft.snapshot))
+        self.assertEqual(Journal.objects.count(), 2)
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_purchase_cancellation_checks_scope_gate_and_rolls_back_a_failed_link(self):
+        day = self.receipt.date
+        draft = self.draft(self.receipt, purchase_unit_price=Decimal("75"), supplier_invoice_date=day)
+        invoice = issue_internal_purchase(self.workspace, self.owner, **self.purchase_issue_inputs(draft))
+        values = {"invoice_id": invoice.pk, "posting_on": day, "reason": "Supplier voided synthetic invoice"}
+        with self.assertRaises(PermissionDenied):
+            cancel_internal_invoice(self.workspace, self.other, **values)
+        with self.assertRaises(ValidationError):
+            cancel_internal_invoice(self.other_workspace, self.other, **values)
+        with self.settings(INTERNAL_INVOICE_ISSUANCE=False), self.assertRaises(PermissionDenied):
+            cancel_internal_invoice(self.workspace, self.owner, **values)
+        with patch("invoicing.issuance.InvoiceCancellation.objects.create", side_effect=IntegrityError):
+            with self.assertRaises(IntegrityError):
+                cancel_internal_invoice(self.workspace, self.owner, **values)
+        self.assertEqual(Journal.objects.count(), 1)
+        self.assertFalse(InvoiceCancellation.objects.exists())
+        cancellation = cancel_internal_invoice(self.workspace, self.owner, **values)
+        self.assertEqual(cancellation.reversal.reverses_id, invoice.journal_id)
+        self.assertEqual(IssuedInvoice.objects.get(pk=invoice.pk).supplier_reference, "INV/11")
+        with self.assertRaisesMessage(IntegrityError, "Invalid invoice cancellation journal link"), transaction.atomic():
+            InvoiceCancellation.objects.create(invoice=invoice, reversal=invoice.journal,
+                                               reason="Synthetic invalid link", cancelled_by=self.owner)
+        self.assertEqual(Journal.objects.count(), 2)
 
     def invoice_payload(self):
         return {

@@ -123,3 +123,11 @@ class IssuedInvoice(models.Model):
                 ), name="invoicing_valid_supplier_document",
             ),
         ]
+
+
+class InvoiceCancellation(models.Model):
+    invoice = models.OneToOneField(IssuedInvoice, on_delete=models.PROTECT, related_name="cancellation")
+    reversal = models.OneToOneField("accounting.Journal", on_delete=models.PROTECT)
+    reason = models.CharField(max_length=500)
+    cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    cancelled_at = models.DateTimeField(auto_now_add=True)

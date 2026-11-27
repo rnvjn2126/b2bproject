@@ -9,7 +9,7 @@ from django.db import transaction
 from accounting.models import Journal, Period
 from accounting.services import lock_books, post_journal
 
-from .models import InvoiceDraft, IssuedInvoice
+from .models import InvoiceCancellation, InvoiceDraft, IssuedInvoice
 from .posting import plan_invoice_posting, resolve_invoice_lines
 from .services import eligible_movements
 from .tax import check_decimal, validate_gstin
@@ -101,3 +101,31 @@ def _issue_internal(workspace, actor, *, kind, draft_id, posting_on, confirmed_t
         kind=kind, posting_on=posting_on, journal=journal, total=draft.total, snapshot=draft.snapshot,
         ledger_ids=ledger_ids, issued_by=actor, **supplier_document,
     )
+
+
+@transaction.atomic
+def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason):
+    """Reverse an internal invoice while retaining the issued document and its reference."""
+    if not settings.INTERNAL_INVOICE_ISSUANCE:
+        raise PermissionDenied("Internal invoice issuance is disabled.")
+    lock_books(workspace, actor)
+    invoice = IssuedInvoice.objects.filter(workspace=workspace, pk=invoice_id).select_related("journal").first()
+    if invoice is None:
+        raise ValidationError("Choose an issued invoice in your workspace.")
+    if type(posting_on) is not date or posting_on < invoice.posting_on:
+        raise ValidationError("The correction date cannot precede the original posting.")
+    if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 500:
+        raise ValidationError("Enter a cancellation reason of up to 500 characters.")
+    reason = reason.strip()
+    existing = InvoiceCancellation.objects.filter(invoice=invoice).select_related("reversal").first()
+    if existing:
+        if existing.reason != reason or existing.reversal.date != posting_on:
+            raise ValidationError("This invoice was already cancelled with different inputs.")
+        return existing
+
+    reversal = post_journal(
+        workspace, actor, date=posting_on, kind=Journal.Kind.REVERSAL, reference=f"VOID-{invoice.number}",
+        narration=reason, submission_key=uuid5(NAMESPACE_URL, f"steel-quotes/internal-cancellation/{invoice.pk}"),
+        reverses=invoice.journal, invoice_correction=True,
+    )
+    return InvoiceCancellation.objects.create(invoice=invoice, reversal=reversal, reason=reason, cancelled_by=actor)

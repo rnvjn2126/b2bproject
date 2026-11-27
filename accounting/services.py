@@ -86,14 +86,14 @@ def lock_period(workspace, actor, period_id):
 
 @transaction.atomic
 def post_journal(workspace, actor, *, date, kind, reference, narration, submission_key,
-                 lines=(), branch=None, cost_centre=None, reverses=None):
+                 lines=(), branch=None, cost_centre=None, reverses=None, invoice_correction=False):
     lock_books(workspace, actor)
     if kind in INVOICE_JOURNAL_KINDS and not settings.INTERNAL_INVOICE_ISSUANCE:
         raise PermissionDenied("Internal invoice issuance is disabled.")
     if reverses is not None:
         if not reverses.sealed or reverses.workspace_id != workspace.pk or reverses.kind == Journal.Kind.REVERSAL:
             raise ValidationError("Choose an original journal in your workspace.")
-        if reverses.kind in INVOICE_JOURNAL_KINDS:
+        if reverses.kind in INVOICE_JOURNAL_KINDS and not (invoice_correction and settings.INTERNAL_INVOICE_ISSUANCE):
             raise ValidationError("Invoice journals require the invoice correction workflow.")
         if date < reverses.date:
             raise ValidationError("A reversal cannot be dated before the original journal.")

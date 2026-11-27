@@ -3,12 +3,12 @@
 {% block books %}
 <section class="card">
   <h1>Steel inventory</h1>
-  <nav class="actions" aria-label="Inventory sections">
+  <nav class="record-actions" aria-label="Inventory sections">
     <a href="#stock">Stock and ageing</a>
     <a href="#traceability">Warehouses and lots</a>
     <a href="#activity">Stock activity</a>
   </nav>
-  <div class="actions">
+  <div class="record-actions">
     {% for key, action in actions.items %}
       <a href="{% url 'accounting:inventory:action' key %}">{{ action.0 }}</a>
     {% endfor %}
@@ -19,7 +19,7 @@
   <h2>Stock and ageing</h2>
   <p>Age is measured from the earliest recorded receipt for the lot, including after transfers.</p>
   <div class="table-scroll" tabindex="0" role="region" aria-label="Stock and ageing table">
-    <table>
+    <table class="table-wide">
       <thead><tr><th scope="col">Lot</th><th scope="col">Location</th><th scope="col">Unit</th><th scope="col">On hand</th><th scope="col">Reserved</th><th scope="col">Available</th><th scope="col">Lot age</th></tr></thead>
       <tbody>
         {% for row in ageing %}
@@ -65,7 +65,7 @@
   </ul>
   <h3>Mill traceability</h3>
   <div class="table-scroll" tabindex="0" role="region" aria-label="Mill traceability table">
-    <table>
+    <table class="table-wide">
       <thead><tr><th scope="col">Lot</th><th scope="col">Grade and unit</th><th scope="col">Heat and batch</th><th scope="col">Mill and manufacturer</th><th scope="col">Certificate</th></tr></thead>
       <tbody>
         {% for lot in lots %}
@@ -86,7 +86,7 @@
 <section class="card" id="activity">
   <h2>Recent stock activity</h2>
   <div class="table-scroll" tabindex="0" role="region" aria-label="Recent stock movements table">
-    <table>
+    <table class="table-wide">
       <thead><tr><th scope="col">Date and reference</th><th scope="col">Type</th><th scope="col">Lot</th><th scope="col">Locations</th><th scope="col">Quantity</th><th scope="col">Measured kg</th><th scope="col">Theoretical kg</th></tr></thead>
       <tbody>
         {% for movement in movements %}

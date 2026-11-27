@@ -2,12 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `d421aa46f1545bbdc220c7b7cae949a62c2ac36a`.
-- **Active checkpoint:** 07, Steel-specific inventory. Complete for the local pilot. Work paused by request.
-- **Last verified task:** Owner inventory workflow, including counts, reorder alerts, lot ageing and readable phone tables.
-- **Changed files and migrations:** Inventory models, services, forms, tests and templates, accounting routes and home link, and inventory migrations 0001–0005.
-- **Latest tests:** 21 inventory tests passed. Both final full runs passed 223 tests after the phone layout fix. Django, migration drift, Chrome, populated SQLite upgrade and two-thread stock probes passed.
-- **Exact next task:** When asked to resume, read the Checkpoint 08 specification and inspect the stock movement and sealed posting interfaces before designing company-scoped stock cost layers. PostgreSQL and certificate review remain release gates.
+- **Latest implementation commit:** `ae79d2fd5ae54b2f76d824f652ac90957176d7e0`.
+- **Active checkpoint:** 08, Inventory valuation and procurement. Partial.
+- **Last verified task:** Decimal valuation and landed allocation, company costing method, FIFO layers and immutable stock-movement valuations.
+- **Changed files and migrations:** Inventory costing, models, stock and valuation services, tests and migration 0006.
+- **Latest tests:** 31 inventory tests passed. Django and migration drift checks passed. Both last full runs passed 223 tests at Checkpoint 07.
+- **Exact next task:** Add owner supplier daily rates, freshness and procurement recommendations. Then design sealed cost postings against issued invoices and verified procurement sources. PostgreSQL and statutory release review remain pending.
 
 ## Resume on Windows
 
@@ -19,7 +19,7 @@ git status --short --branch
 git log -5 --oneline
 Get-Content AGENTS.md
 Get-Content docs/ACCOUNTING_HANDOFF.md -TotalCount 20
-Get-Content docs/checkpoints/07-inventory.md
+Get-Content docs/checkpoints/08-inventory-valuation.md
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py check
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py makemigrations --check --dry-run
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py test --noinput

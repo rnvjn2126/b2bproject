@@ -50,9 +50,9 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 06A | 38 passed (banking, settlement and accounting) | 187 passed, 87.988 s | 187 passed, 87.855 s |
 | 06B | 41 passed (banking, settlement and accounting) | 190 passed, 83.736 s | 190 passed, 83.720 s |
 | 06C | 45 passed (banking, settlement and accounting) | 194 passed, 85.976 s | 194 passed, 85.390 s |
-| 06D | 47 passed (banking, settlement and accounting) | Final rerun pending | Final rerun pending |
+| 06D | 47 passed (banking, settlement and accounting) | 196 passed, 139.831 s | 196 passed, 139.012 s |
 
-Django and migration drift checks passed through 06C. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
+Django and migration drift checks passed through 06D. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 
 ## Reconciliation, security and release gates
 

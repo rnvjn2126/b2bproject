@@ -2,6 +2,17 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 07 complete · Local inventory pilot paused
+
+- Owner screens cover steel specifications, warehouses and bins, heat and batch traceability, mill evidence, receipts, issues, transfers, reservations, physical counts, reorder review and lot ageing.
+- Inventory migrations 0001–0005. This slice added 0005 for physical counts and reorder thresholds. Counts reconcile the physical quantity against the recorded position and append a stock adjustment when needed. Available stock excludes active reservations. These operational movements create no financial journals.
+- Changed inventory services, models, migrations, forms, URLs and tests, plus inventory and accounting templates and local Django settings. Count and reporting implementation `9a2961056298b7e02e571616fde53d3d69c7736b`. Owner screens `722f7e8a853d7ed0bc2e5c732edb29da386a2bd3`. Latest verified implementation `d421aa46f1545bbdc220c7b7cae949a62c2ac36a`.
+- Twenty-one inventory tests, Django and migration drift checks passed. After the template layout fix, the two full regression runs each passed 223 tests (237.366 s normal, 239.271 s reverse).
+- Chrome verified the owner link, a measured-weight transfer, physical count adjustment, reorder alert and certificate upload at 390 px. The first mobile layout wrapped column headings into individual letters. Existing scrollable table styles fixed the layout, and the final browser check verified the scroll region and readable column widths.
+- A disposable SQLite upgrade from populated inventory migration 0004 preserved the original movement and quantity, then recorded a count on 0005. The first probe used a current service against the old schema and failed because the stock-count table was absent. Seeding only old-schema fields fixed the probe. With two competing workers, one reservation and one issue each succeeded and their competing requests were rejected. Final on hand/reserved/available was 8/8/0.
+- Production release remains gated on PostgreSQL verification and certificate review. Certificates are owner-only attachment downloads. Ageing uses the earliest ordinary receipt for the lot. It shows unknown if the stock was found only through a count. See [inventory assumptions](ASSUMPTIONS_AND_QUESTIONS.md#steel-inventory-pilot-27-november-2026).
+- The user requested a pause after Checkpoint 07. Development is paused at this checkpoint. When the user resumes, read Checkpoint 08 and inspect the posted movement and ledger interfaces before designing cost layers and valuation postings. No valuation work has started.
+
 ## Checkpoint 07D · Atomic stock reservations
 
 - Verified company-scoped reservations, release and optional reservation-backed stock issue. Stock, reservation balances and audit evidence update in one transaction. Inventory movements do not post financial journals.

@@ -11,7 +11,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations, owner-only movement-based draft screens and balanced GST posting proposals with company ledger mapping. Gated sales and purchase issue adds immutable records and sealed journals. Internal cancellation preserves original records and posts a separate reversing journal. Internal return credits/debits reconcile to the original invoice. Branded A4 preview passes browser verification. Gated owner forms verified. Non-return statutory notes and statutory release remain open. |
 | 05 Receivables and payables | Complete for the gated local pilot | Contractual due dates and as-of invoice ageing are verified. Immutable party receipts and payments are verified. Allocation, reversal and unallocated funds are verified. Credit profiles and reviewed MSE date capture are verified. Private statements and manual reminder drafts are verified. Owner actions and credit warnings are verified. PostgreSQL and production release remain gated. |
 | 06 Banking | Complete for the gated local pilot | Accounts, books, transfers, instruments, statement imports, manual match and unmatched reports are verified. PostgreSQL and release review remain open. |
-| 07 Inventory | Partial | Catalogue geometry and unit conversion verified. Warehouse and lot traceability, receipts, issues and transfers passed focused tests. Reservations, counts and owner screens are next. |
+| 07 Inventory | Complete for the gated local pilot | Verified geometry and unit conversions, warehouse, lot and mill traceability, stock movements, reservations, physical counts and adjustments, reorder and lot ageing. Owner screens were tested in Chrome. Work paused here by request. |
 | 08 Valuation and procurement | Pending | Requires verified inventory movements and accounting integration. |
 | 09 Financial reports | Pending | Core statements predate this run. Complete reporting and cross-module reconciliation remain open. |
 | 10 Tally migration | Pending | Requires stable import targets and verification against current TallyPrime documentation. |
@@ -55,12 +55,15 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 06F | 15 banking passed | 199 passed, 237.205 s | 199 passed, 236.546 s |
 | 06G | 18 banking passed | 202 passed, 185.475 s | 202 passed, 184.366 s |
 | 07A | 4 inventory passed | 206 passed, 292.799 s | 206 passed, 285.192 s |
+| 07D | 13 inventory passed | 215 passed, 240.590 s | 215 passed, 240.969 s |
+| 07 final | 21 inventory passed | 223 passed, 237.366 s | 223 passed, 239.271 s |
 
-Django and migration drift checks passed through 06G. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
+Django and migration drift checks passed through Checkpoint 07. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 
 ## Reconciliation, security and release gates
 
 - Local tests verify exact journal and voucher balance, company isolation, duplicate submission protection, locked-period behavior and immutability guards for sealed journals. Order tests exercised CSRF and PDF data boundaries. Invoice draft tests exercised owner access, cross-company sources, duplicate drafts, procurement data exclusion in sales snapshots and absence of ledger posting.
+- Chrome verified owner inventory actions on a 390 px viewport. A populated SQLite inventory migration upgrade preserved stock. Competing reservations and competing issues each admitted one valid transaction and rejected one request that would oversell stock.
 - Three fictional companies completing a full financial month have not been simulated. Inventory-to-ledger, GST-to-ledger and bank-to-ledger reconciliations remain pending.
 - PostgreSQL triggers and concurrent financial writes require execution on a dedicated synthetic PostgreSQL instance before production. The SQLite guards cover normal application database access. Database administrators with schema privileges retain broader control.
 - Statutory invoicing is a release blocker. Review company and counterparty registrations, sourcing and effective dates, place of supply, tax treatment, document numbering and rounding with an Indian accounting professional. The internal GST calculator has no default rate and the internal sales and purchase issue services stay disabled by default and has no public issue or filing interface. See [GST compliance notes](GST_COMPLIANCE.md).
@@ -78,3 +81,5 @@ See the [tracker](ACCOUNTING_CHECKPOINTS.md) for granular progress and the [hand
 Settlement foundations are in `settlements/` with migrations 0001–0004 and shared synthetic invoice fixtures in `invoicing/test_data.py`.
 
 Banking foundations are in `banking/` with migrations 0001–0004 and shared funding-ledger integration in accounting and settlements.
+
+The inventory pilot is in `inventory/` and `templates/inventory/`, with migrations 0001–0005, a gated route under the accounting application and a link from the owner accounts page. Financial valuation and COGS are pending Checkpoint 08. PostgreSQL execution, certificate provenance review and malware scanning remain release gates.

@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 05F · Verified internal settlement workflow
+
+- **Completed for the internal pilot:** owner screens post receipts/payment, allocate or release funds, capture due dates and configurable credit terms, show sales credit exposure and track reviewed MSE dates. Statements show dated outstanding, credits and unassigned funds. Overdue reminders are prepared for manual review only.
+- **Pending for release:** default-off enablement review, PostgreSQL guard/concurrency tests and professional review of MSE eligibility and statutory use. Existing quote decisions are unchanged. No bank account connection or verification is implied by a reference.
+- **Changed files:** invoice review, settlement forms/views/URLs/services/tests and templates, accounting and scope documents. **Migrations:** none in this slice.
+- **Tests:** 69 focused tests passed after fixing blank payment narration. Both full runs passed 184 (90.558 s normal, 90.334 s reverse). Django and migration checks passed. Chrome verified native receipt posting and mobile allocation.
+- **Verified commit:** `26892e4a47b8f08462aa33f9d0dbfe629046e17b`.
+- **Exact next task:** start Checkpoint 06. Use the existing chart and shared cash-book posting rules to register additional company bank/cash/petty cash ledgers. Add guarded transfers and date-based books before statement parsing and reconciliation.
+
 ## Checkpoint 05E · Private statements and reminder drafts
 
 - **Completed:** owner-only dated customer/supplier statements, receivable/payable ageing, invoice balances and active unassigned funds. Overdue customer invoices offer a reviewable reminder with an explicitly clicked WhatsApp draft link. No external messages were sent.

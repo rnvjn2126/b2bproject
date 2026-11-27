@@ -3,9 +3,12 @@ from uuid import uuid4
 
 from django import forms
 
-from dashboard.models import Product
+from accounting.models import Ledger
+from dashboard.models import Product, Supplier
 
+from .costing import CostMethod
 from .models import ReservationAction, SteelSpecification, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
+from .reconciliation import stock_asset_ledgers
 from .reports import company_positions
 
 
@@ -20,6 +23,7 @@ class CompanyForm(forms.Form):
         locations = StorageLocation.objects.filter(warehouse__workspace=workspace).select_related("warehouse")
         scoped = {
             "product_id": products,
+            "supplier_id": Supplier.objects.filter(owner_id=workspace.owner_id),
             "warehouse_id": Warehouse.objects.filter(workspace=workspace),
             "lot_id": StockLot.objects.filter(workspace=workspace, product__in=products).select_related("product"),
             "location_id": locations,
@@ -115,3 +119,58 @@ class ReorderForm(CompanyForm):
 
 class CertificateForm(forms.Form):
     certificate = forms.FileField(widget=forms.ClearableFileInput(attrs={"accept": ".pdf"}))
+
+
+class DailyRateForm(CompanyForm):
+    supplier_id = forms.ModelChoiceField(Supplier.objects.none(), label="Supplier")
+    product_id = forms.ModelChoiceField(Product.objects.none(), label="Catalogue product")
+    unit = forms.ChoiceField(choices=Product.Unit.choices)
+    quoted_on = forms.DateField(widget=DATE_WIDGET)
+    valid_through = forms.DateField(widget=DATE_WIDGET)
+    unit_price = forms.DecimalField(label="Material price per unit (INR)", min_value=Decimal("0.0001"),
+                                    max_digits=14, decimal_places=4)
+    available_quantity = forms.DecimalField(min_value=0, max_digits=14, decimal_places=3)
+    freight = forms.DecimalField(label="Quoted freight (INR)", min_value=0, max_digits=15, decimal_places=2, initial=0)
+    packaging = forms.DecimalField(label="Quoted packaging (INR)", min_value=0, max_digits=15, decimal_places=2, initial=0)
+    delivery_days = forms.IntegerField(label="Delivery lead time (days)", min_value=0, max_value=365)
+    reference = forms.CharField(max_length=100, label="Source reference")
+    submission_key = forms.UUIDField(widget=forms.HiddenInput, initial=uuid4)
+
+
+class ProcurementPlanForm(CompanyForm):
+    product_id = forms.ModelChoiceField(Product.objects.none(), label="Catalogue product")
+    quantity = forms.DecimalField(label="Required quantity in the catalogue unit", min_value=POSITIVE,
+                                  max_digits=14, decimal_places=3)
+    max_delivery_days = forms.IntegerField(label="Maximum delivery lead time", min_value=0, max_value=365, required=False)
+
+
+class ValuationMethodForm(CompanyForm):
+    method = forms.ChoiceField(choices=CostMethod.choices)
+
+
+class ValueMovementForm(CompanyForm):
+    movement_id = forms.ModelChoiceField(StockMovement.objects.none(), label="Unvalued stock movement")
+    material = forms.DecimalField(label="Material cost (INR)", required=False, min_value=0, max_digits=15, decimal_places=2)
+    freight = forms.DecimalField(label="Freight (INR)", min_value=0, max_digits=15, decimal_places=2, initial=0)
+    packaging = forms.DecimalField(label="Packaging (INR)", min_value=0, max_digits=15, decimal_places=2, initial=0)
+    other = forms.DecimalField(label="Other cost (INR)", min_value=0, max_digits=15, decimal_places=2, initial=0)
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        self.fields["movement_id"].queryset = StockMovement.objects.filter(
+            workspace=workspace, lot__workspace=workspace, lot__product__owner_id=workspace.owner_id,
+            valuation__isnull=True,
+        ).select_related("lot__product").order_by("posted_on", "pk")
+        self.fields["movement_id"].label_from_instance = lambda movement: (
+            f"{movement.posted_on} · {movement.get_kind_display()} · {movement.lot} · "
+            f"{movement.quantity:g} {movement.lot.unit} · {movement.reference}"
+        )
+
+
+class StockReconciliationForm(CompanyForm):
+    ledger_id = forms.ModelChoiceField(Ledger.objects.none(), label="Inventory asset ledger")
+    as_of = forms.DateField(widget=DATE_WIDGET)
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        self.fields["ledger_id"].queryset = stock_asset_ledgers(workspace)

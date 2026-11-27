@@ -1,0 +1,40 @@
+{% extends "accounting/base.html" %}
+{% block title %}Stock valuation · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <p><a href="{% url 'accounting:inventory:overview' %}">Back to inventory</a></p>
+  <h1>Stock valuation</h1>
+  <p>Method: {{ policy.get_method_display|default:"Choose a method to start" }}.</p>
+  <div class="record-actions">
+    <a href="{% url 'accounting:inventory:action' 'valuation-method' %}">Set valuation method</a>
+    <a href="{% url 'accounting:inventory:action' 'value-movement' %}">Value stock movement</a>
+  </div>
+  <p>Valuation records stock cost for this pilot. Journal entries are posted separately.</p>
+</section>
+<section class="card">
+  <h2>Reconcile stock to the ledger</h2>
+  <form method="get">{{ form.as_p }}<button type="submit">Compare balances</button></form>
+  {% if result %}
+    <dl>
+      <dt>Stock valuation</dt><dd>INR {{ result.inventory_value|floatformat:"2" }}</dd>
+      <dt>Ledger balance</dt><dd>INR {{ result.ledger_balance|floatformat:"2" }}</dd>
+      <dt>Stock less ledger</dt><dd>INR {{ result.difference|floatformat:"2" }}</dd>
+      <dt>Unvalued movements</dt><dd>{{ result.unvalued_movements }}</dd>
+    </dl>
+    {% if result.reconciled %}<p>Stock quantities and ledger value agree for this date.</p>
+    {% else %}<p class="alert" role="alert">Review unvalued movements, quantity differences and ledger entries before relying on this balance.</p>{% endif %}
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Stock valuation by product and unit">
+      <table class="table-wide">
+        <thead><tr><th scope="col">Product</th><th scope="col">Unit</th><th scope="col">On hand</th><th scope="col">Valued</th><th scope="col">Quantity difference</th><th scope="col">Inventory value</th></tr></thead>
+        <tbody>
+          {% for pool in result.pools %}
+            <tr><th scope="row">{{ pool.product }}</th><td>{{ pool.unit }}</td><td>{{ pool.on_hand|floatformat:"-3" }}</td>
+              <td>{{ pool.valued_quantity|floatformat:"-3" }}</td><td>{{ pool.quantity_gap|floatformat:"-3" }}</td>
+              <td>INR {{ pool.inventory_value|floatformat:"2" }}</td></tr>
+          {% empty %}<tr><td colspan="6">No stock movements through this date.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

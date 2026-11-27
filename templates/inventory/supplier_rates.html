@@ -1,0 +1,54 @@
+{% extends "accounting/base.html" %}
+{% block title %}Supplier rates · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <p><a href="{% url 'accounting:inventory:overview' %}">Back to inventory</a></p>
+  <h1>Supplier rate board</h1>
+  <p>Record supplier rates in the catalogue unit or an equivalent kilogram or tonne unit. Each new rate keeps the earlier record in history.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ rate_form.as_p }}
+    <button type="submit">Record supplier rate</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Procurement recommendation</h2>
+  <form method="get">{{ plan_form.as_p }}<button type="submit">Compare rates</button></form>
+  {% if plan %}
+    <p>Estimated landed cost <strong>INR {{ plan.total|floatformat:"2" }}</strong>.
+      {% if plan.delivery_days is not None %}Longest lead time {{ plan.delivery_days }} days.{% endif %}
+      {% if plan.unfilled %}<strong>Unfilled quantity {{ plan.unfilled|floatformat:"-3" }} {{ plan.unit }}.</strong>{% endif %}</p>
+    <ul>
+      {% for line in plan.lines %}
+        <li>{{ line.rate.supplier }} · {{ line.quantity|floatformat:"-3" }} {{ plan.unit }} · INR {{ line.landed|floatformat:"2" }} landed · {{ line.rate.delivery_days }} days</li>
+      {% empty %}<li>No current rate satisfies the unit, available quantity and lead-time filters.</li>{% endfor %}
+    </ul>
+    <p>Each selected supplier’s quoted freight and packaging is included once. Confirm availability and charges before placing an order.</p>
+  {% endif %}
+</section>
+
+<section class="card" id="current">
+  <h2>Latest rate by supplier and product</h2>
+  {% include "inventory/rate_rows.html" with rows=current_rates today=today only %}
+  {% if current_rates.has_other_pages %}
+    <nav class="pagination" aria-label="Latest rates pages">
+      {% if current_rates.has_previous %}<a href="{% querystring current_page=current_rates.previous_page_number %}#current">Previous</a>{% endif %}
+      <span>Page {{ current_rates.number }} of {{ current_rates.paginator.num_pages }}</span>
+      {% if current_rates.has_next %}<a href="{% querystring current_page=current_rates.next_page_number %}#current">Next</a>{% endif %}
+    </nav>
+  {% endif %}
+</section>
+
+<section class="card" id="history">
+  <h2>Rate history</h2>
+  {% include "inventory/rate_rows.html" with rows=history today=today only %}
+  {% if history.has_other_pages %}
+    <nav class="pagination" aria-label="Rate history pages">
+      {% if history.has_previous %}<a href="{% querystring history_page=history.previous_page_number %}#history">Previous</a>{% endif %}
+      <span>Page {{ history.number }} of {{ history.paginator.num_pages }}</span>
+      {% if history.has_next %}<a href="{% querystring history_page=history.next_page_number %}#history">Next</a>{% endif %}
+    </nav>
+  {% endif %}
+</section>
+{% endblock %}

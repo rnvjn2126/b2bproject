@@ -1,0 +1,14 @@
+<div class="table-scroll" tabindex="0" role="region" aria-label="Supplier rate records">
+  <table class="table-wide">
+    <thead><tr><th scope="col">Product</th><th scope="col">Supplier</th><th scope="col">Rate per unit</th><th scope="col">Available</th>
+      <th scope="col">Freight / packaging</th><th scope="col">Lead time</th><th scope="col">Quoted</th><th scope="col">Valid through</th><th scope="col">Reference</th></tr></thead>
+    <tbody>
+      {% for rate in rows %}
+        <tr><th scope="row">{{ rate.product }}</th><td>{{ rate.supplier }}</td><td>INR {{ rate.unit_price|floatformat:"-4" }} / {{ rate.unit }}</td>
+          <td>{{ rate.available_quantity|floatformat:"-3" }} {{ rate.unit }}</td><td>INR {{ rate.freight|floatformat:"2" }} / {{ rate.packaging|floatformat:"2" }}</td>
+          <td>{{ rate.delivery_days }} days</td><td>{{ rate.quoted_on|date:"d M Y" }}</td>
+          <td>{{ rate.valid_through|date:"d M Y" }}{% if rate.valid_through < today %} · <strong>Expired</strong>{% endif %}</td><td>{{ rate.reference }}</td></tr>
+      {% empty %}<tr><td colspan="9">No supplier rates recorded.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -318,3 +318,35 @@ class ValuationLayer(models.Model):
                 name="inventory_valid_cost_layer",
             ),
         ]
+
+
+class SupplierDailyRate(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    supplier = models.ForeignKey("dashboard.Supplier", on_delete=models.PROTECT)
+    product = models.ForeignKey("dashboard.Product", on_delete=models.PROTECT)
+    unit = models.CharField(max_length=12, choices=Product.Unit.choices)
+    quoted_on = models.DateField()
+    valid_through = models.DateField()
+    unit_price = models.DecimalField(max_digits=14, decimal_places=4)
+    available_quantity = models.DecimalField(max_digits=14, decimal_places=3)
+    freight = models.DecimalField(max_digits=15, decimal_places=2)
+    packaging = models.DecimalField(max_digits=15, decimal_places=2)
+    delivery_days = models.PositiveSmallIntegerField()
+    reference = models.CharField(max_length=100)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-quoted_on", "-pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "submission_key"], name="inventory_unique_rate_submission"),
+            models.CheckConstraint(
+                condition=Q(unit__in=Product.Unit.values, unit_price__gt=0, available_quantity__gte=0,
+                            freight__gte=0, packaging__gte=0, delivery_days__lte=365, valid_through__gte=models.F("quoted_on")),
+                name="inventory_valid_supplier_rate",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["workspace", "product", "supplier", "-quoted_on"], name="inventory_rate_lookup_idx"),
+        ]

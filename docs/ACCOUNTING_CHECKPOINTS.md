@@ -10,7 +10,7 @@ The [numbered specifications](checkpoints/) define each checkpoint's scope. A ch
 | 01 | Double-entry accounting engine | Complete on the supported local SQLite workflow. Both full runs passed 123 tests. PostgreSQL execution remains a release gate. |
 | 02 | Ledgers and voucher management | Complete for internal vouchers. Both full runs passed 125 tests. Statutory invoices and tax notes remain in Checkpoint 04. |
 | 03 | Sales and purchase orders | Complete for operational orders and confirmed movement records. Both full runs passed 131 tests. |
-| 04 | Invoicing and Indian GST | Partial. Owner GST settings, versioned calculations and the internal draft workflow are implemented. The draft screens passed 17 focused tests, both 142-test suites and Chrome verification. Posting proposals and ledger mapping passed both 147-test suites. Gated sales and purchase posting and cancellation passed both 157-test suites. Returns, notes, A4 output and statutory release remain open. |
+| 04 | Invoicing and Indian GST | Partial. Owner GST settings, versioned calculations and the internal draft workflow are implemented. The draft screens passed 17 focused tests, both 142-test suites and Chrome verification. Posting proposals and ledger mapping passed both 147-test suites. Gated sales and purchase posting, cancellation and return adjustments passed both 160-test suites. A4 output and statutory release remain open. |
 | 05 | Receivables, payables and payments | Assigned. Depends on invoices and payment allocation semantics |
 | 06 | Banking and reconciliation | Assigned. Depends on the ledger and payment workflows |
 | 07 | Steel inventory | Assigned. Depends on catalogue units and order movement references |

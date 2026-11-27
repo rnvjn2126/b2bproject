@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 04J · Scoped internal returns
+
+- **Completed:** partial/full sales return credits and purchase return debits link to the original invoice and distinct sealed journals. Cumulative quantity and value checks prevent over-returning. Exact component allocations reconcile to the original invoice after a full return. Returned invoices cannot be fully cancelled.
+- **Pending:** A4 brand/print, owner-facing controls for verified local operations, non-return statutory notes and professional review. No stock movement or official GST output is created by returns.
+- **Changed files:** accounting journal types and service, invoicing models, issuance and return services, tests and documents. **Migrations:** accounting 0008 and invoicing 0007.
+- **Tests:** 45 focused passed. Both full suites passed 160 (82.130 s normal, 82.249 s reverse). Django and migration checks passed. Competing returns on a disposable file-backed SQLite database posted one note and rejected the excess.
+- **Verified commit:** `d8bcefb4db111ada860a323e690662d60c226203`.
+- **Exact next task:** add owner-managed company branding and an A4 printable internal invoice from the immutable snapshot. Prevent external access and keep every output clearly internal.
+
 ## Checkpoint 04I · Gated invoice cancellation
 
 - **Completed:** owner-only cancellation posts an exact reversing journal and immutable correction record in one transaction. The original invoice, supplier evidence and number are retained. The reversal can use a later open period. A matching retry returns the correction.

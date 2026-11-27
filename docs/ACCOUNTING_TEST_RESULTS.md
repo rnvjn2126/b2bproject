@@ -65,3 +65,5 @@
 - 04H: 40 focused tests passed. Normal/reverse full runs passed 155 tests in 87.681 and 86.535 seconds. Django and migration checks passed. The populated SQLite upgrade retained an issued sale and its guard, and downgrade was prevented with purchase evidence present. Native Chrome verified actual purchase price/date entry and mobile preview.
 
 - 04I: 42 focused tests passed. Normal/reverse runs passed 157 tests in 82.196 and 82.173 seconds. Django and migration checks passed. Tests include correction in a later open period, exact inverted lines, immutable records, retries, ownership and rollback.
+
+- 04J: 45 invoicing/accounting tests passed. Full normal/reverse runs passed 160 in 82.130 and 82.249 seconds. Django and migration checks passed. Split sales returns invert the original ledger to the paise. Purchase returns, over-quantity, replay, cancellation conflicts and rollback were tested. A file-backed SQLite probe accepted only one of two concurrent competing returns.

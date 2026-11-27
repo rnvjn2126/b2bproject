@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `0cd76cccec7589d5bbd2b8a47adcbb102a298995`.
+- **Latest implementation commit:** `d8bcefb4db111ada860a323e690662d60c226203`.
 - **Active checkpoint:** 04, Invoicing and Indian GST. Partial.
-- **Last verified task:** owner-only whole-invoice cancellation with a sealed reversal in an open accounting period and immutable correction record. Existing invoice and document references remain recorded.
-- **Changed files:** accounting posting service, invoice service, models, tests, migration and checkpoint documents.
-- **Migrations:** invoicing 0006. Applied on disposable SQLite through automated tests.
-- **Latest tests:** 42 focused passed. Full normal/reverse runs passed 157 (82.196 s and 82.173 s). Django and migration checks passed.
-- **Pending:** partial and full returns and linked notes, branding, A4 print and production review. No issue or correction endpoint is exposed. PostgreSQL execution remains open.
-- **Exact next task:** implement gated sales return credits and purchase return debits linked to existing invoices and sealed adjustments. Prove cumulative quantities and paise, retry protection, cancellation conflicts and permissions.
+- **Last verified task:** sales and purchase return adjustments post sealed journals, preserve all original invoice evidence and prevent excess or duplicate returns.
+- **Changed files:** accounting journal kinds, invoicing models and services, tests and checkpoint documents.
+- **Migrations:** accounting 0008 and invoicing 0007, exercised on SQLite.
+- **Latest tests:** 45 focused passed. Both full suites passed 160 (82.130 and 82.249 seconds). Django and migration drift checks passed. A file-backed SQLite challenge proved return quantity serialization.
+- **Pending:** private A4 print and branding, non-return statutory notes and professional review. PostgreSQL execution remains open.
+- **Exact next task:** add scoped branding and A4 print of immutable issued invoice snapshots, gated to internal owners. Keep statutory issue and export disabled.
 
 ## Resume on Windows
 

@@ -2,12 +2,20 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 08C–08D · Supplier rates and stock-to-ledger review
+
+- Owners can record dated supplier rates and see history, availability and an expiry warning. Recommendations use the latest rate from each supplier, exclude expired records, convert kilograms and tonnes, enforce delivery limits and list quantities left unfilled. The comparison includes the full freight and packaging of each selected supplier once.
+- Owners can choose the valuation method, value recorded movements and compare dated internal stock quantities and costs with a selected asset ledger. The report uses sealed journal lines, shows unvalued activity and remains private. Valuation records and recommendations create no journals or purchase orders.
+- Implementation commit `958131e5d66436c86320978653ecb2f12fc64dd9`. Added inventory migration 0007 for supplier rates. Changed inventory forms, views, routes, services, models, tests and templates.
+- Forty inventory tests, Django system checks and migration drift checks passed. The first recommendation test fixture did not exercise the intended fixed-fee tradeoff. Corrected the sample figures and reran the suite. Both full suites passed 242 tests (156.369 s normal, 153.826 s reverse). A populated SQLite upgrade from inventory 0005 to 0007 preserved eight units and valued the original receipt at INR 130.00. Both Chrome attempts timed out at sign-in. Browser layout for these screens remains unverified.
+- Next task is to design the dedicated COGS posting and correction service around an active sealed sales invoice linked to the exact dispatch. Use the recognized invoice date, a reviewed inventory asset ledger and a reviewed COGS expense ledger. Keep the route disabled until cancellation and partial-return behavior are verified. Then add acquisition clearing and late cost allocations, followed by cutting, remnants and scrap.
+
 ## Checkpoint 08A–08B · Internal valuation foundation
 
 - Implemented Decimal FIFO and moving weighted average, including partial issue costing and exact freight/packaging allocation. Each company selects a method. The method cannot change after the first valuation record without a formal transition. Stock costs are pooled by catalogue product and its recorded stock unit across the company.
 - A valuation snapshot links once to an existing stock movement. Receipts require an explicit material amount and can include reviewed freight, packaging and other cost. Transfers preserve the pool. Issues consume the pool. Earlier unvalued movements must be processed first. Workspace locks serialize allocation, and database guards prevent edits to saved valuation snapshots.
 - Implementation commits `35ec95d4c79e5e97cf21c615839b7d3be8755c31` and `ae79d2fd5ae54b2f76d824f652ac90957176d7e0`. Changed inventory costing, models, stock and valuation services and tests. Added inventory migration 0006.
-- Five arithmetic tests passed. After adjusting a delete assertion to exercise the database guard on a row without protected dependants, all 31 inventory tests passed. Django and migration drift checks passed. The most recent completed full runs are the 223-test runs from Checkpoint 07.
+- Five arithmetic tests passed. After adjusting a delete assertion to exercise the database guard on a row without protected dependants, all 31 inventory tests passed. Django and migration drift checks passed. The full 242-test results that cover this work are recorded above.
 - Valuation has no website or ledger posting entry point. Fair-value and net realisable value adjustments, statutory treatment, purchase clearing, COGS timing, returns and PostgreSQL execution require further work. Before using a receipt value, confirm that its cost and tax treatment agree with the linked procurement records. [IFRS Foundation inventory standard summary](https://www.ifrs.org/issued-standards/list-of-standards/ias-2-inventories/)
 - Exact next task is the independent owner supplier-rate board and procurement recommendation workflow. Then link cost events to reviewed financial sources, add stock-to-ledger reconciliation and implement cutting, remnants, scrap and returns.
 

@@ -2,12 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `ae79d2fd5ae54b2f76d824f652ac90957176d7e0`.
+- **Latest implementation commit:** `958131e5d66436c86320978653ecb2f12fc64dd9`.
 - **Active checkpoint:** 08, Inventory valuation and procurement. Partial.
-- **Last verified task:** Decimal valuation and landed allocation, company costing method, FIFO layers and immutable stock-movement valuations.
-- **Changed files and migrations:** Inventory costing, models, stock and valuation services, tests and migration 0006.
-- **Latest tests:** 31 inventory tests passed. Django and migration drift checks passed. Both last full runs passed 223 tests at Checkpoint 07.
-- **Exact next task:** Add owner supplier daily rates, freshness and procurement recommendations. Then design sealed cost postings against issued invoices and verified procurement sources. PostgreSQL and statutory release review remain pending.
+- **Last verified task:** Owner valuation review, stock-to-ledger reconciliation and supplier rate board with split recommendations.
+- **Changed files and migrations:** Inventory costing/reconciliation/procurement services, models, views, URLs, forms, tests, templates and migrations 0006–0007.
+- **Latest tests:** 40 inventory tests passed. Both full runs passed 242 tests. Django, migration drift and populated SQLite 0005→0007 checks passed. Both Chrome attempts timed out at sign-in.
+- **Exact next task:** Implement sealed COGS posting and corrections tied to issued sales invoices and exact dispatches. Keep financial posting gated. Acquisition clearing, landed cost adjustments, cut/remnant and scrap handling, returns and PostgreSQL verification remain open.
 
 ## Resume on Windows
 

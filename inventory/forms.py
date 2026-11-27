@@ -1,0 +1,117 @@
+from decimal import Decimal
+from uuid import uuid4
+
+from django import forms
+
+from dashboard.models import Product
+
+from .models import ReservationAction, SteelSpecification, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
+from .reports import company_positions
+
+
+DATE_WIDGET = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
+POSITIVE = Decimal("0.001")
+
+
+class CompanyForm(forms.Form):
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, **kwargs)
+        products = Product.objects.filter(owner_id=workspace.owner_id)
+        locations = StorageLocation.objects.filter(warehouse__workspace=workspace).select_related("warehouse")
+        scoped = {
+            "product_id": products,
+            "warehouse_id": Warehouse.objects.filter(workspace=workspace),
+            "lot_id": StockLot.objects.filter(workspace=workspace, product__in=products).select_related("product"),
+            "location_id": locations,
+            "source_id": locations,
+            "destination_id": locations,
+        }
+        for name in self.fields.keys() & scoped.keys():
+            self.fields[name].queryset = scoped[name]
+
+    def arguments(self):
+        """Pass already scoped model selections as primary keys to the services."""
+        return {name: value.pk if isinstance(self.fields[name], forms.ModelChoiceField) and value else value
+                for name, value in self.cleaned_data.items()}
+
+
+class SpecificationForm(CompanyForm):
+    product_id = forms.ModelChoiceField(Product.objects.none(), label="Catalogue product")
+    profile = forms.ChoiceField(choices=SteelSpecification.Profile.choices)
+    grade = forms.CharField(max_length=100, required=False, help_text="Uses the catalogue grade when left blank.")
+    density_kg_m3 = forms.DecimalField(label="Density (kg/m³)", min_value=POSITIVE, max_digits=9, decimal_places=3)
+    length_mm = forms.DecimalField(label="Length per piece (mm)", required=False, max_digits=10, decimal_places=3)
+    diameter_mm = forms.DecimalField(label="Outside or nominal diameter (mm)", required=False, max_digits=10, decimal_places=3)
+    width_mm = forms.DecimalField(label="Overall width or first leg (mm)", required=False, max_digits=10, decimal_places=3)
+    depth_mm = forms.DecimalField(label="Section depth or second leg (mm)", required=False, max_digits=10, decimal_places=3)
+    thickness_mm = forms.DecimalField(label="Thickness, wall or web (mm)", required=False, max_digits=10, decimal_places=3)
+    flange_mm = forms.DecimalField(label="Flange thickness (mm)", required=False, max_digits=10, decimal_places=3)
+
+
+class WarehouseForm(CompanyForm):
+    code = forms.CharField(max_length=24)
+    name = forms.CharField(max_length=100)
+
+
+class LocationForm(WarehouseForm):
+    warehouse_id = forms.ModelChoiceField(Warehouse.objects.none(), label="Warehouse")
+
+
+class LotForm(CompanyForm):
+    product_id = forms.ModelChoiceField(Product.objects.none(), label="Catalogue product")
+    code = forms.CharField(max_length=24)
+    heat_number = forms.CharField(max_length=100, required=False)
+    batch_number = forms.CharField(max_length=100, required=False)
+    mill_name = forms.CharField(max_length=100, required=False)
+    manufacturer_name = forms.CharField(max_length=100, required=False)
+
+
+class StockEntryForm(CompanyForm):
+    posted_on = forms.DateField(widget=DATE_WIDGET)
+    reference = forms.CharField(max_length=100)
+    submission_key = forms.UUIDField(widget=forms.HiddenInput, initial=uuid4)
+
+
+class MovementForm(StockEntryForm):
+    kind = forms.ChoiceField(choices=StockMovement.Kind.choices)
+    lot_id = forms.ModelChoiceField(StockLot.objects.none(), label="Lot")
+    source_id = forms.ModelChoiceField(StorageLocation.objects.none(), required=False, label="Source")
+    destination_id = forms.ModelChoiceField(StorageLocation.objects.none(), required=False, label="Destination")
+    quantity = forms.DecimalField(min_value=POSITIVE, max_digits=14, decimal_places=3)
+    actual_kg = forms.DecimalField(label="Measured weight (kg)", required=False,
+                                  min_value=Decimal("0.000001"), max_digits=18, decimal_places=6)
+    order_movement_id = forms.IntegerField(required=False, min_value=1, label="Order movement ID")
+
+
+class ReservationForm(StockEntryForm):
+    position_id = forms.ModelChoiceField(StockPosition.objects.none(), label="Lot and storage position")
+    quantity = forms.DecimalField(min_value=POSITIVE, max_digits=14, decimal_places=3)
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        self.fields["position_id"].queryset = company_positions(workspace).filter(on_hand__gt=0)
+        self.fields["position_id"].label_from_instance = lambda position: f"{position.lot} · {position.location}"
+
+
+class ReservationActionForm(StockEntryForm):
+    kind = forms.ChoiceField(choices=ReservationAction.Kind.choices)
+    quantity = forms.DecimalField(min_value=POSITIVE, max_digits=14, decimal_places=3)
+    actual_kg = forms.DecimalField(label="Measured weight (kg)", required=False,
+                                  min_value=Decimal("0.000001"), max_digits=18, decimal_places=6)
+    order_movement_id = forms.IntegerField(required=False, min_value=1, label="Order movement ID")
+
+
+class CountForm(StockEntryForm):
+    lot_id = forms.ModelChoiceField(StockLot.objects.none(), label="Lot")
+    location_id = forms.ModelChoiceField(StorageLocation.objects.none(), label="Location")
+    counted = forms.DecimalField(min_value=0, max_digits=14, decimal_places=3, label="Counted quantity")
+
+
+class ReorderForm(CompanyForm):
+    warehouse_id = forms.ModelChoiceField(Warehouse.objects.none(), label="Warehouse")
+    product_id = forms.ModelChoiceField(Product.objects.none(), label="Catalogue product")
+    minimum_available = forms.DecimalField(min_value=0, max_digits=14, decimal_places=3)
+
+
+class CertificateForm(forms.Form):
+    certificate = forms.FileField(widget=forms.ClearableFileInput(attrs={"accept": ".pdf"}))

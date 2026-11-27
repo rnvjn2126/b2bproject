@@ -1,0 +1,151 @@
+from django.conf import settings
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db.models import Exists, OuterRef
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.http import content_disposition_header
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_http_methods
+
+from accounting.views import owner_only
+
+from . import forms
+from .counts import record_physical_count
+from .models import LotCertificate, SteelSpecification, StockCount, StockLot, StockMovement, StockReservation, Warehouse
+from .reports import reorder_status, set_reorder_policy, stock_ageing
+from .reservations import record_reservation_action, reserve_stock
+from .services import save_specification
+from .stock import record_stock_movement
+from .stock_setup import MAX_CERTIFICATE_BYTES, attach_lot_certificate, register_location, register_lot, register_warehouse
+
+
+ACTIONS = {
+    "specification": ("Save steel specification", forms.SpecificationForm, save_specification),
+    "warehouse": ("Register warehouse", forms.WarehouseForm, register_warehouse),
+    "location": ("Register storage location", forms.LocationForm, register_location),
+    "lot": ("Register steel lot", forms.LotForm, register_lot),
+    "movement": ("Record stock movement", forms.MovementForm, record_stock_movement),
+    "reservation": ("Reserve stock", forms.ReservationForm, reserve_stock),
+    "count": ("Record physical count", forms.CountForm, record_physical_count),
+    "reorder": ("Save reorder threshold", forms.ReorderForm, set_reorder_policy),
+}
+FORM_HELP = {
+    "specification": "Use the dimensions relevant to the selected profile. Existing lots retain their recorded specifications.",
+    "movement": "Choose a destination for receipts, a source for issues, and both for transfers. Use the unit registered on the lot.",
+    "count": "Enter the total physically counted in the lot’s unit. A difference records a stock adjustment.",
+    "reorder": "Enter the minimum available quantity in the catalogue unit. Reserved stock is excluded.",
+}
+
+
+def _check_access(workspace):
+    if workspace is None or not settings.INTERNAL_INVENTORY:
+        raise Http404
+
+
+def _lots(workspace):
+    return StockLot.objects.filter(workspace=workspace, product__owner_id=workspace.owner_id)
+
+
+def _reservations(workspace):
+    return StockReservation.objects.filter(
+        workspace=workspace, position__lot__in=_lots(workspace), position__location__warehouse__workspace=workspace,
+    ).select_related("position__lot__product", "position__location__warehouse")
+
+
+@owner_only
+@never_cache
+@require_GET
+def overview(request, workspace):
+    _check_access(workspace)
+    lots = _lots(workspace)
+    return render(request, "inventory/overview.html", {
+        "actions": ACTIONS,
+        "warehouses": Warehouse.objects.filter(workspace=workspace).prefetch_related("locations"),
+        "specifications": SteelSpecification.objects.filter(
+            workspace=workspace, product__owner_id=workspace.owner_id,
+        ).select_related("product"),
+        "lots": lots.select_related("product").annotate(
+            has_certificate=Exists(LotCertificate.objects.filter(lot_id=OuterRef("pk"))),
+        ),
+        "ageing": stock_ageing(workspace),
+        "reorders": reorder_status(workspace),
+        "reservations": _reservations(workspace).filter(remaining__gt=0).order_by("-posted_on", "-pk"),
+        "counts": StockCount.objects.filter(
+            workspace=workspace, position__lot__in=lots, position__location__warehouse__workspace=workspace,
+        ).select_related("position__lot__product", "position__location__warehouse").order_by("-posted_on", "-pk")[:20],
+        "movements": StockMovement.objects.filter(workspace=workspace, lot__in=lots).select_related(
+            "lot__product", "source__warehouse", "destination__warehouse", "physical_count",
+        ).order_by("-posted_on", "-pk")[:30],
+    })
+
+
+def _save(request, workspace, title, form_class, save, *, description="", **identifiers):
+    form = form_class(request.POST if request.method == "POST" else None, workspace=workspace,
+                      initial={"posted_on": timezone.localdate()})
+    if form.is_valid():
+        try:
+            save(workspace, request.user, **form.arguments(), **identifiers)
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Inventory record saved.")
+            return redirect("accounting:inventory:overview")
+    return render(request, "inventory/form.html", {"form": form, "title": title, "description": description})
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def action(request, workspace, kind):
+    _check_access(workspace)
+    if kind not in ACTIONS:
+        raise Http404
+    return _save(request, workspace, *ACTIONS[kind], description=FORM_HELP.get(kind, ""))
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def reservation_action(request, workspace, pk):
+    _check_access(workspace)
+    reservation = get_object_or_404(_reservations(workspace), pk=pk)
+    return _save(request, workspace, "Release or issue reserved stock", forms.ReservationActionForm,
+                 record_reservation_action, reservation_id=reservation.pk,
+                 description=f"{reservation.position.lot} · {reservation.position.location} · "
+                             f"{reservation.remaining:g} {reservation.position.lot.get_unit_display()} remaining")
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def certificate_upload(request, workspace, pk):
+    _check_access(workspace)
+    lot = get_object_or_404(_lots(workspace).select_related("product"), pk=pk)
+    form = forms.CertificateForm(request.POST, request.FILES) if request.method == "POST" else forms.CertificateForm()
+    if form.is_valid():
+        upload = form.cleaned_data["certificate"]
+        try:
+            if upload.size > MAX_CERTIFICATE_BYTES:
+                raise ValidationError("Choose a PDF certificate up to 512 KB.")
+            attach_lot_certificate(workspace, request.user, lot_id=lot.pk, content=upload.read(MAX_CERTIFICATE_BYTES + 1))
+        except ValidationError as error:
+            form.add_error("certificate", error.messages)
+        else:
+            messages.success(request, "Certificate attached.")
+            return redirect("accounting:inventory:overview")
+    return render(request, "inventory/form.html", {
+        "form": form, "title": "Attach mill test certificate", "description": f"{lot} · PDF up to 512 KB", "upload": True,
+    })
+
+
+@owner_only
+@never_cache
+@require_GET
+def certificate_download(request, workspace, pk):
+    _check_access(workspace)
+    certificate = get_object_or_404(LotCertificate.objects.select_related("lot"), lot_id=pk, lot__in=_lots(workspace))
+    response = HttpResponse(bytes(certificate.content), content_type="application/octet-stream")
+    response["Content-Disposition"] = content_disposition_header(True, f"{certificate.lot.code}-certificate.pdf")
+    return response

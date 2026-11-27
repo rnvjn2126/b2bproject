@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 from functools import wraps
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -50,6 +51,7 @@ def home(request, workspace):
         return redirect("accounting:home")
     return render(request, "accounting/home.html", {
         "form": form, "years": FinancialYear.objects.filter(workspace=workspace).prefetch_related("periods"),
+        "inventory_enabled": workspace is not None and settings.INTERNAL_INVENTORY,
     })
 
 

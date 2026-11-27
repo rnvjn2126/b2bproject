@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 04I · Gated invoice cancellation
+
+- **Completed:** owner-only cancellation posts an exact reversing journal and immutable correction record in one transaction. The original invoice, supplier evidence and number are retained. The reversal can use a later open period. A matching retry returns the correction.
+- **Pending:** partial sales and purchase returns with linked accounting notes, review UI/print and statutory release. Gated service only.
+- **Changed files:** accounting posting service, invoicing issue/models/tests, migration `0006_invoicecancellation` and checkpoint documentation.
+- **Verification:** 42 targeted tests passed. Both full suites passed 157 (82.196 s normal, 82.173 s reverse). Django and migration checks passed. Tests cover identities, journal lines, closed periods, direct mutation, foreign access, duplicate inputs and atomic rollback.
+- **Release gates:** this correction is financial only. It does not void a government document or claim GST filing treatment. PostgreSQL execution remains open.
+- **Verified commit:** `0cd76cccec7589d5bbd2b8a47adcbb102a298995`.
+- **Exact next task:** record internal partial and full sales returns with credit adjustments and purchase returns with debit adjustments. Link to an issued invoice, guard quantities and rounding against cumulative over-crediting, and prevent full cancellation after returns.
+
 ## Checkpoint 04H · Gated internal purchase recording
 
 - **Completed:** purchase drafts accept actual supplier unit price and invoice date. Purchase recording requires those actuals, matched totals and explicit input-tax treatment. Each record preserves a supplier document separately from its internal number. Duplicate supplier references across different receipts are rejected within the company, GSTIN and supplier financial year.

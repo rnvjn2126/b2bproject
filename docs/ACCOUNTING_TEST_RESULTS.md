@@ -63,3 +63,5 @@
 - 04G: 37 invoicing and accounting tests passed. Full runs passed 152 each in 80.726 and 80.427 seconds. Django and migration drift checks passed. Two concurrent SQLite issue requests returned one issued invoice and one sealed journal on a disposable file-backed database. Verified snapshot immutability, execution rollback, sequence reuse after rollback, ordinary journal link rejection, default gating and replay after closing its period.
 
 - 04H: 40 focused tests passed. Normal/reverse full runs passed 155 tests in 87.681 and 86.535 seconds. Django and migration checks passed. The populated SQLite upgrade retained an issued sale and its guard, and downgrade was prevented with purchase evidence present. Native Chrome verified actual purchase price/date entry and mobile preview.
+
+- 04I: 42 focused tests passed. Normal/reverse runs passed 157 tests in 82.196 and 82.173 seconds. Django and migration checks passed. Tests include correction in a later open period, exact inverted lines, immutable records, retries, ownership and rollback.

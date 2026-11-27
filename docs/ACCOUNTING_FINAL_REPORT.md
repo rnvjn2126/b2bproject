@@ -8,7 +8,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 01 Double-entry engine | Complete for local SQLite | Sealed journals, reference numbers, exact balance enforcement, duplicate protection, reversals, locked periods and owner audit history. PostgreSQL execution remains a release gate. |
 | 02 Ledgers and vouchers | Complete for internal vouchers | Eight voucher types, draft and approval workflow, ledger statements, day book and trial balance. |
 | 03 Sales and purchase orders | Complete for operational orders | Accepted quotation conversion, split procurement, approvals, cancellation, partial movements, pending reports and private PDFs. Orders do not create journals. |
-| 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations, owner-only movement-based draft screens and balanced GST posting proposals with company ledger mapping. Gated sales and purchase issue adds immutable records and sealed journals. Cancellations, notes, returns, print and statutory release remain open. |
+| 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations, owner-only movement-based draft screens and balanced GST posting proposals with company ledger mapping. Gated sales and purchase issue adds immutable records and sealed journals. Internal cancellation preserves original records and posts a separate reversing journal. Notes, returns, print and statutory release remain open. |
 | 05 Receivables and payables | Pending | Requires posted invoices and settlement allocation. |
 | 06 Banking | Pending | Requires posted settlement workflow and bank matching rules. |
 | 07 Inventory | Pending | Goods receipts and dispatch exist operationally. The stock ledger is pending. |
@@ -37,8 +37,9 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 04F purchase follow-up | 32 passed (invoicing and accounting) | 147 passed, 80.751 s | 147 passed, 80.623 s |
 | 04G | 37 passed (invoicing and accounting) | 152 passed, 80.726 s | 152 passed, 80.427 s |
 | 04H | 40 passed (invoicing and accounting) | 155 passed, 87.681 s | 155 passed, 86.535 s |
+| 04I | 42 passed (invoicing and accounting) | 157 passed, 82.196 s | 157 passed, 82.173 s |
 
-Django and migration drift checks passed through 04H. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
+Django and migration drift checks passed through 04I. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 
 ## Reconciliation, security and release gates
 
@@ -53,6 +54,6 @@ Django and migration drift checks passed through 04H. Native Chrome verified reg
 - Instructions and planning in `AGENTS.md`, `docs/checkpoints/`, the tracker, the handoff, the overnight progress file and accounting architecture, test and security documents.
 - Accounting core changes in `accounting/` and `templates/accounting/`, including migrations `0003_journal_sealed`, `0004_accounting_guards` and `0005_alter_journal_kind_voucherdraft`.
 - Operational orders in `orders/` and `templates/orders/`, with order migrations 0001 and 0002, plus Django configuration, workspace navigation and the quote detail entry point.
-- GST settings, calculation and internal draft preparation in `invoicing/`, with migrations 0001–0005 and accounting migrations 0006–0007, plus accounting navigation, `templates/invoicing/` and the GST source register. The migrations were exercised on disposable test databases.
+- GST settings, calculation and internal draft preparation in `invoicing/`, with migrations 0001–0006 and accounting migrations 0006–0007, plus accounting navigation, `templates/invoicing/` and the GST source register. The migrations were exercised on disposable test databases.
 
 See the [tracker](ACCOUNTING_CHECKPOINTS.md) for granular progress and the [handoff](ACCOUNTING_HANDOFF.md) for implementation commits. [Overnight progress](OVERNIGHT_PROGRESS.md) contains exact restart commands.

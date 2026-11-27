@@ -101,3 +101,7 @@
 - 06F: 15 focused banking tests passed. Both full runs passed 199 (237.205 s normal, 236.546 s reverse). Django, migration drift and dependency checks passed. Chrome confirmed a synthetic workbook and matched the staged line at 390 px after a startup timeout and retry.
 
 - 06G: 18 focused banking tests and both full 202-test suites passed (185.475 s normal, 184.366 s reverse). Django/migration checks passed. Chrome verified upload, manual match, bank book, native transfer and reported UPI at 390 px. A corrected populated SQLite migration probe preserved staged entries and guarded confirmed evidence.
+
+## Overnight Checkpoint 07, partial
+
+- 07A: Four focused inventory tests and both full 206-test suites passed (292.799 s normal, 285.192 s reverse). Django and migration checks passed.

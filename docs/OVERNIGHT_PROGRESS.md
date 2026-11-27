@@ -2,14 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `84caf9f1c1285a7e803e646eae3597fe4c4ba414`.
-- **Active checkpoint:** 07, Steel-specific inventory. Checkpoint 06 is complete for the gated local pilot.
-- **Last verified task:** owner banking operations, bank books, CSV/XLSX staging and manual reconciliation.
-- **Changed files:** banking operations/views/tests/templates and accounting/settlement navigation.
-- **Migrations:** banking 0004 is the latest. The populated SQLite upgrade preserved staged entries and refused rollback of confirmed matches.
-- **Latest tests:** 18 focused banking tests. Full runs passed 202 (185.475 and 184.366 seconds). Django and migration checks passed. Chrome verified native upload, match, funds transfer and reported UPI at 390 px.
-- **Pending release concerns:** PostgreSQL trigger verification, production controls, and an audit-preserving match correction workflow. No live data or bank connections were used.
-- **Exact next task:** inspect catalogue fields and order movements, then add structured steel specifications and theoretical/conversion tests before warehouse stock and reservation services.
+- **Latest implementation commit:** `ec4d114ec2c83944cc18895334dde38cbb1e7652`.
+- **Active checkpoint:** 07, Steel-specific inventory. Partial.
+- **Last verified task:** structured grades, profile geometry, theoretical weights and explicit measured/theoretical unit conversions.
+- **Changed files:** inventory geometry, models, service, tests, app settings and inventory 0001 migration.
+- **Latest tests:** 4 focused and both 206-test suites passed (292.799 and 285.192 seconds). Django and migration checks passed.
+- **Exact next task:** warehouse/storage registration, traceable lot snapshots and safe mill certification evidence. Then build stock movements and reservations before report UI.
 
 ## Resume on Windows
 

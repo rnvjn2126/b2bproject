@@ -2,6 +2,13 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 07A · Structured steel specifications
+
+- Added catalogue-linked grade, geometry and density records for bars, TMT, sheet, plate, pipe, coil, angle, channel and beam. Conversions support kg, tonne, metre and piece and distinguish theoretical and explicitly measured weight.
+- Four focused tests passed. Both full suites passed 206 (292.799 s normal, 285.192 s reverse). Django and migration drift checks passed.
+- Inventory migration 0001 and implementation commit `ec4d114ec2c83944cc18895334dde38cbb1e7652`. Existing catalogue descriptions and recorded actual weights remain intact. Angles, channels and beams use simplified section geometry. This estimate excludes rolled fillets and TMT ribs. Density is entered explicitly.
+- Next task is to register company warehouses and storage locations, snapshot traceable lots and preserve independently supplied mill-test certificate evidence before posting stock moves.
+
 ## Checkpoint 06 complete · Internal banking pilot
 
 - Company bank, cash and petty cash accounts, ledger books, transfers, manually reported UPI/NEFT/RTGS/IMPS references and cheque events are available in the gated owner workflow. CSV and XLSX support preview, explicit confirmation, duplicate handling, suggested/manual matching and unmatched totals.

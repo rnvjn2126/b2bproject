@@ -13,7 +13,7 @@ from orders.models import OrderMovement, SalesOrder
 from orders.services import check_quantity
 
 from .geometry import KG_PER_TONNE, MM_PER_M
-from .models import StockLot, StockMovement, StockPosition, StorageLocation
+from .models import ReservationAction, StockLot, StockMovement, StockPosition, StockReservation, StorageLocation
 
 
 def _check_order_movement(workspace, lot, kind, order_movement_id, posted_on, quantity):
@@ -52,6 +52,24 @@ def _theoretical_mass(lot, quantity):
     return weight
 
 
+def validate_stock_input(lot, quantity, posted_on, reference, submission_key):
+    check_quantity(quantity)
+    if lot.unit == Product.Unit.PIECE and quantity != quantity.to_integral_value():
+        raise ValidationError("Enter a whole number of pieces.")
+    if type(posted_on) is not date or posted_on > timezone.localdate() or not isinstance(submission_key, UUID):
+        raise ValidationError("Choose a posting date on or before today and a valid submission key.")
+    if not isinstance(reference, str) or not 1 <= len(reference.strip()) <= 100:
+        raise ValidationError("Enter a stock movement reference up to 100 characters.")
+    return reference.strip()
+
+
+def check_lot_chronology(lot, posted_on):
+    if (lot.movements.filter(posted_on__gt=posted_on).exists()
+            or StockReservation.objects.filter(position__lot=lot, posted_on__gt=posted_on).exists()
+            or ReservationAction.objects.filter(reservation__position__lot=lot, posted_on__gt=posted_on).exists()):
+        raise ValidationError("Post stock activity in chronological order for this lot.")
+
+
 @transaction.atomic
 def record_stock_movement(workspace, actor, *, lot_id, kind, source_id=None, destination_id=None, quantity,
                           posted_on, reference, submission_key, actual_kg=None, order_movement_id=None):
@@ -60,14 +78,7 @@ def record_stock_movement(workspace, actor, *, lot_id, kind, source_id=None, des
     lot = StockLot.objects.filter(workspace=workspace, product__owner_id=workspace.owner_id, pk=lot_id).first()
     if lot is None:
         raise ValidationError("Choose a lot in this company.")
-    check_quantity(quantity)
-    if lot.unit == Product.Unit.PIECE and quantity != quantity.to_integral_value():
-        raise ValidationError("Enter a whole number of pieces.")
-    if type(posted_on) is not date or posted_on > timezone.localdate() or not isinstance(submission_key, UUID):
-        raise ValidationError("Choose a posting date on or before today and a valid submission key.")
-    if not isinstance(reference, str) or not 1 <= len(reference.strip()) <= 100:
-        raise ValidationError("Enter a stock movement reference up to 100 characters.")
-    reference = reference.strip()
+    reference = validate_stock_input(lot, quantity, posted_on, reference, submission_key)
     if actual_kg is not None:
         if not isinstance(actual_kg, Decimal) or not actual_kg.is_finite() or actual_kg <= 0:
             raise ValidationError("Enter a positive measured weight in kilograms.")
@@ -92,8 +103,7 @@ def record_stock_movement(workspace, actor, *, lot_id, kind, source_id=None, des
             raise ValidationError("This submission key already belongs to a different stock movement.")
         return previous
 
-    if lot.movements.filter(posted_on__gt=posted_on).exists():
-        raise ValidationError("Post stock movements in chronological order for this lot.")
+    check_lot_chronology(lot, posted_on)
     if order_movement_id is not None:
         _check_order_movement(workspace, lot, kind, order_movement_id, posted_on, quantity)
 

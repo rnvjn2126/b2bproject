@@ -192,3 +192,46 @@ class StockMovement(models.Model):
                 name="inventory_valid_stock_weights",
             ),
         ]
+
+
+class StockReservation(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    position = models.ForeignKey(StockPosition, on_delete=models.PROTECT, related_name="reservations")
+    quantity = models.DecimalField(max_digits=14, decimal_places=3)
+    remaining = models.DecimalField(max_digits=14, decimal_places=3)
+    posted_on = models.DateField()
+    reference = models.CharField(max_length=100)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "submission_key"], name="inventory_unique_reserve_submit"),
+            models.CheckConstraint(condition=Q(quantity__gt=0, remaining__gte=0, remaining__lte=models.F("quantity")),
+                                   name="inventory_valid_reservation_quantity"),
+        ]
+
+
+class ReservationAction(models.Model):
+    class Kind(models.TextChoices):
+        RELEASE = "release", "Release"
+        ISSUE = "issue", "Issue reserved stock"
+
+    reservation = models.ForeignKey(StockReservation, on_delete=models.PROTECT, related_name="actions")
+    movement = models.OneToOneField(StockMovement, on_delete=models.PROTECT, null=True)
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    quantity = models.DecimalField(max_digits=14, decimal_places=3)
+    posted_on = models.DateField()
+    reference = models.CharField(max_length=100)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["reservation", "submission_key"], name="inventory_unique_reserve_action"),
+            models.CheckConstraint(condition=Q(quantity__gt=0) & (
+                Q(kind="issue", movement__isnull=False) | Q(kind="release", movement__isnull=True)
+            ), name="inventory_valid_reservation_action"),
+        ]

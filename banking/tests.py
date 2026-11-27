@@ -11,6 +11,8 @@ from accounting.services import post_journal, setup_books
 from dashboard.models import BusinessAccount, Customer
 from settlements.services import record_party_payment
 
+from .instruments import record_cheque_event, record_instrument
+from .models import ChequeEvent, ReportedInstrument
 from .services import funds_book, register_funds_account, transfer_funds
 
 
@@ -78,4 +80,55 @@ class BankingTests(TestCase):
                            posting_on=date(2026, 5, 1), amount=Decimal("10"), submission_key=uuid4())
         with self.assertRaises(ValidationError):
             funds_book(self.other_workspace, account_id=self.bank.pk, start_on=date(2026, 5, 1), end_on=date(2026, 6, 1))
+        self.assertFalse(Journal.objects.exists())
+
+
+    def reported(self, method, **overrides):
+        values = {"account_id": self.bank.pk, "method": method, "direction": "in", "reference": " synthetic-ref ",
+                  "reported_on": date(2026, 5, 1), "amount": Decimal("10")}
+        return record_instrument(self.workspace, self.owner, **(values | overrides))
+
+    def test_electronic_references_do_not_create_or_verify_payments(self):
+        for method in ("upi", "neft", "rtgs", "imps"):
+            with self.subTest(method=method):
+                entry = self.reported(method)
+                self.assertEqual(entry.reference, "SYNTHETIC-REF")
+                self.assertIsNone(entry.journal_line_id)
+                self.assertEqual(self.reported(method), entry)
+                with self.assertRaises(ValidationError):
+                    self.reported(method, amount=Decimal("11"))
+        self.assertEqual(ReportedInstrument.objects.count(), 4)
+        self.assertFalse(Journal.objects.exists())
+
+    def test_reported_reference_can_only_link_to_a_matching_posted_bank_line(self):
+        journal = transfer_funds(self.workspace, self.owner, from_id=self.cash.pk, to_id=self.bank.pk,
+                                 posting_on=date(2026, 5, 1), amount=Decimal("10"), submission_key=uuid4())
+        credit = journal.lines.get(side="C")
+        debit = journal.lines.get(side="D")
+        with self.assertRaises(ValidationError):
+            self.reported("neft", journal_line_id=credit.pk)
+        self.assertEqual(self.reported("neft", journal_line_id=debit.pk).journal_line_id, debit.pk)
+        with self.assertRaises(ValidationError):
+            self.reported("imps", journal_line_id=debit.pk)
+        self.assertEqual(Journal.objects.count(), 1)
+
+    def test_cheque_events_are_ordered_scoped_and_leave_funds_unchanged(self):
+        cheque = self.reported("cheque")
+        options = {"instrument_id": cheque.pk, "state": "presented", "happened_on": date(2026, 5, 2),
+                   "submission_key": uuid4()}
+        with self.assertRaises(ValidationError):
+            record_cheque_event(self.workspace, self.owner, **(options | {"state": "cleared"}))
+        with self.assertRaises(ValidationError):
+            record_cheque_event(self.other_workspace, self.other, **options)
+        event = record_cheque_event(self.workspace, self.owner, **options)
+        self.assertEqual(record_cheque_event(self.workspace, self.owner, **options), event)
+        record_cheque_event(self.workspace, self.owner, **(options | {
+            "state": "cleared", "happened_on": date(2026, 5, 3), "submission_key": uuid4(),
+        }))
+        record_cheque_event(self.workspace, self.owner, **(options | {
+            "state": "returned", "reason": "Synthetic bank return", "happened_on": date(2026, 5, 4),
+            "submission_key": uuid4(),
+        }))
+        self.assertEqual(list(cheque.cheque_events.values_list("state", flat=True)),
+                         [ChequeEvent.State.PRESENTED, ChequeEvent.State.CLEARED, ChequeEvent.State.RETURNED])
         self.assertFalse(Journal.objects.exists())

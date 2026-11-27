@@ -13,7 +13,7 @@ from orders.models import OrderMovement, SalesOrder
 from orders.services import check_quantity
 
 from .geometry import KG_PER_TONNE, MM_PER_M
-from .models import ReservationAction, StockLot, StockMovement, StockPosition, StockReservation, StorageLocation
+from .models import ReservationAction, StockCount, StockLot, StockMovement, StockPosition, StockReservation, StorageLocation
 
 
 def _check_order_movement(workspace, lot, kind, order_movement_id, posted_on, quantity):
@@ -56,6 +56,10 @@ def validate_stock_input(lot, quantity, posted_on, reference, submission_key):
     check_quantity(quantity)
     if lot.unit == Product.Unit.PIECE and quantity != quantity.to_integral_value():
         raise ValidationError("Enter a whole number of pieces.")
+    return validate_stock_metadata(posted_on, reference, submission_key)
+
+
+def validate_stock_metadata(posted_on, reference, submission_key):
     if type(posted_on) is not date or posted_on > timezone.localdate() or not isinstance(submission_key, UUID):
         raise ValidationError("Choose a posting date on or before today and a valid submission key.")
     if not isinstance(reference, str) or not 1 <= len(reference.strip()) <= 100:
@@ -66,6 +70,7 @@ def validate_stock_input(lot, quantity, posted_on, reference, submission_key):
 def check_lot_chronology(lot, posted_on):
     if (lot.movements.filter(posted_on__gt=posted_on).exists()
             or StockReservation.objects.filter(position__lot=lot, posted_on__gt=posted_on).exists()
+            or StockCount.objects.filter(position__lot=lot, posted_on__gt=posted_on).exists()
             or ReservationAction.objects.filter(reservation__position__lot=lot, posted_on__gt=posted_on).exists()):
         raise ValidationError("Post stock activity in chronological order for this lot.")
 

@@ -235,3 +235,38 @@ class ReservationAction(models.Model):
                 Q(kind="issue", movement__isnull=False) | Q(kind="release", movement__isnull=True)
             ), name="inventory_valid_reservation_action"),
         ]
+
+class StockCount(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    position = models.ForeignKey(StockPosition, on_delete=models.PROTECT, related_name="counts")
+    adjustment = models.OneToOneField(StockMovement, on_delete=models.PROTECT, null=True, related_name="physical_count")
+    before = models.DecimalField(max_digits=14, decimal_places=3)
+    counted = models.DecimalField(max_digits=14, decimal_places=3)
+    posted_on = models.DateField()
+    reference = models.CharField(max_length=100)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "submission_key"], name="inventory_unique_count_submit"),
+            models.CheckConstraint(condition=Q(before__gte=0, counted__gte=0) & (
+                Q(adjustment__isnull=True, before=models.F("counted"))
+                | (Q(adjustment__isnull=False) & ~Q(before=models.F("counted")))
+            ), name="inventory_valid_count_adjustment"),
+        ]
+
+
+class ReorderPolicy(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT)
+    product = models.ForeignKey("dashboard.Product", on_delete=models.PROTECT)
+    unit = models.CharField(max_length=12, choices=Product.Unit.choices)
+    minimum_available = models.DecimalField(max_digits=14, decimal_places=3)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "warehouse", "product"], name="inventory_unique_reorder"),
+            models.CheckConstraint(condition=Q(minimum_available__gte=0), name="inventory_valid_reorder_threshold"),
+        ]

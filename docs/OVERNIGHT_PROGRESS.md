@@ -2,14 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `d4186fa413c75a38ff7fe43c9805549b18d4c1a6`.
-- **Active checkpoint:** 04, Invoicing and Indian GST. Partial.
-- **Last verified task:** private A4 invoice view and registration branding, with immutable logo and letterhead snapshots. Existing gated issue, cancellation and returns remain intact.
-- **Changed files:** accounting URL registration, invoicing registration model, forms, draft service, views, tests, CSS/templates and documentation.
-- **Migrations:** invoicing 0008, applied on disposable SQLite.
-- **Latest tests:** 47 focused and both 162-test suites passed (87.270 and 88.029 seconds). Django and migration checks passed. Chrome verified A4 media and mobile.
-- **Pending:** internal owner controls for the issue/correction services and independent non-return adjustments. Statutory review and PostgreSQL execution remain open.
-- **Exact next task:** add gated, CSRF-protected, same-company owner review controls for issuing and correcting invoices with the existing services. Continue using synthetic data and keep default-off controls.
+- **Latest implementation commit:** `32511cb580d2228c0706ef46c77d209e4ebd7c81`.
+- **Active checkpoint:** 05, Receivables, payables and payments. Statutory release work in 04 remains gated separately.
+- **Last verified task:** private, disabled-by-default owner workflow for sales/purchase approval, returns and cancellation, with A4 preview.
+- **Changed files:** accounting URL registration, invoice forms, posting and draft services, tests, views and templates.
+- **Migrations:** none for 04L. Invoicing migrations 0001–0008 verified on disposable SQLite.
+- **Latest tests:** 50 focused passed. Both 165-test suites passed (93.157 and 93.034 seconds). Django and migration checks passed. Chrome standalone verified native issue and phone-width cancellation after an initial sign-in timeout.
+- **Pending:** statutory workflow and statutory notes, PostgreSQL checks and the independent Checkpoint 05 work.
+- **Exact next task:** add contractual due date records and posted-invoice ageing as-of a selected date, with cancellation/return adjustments and company scope. Then add payments, allocations and tested statutory timeline inputs. Update instructions after the next verified slice.
 
 
 ## Resume on Windows
@@ -22,7 +22,7 @@ git status --short --branch
 git log -5 --oneline
 Get-Content AGENTS.md
 Get-Content docs/ACCOUNTING_HANDOFF.md -TotalCount 20
-Get-Content docs/checkpoints/04-gst-invoicing.md
+Get-Content docs/checkpoints/05-payments.md
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py check
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py makemigrations --check --dry-run
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py test --noinput

@@ -69,3 +69,5 @@
 - 04J: 45 invoicing/accounting tests passed. Full normal/reverse runs passed 160 in 82.130 and 82.249 seconds. Django and migration checks passed. Split sales returns invert the original ledger to the paise. Purchase returns, over-quantity, replay, cancellation conflicts and rollback were tested. A file-backed SQLite probe accepted only one of two concurrent competing returns.
 
 - 04K: 47 invoicing/accounting tests passed. Full normal/reverse runs passed 162 (87.270 and 88.029 seconds). Django and migration checks passed. Chrome verified the A4 stylesheet, mobile fit, branding and amount words. Tests verified image bounds and round-trip re-encoding, historical branding, tenant isolation and no-cache headers.
+
+- 04L: 50 focused tests passed. Full normal/reverse suites passed 165 (93.157 and 93.034 seconds). Django and migration checks passed. The first Chrome harness timed out at sign-in alongside regression runs. The standalone retry passed native owner issue, preview and mobile cancellation.

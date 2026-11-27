@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 04L · Internal sales and purchase invoice workflow
+
+- **Completed:** private owner review, issue, cancellation and return forms use the existing atomic services and default-off feature gate. An unissued purchase estimate can be replaced once with confirmed supplier actuals. Repeated issue requests must match the original inputs. Chrome verified native issue and cancellation.
+- **Status:** internal invoice workflow verified. The statutory portion of Checkpoint 04 remains blocked on professional decisions about tax invoice timing/numbering, provision-specific notes, input credit and filing/e-invoice applicability. Price-only statutory notes are pending. PostgreSQL execution remains a release gate. The production issue/correction switch stays off.
+- **Changed files:** accounting URLs, invoicing forms/services/views/tests and review, draft and print templates. **Migrations:** none in this slice.
+- **Tests:** 50 focused tests and both 165-test full suites passed (93.157 s normal, 93.034 s reverse). Django and migration checks passed. The first Chrome run timed out at login alongside regression load, then a standalone retry passed issue, print and phone-width cancellation.
+- **Verified commit:** `32511cb580d2228c0706ef46c77d209e4ebd7c81`.
+- **Exact next task:** begin the independent accounting work in Checkpoint 05 using synthetically issued documents. Implement an as-of projection of posted customer/supplier invoices, cancellations/returns and ageing using contractual due dates, then company-scoped payments and allocation. Use official sources before implementing MSME deadlines.
+
 ## Checkpoint 04K · Private A4 invoice layout
 
 - **Completed:** owners can update registration letterhead and a bounded PNG/JPEG logo. Drafts copy the branding data and issued records retain it with the document. The private A4 view displays the original amounts in words and current cancellation or return status.

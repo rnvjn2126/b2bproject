@@ -87,7 +87,7 @@ def reconciliation_confirm(request, workspace, pk):
 
 class StatementUploadForm(forms.Form):
     account = forms.ModelChoiceField(queryset=FundsAccount.objects.none())
-    statement = forms.FileField(label="Statement CSV", widget=forms.ClearableFileInput(attrs={"accept": ".csv"}))
+    statement = forms.FileField(label="Statement file", widget=forms.ClearableFileInput(attrs={"accept": ".csv,.xlsx"}))
 
     def __init__(self, *args, workspace, **kwargs):
         super().__init__(*args, **kwargs)
@@ -95,9 +95,10 @@ class StatementUploadForm(forms.Form):
 
     def clean_statement(self):
         upload = self.cleaned_data["statement"]
-        if not upload.name.lower().endswith(".csv") or upload.size > MAX_STATEMENT_BYTES:
-            raise ValidationError("Choose a CSV file up to 256 KB.")
-        return upload.read(MAX_STATEMENT_BYTES + 1)
+        file_format = upload.name.lower().rpartition(".")[2]
+        if file_format not in ("csv", "xlsx") or upload.size > MAX_STATEMENT_BYTES:
+            raise ValidationError("Choose a CSV or XLSX file up to 256 KB.")
+        return file_format, upload.read(MAX_STATEMENT_BYTES + 1)
 
 
 class StatementConfirmForm(StatementUploadForm):
@@ -126,7 +127,8 @@ def statement_upload(request, workspace):
         if bound.is_valid():
             data = bound.cleaned_data
             account = data["account"]
-            inputs = {"account_id": account.pk, "content": data["statement"]}
+            file_format, content = data["statement"]
+            inputs = {"account_id": account.pk, "content": content, "file_format": file_format}
             try:
                 if confirming:
                     batch = import_statement(workspace, request.user, **inputs, preview_digest=data["preview_digest"],

@@ -2,7 +2,7 @@
 {% block books %}
 <section class="card">
   <h1>Upload bank statement</h1>
-  <p>Use UTF-8 CSV with columns <code>date,reference,description,debit,credit</code>. Enter dates as YYYY-MM-DD and use one amount column per row.</p>
+  <p>Use UTF-8 CSV or a single-sheet XLSX workbook with columns <code>date,reference,description,debit,credit</code>. Use ISO dates or Excel date cells, with one amount column per row. Keep workbook references as text.</p>
   <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}
     <button type="submit" name="action" value="preview">Preview statement</button>
   </form>

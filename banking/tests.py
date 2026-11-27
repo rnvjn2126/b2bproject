@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from io import BytesIO
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from openpyxl import Workbook
 
 from accounting.models import Journal, Ledger
 from accounting.services import post_journal, setup_books
@@ -312,3 +314,48 @@ class BankingTests(TestCase):
         self.assertContains(self.client.post(url, {"action": "preview", "account": self.bank.pk,
                                                    "statement": upload()}), "Select a valid choice")
         self.assertEqual(StatementBatch.objects.count(), 1)
+
+
+
+    def statement_workbook(self, amount, *, extra_sheet=False):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(["date", "reference", "description", "debit", "credit"])
+        sheet.append([date(2026, 5, 1), "REF", "Synthetic Excel deposit", None, amount])
+        if extra_sheet:
+            workbook.create_sheet("Extra")
+        buffer = BytesIO()
+        workbook.save(buffer)
+        workbook.close()
+        return buffer.getvalue()
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_statement_workbook_uses_same_preview_and_cross_format_fingerprint(self):
+        url = reverse("accounting:bank_statement_upload")
+        content = self.statement_workbook(27.35)
+
+        def upload():
+            return SimpleUploadedFile("synthetic.xlsx", content)
+
+        self.client.force_login(self.owner)
+        response = self.client.post(url, {"action": "preview", "account": self.bank.pk, "statement": upload()})
+        self.assertContains(response, "27.35")
+        self.assertFalse(StatementLine.objects.exists())
+        digest = response.context["preview"].digest
+        self.assertEqual(self.client.post(url, {"action": "confirm", "confirm-account": self.bank.pk,
+                                                "confirm-preview_digest": digest, "confirm-statement": upload()}).status_code, 302)
+        self.assertEqual(StatementLine.objects.get().amount, Decimal("27.35"))
+        csv = self.statement_csv("2026-05-01,ref,Another description,,27.35")
+        preview = preview_statement(self.workspace, self.owner, account_id=self.bank.pk, content=csv)
+        self.assertEqual((len(preview.new), len(preview.duplicates)), (0, 1))
+        self.assertFalse(Journal.objects.exists())
+
+    def test_statement_workbook_rejects_formulas_extra_sheets_and_invalid_archives(self):
+        for content, message in (
+            (self.statement_workbook("=1+2"), "formula or spreadsheet error"),
+            (self.statement_workbook(5, extra_sheet=True), "one worksheet"),
+            (b"synthetic non-archive", "valid, supported XLSX"),
+        ):
+            with self.subTest(message=message), self.assertRaisesMessage(ValidationError, message):
+                preview_statement(self.workspace, self.owner, account_id=self.bank.pk, content=content, file_format="xlsx")
+        self.assertFalse(StatementBatch.objects.exists())

@@ -10,6 +10,7 @@ from accounting.services import lock_books
 from .models import FundsAccount, StatementBatch, StatementLine
 from .services import company_funds
 from .statement_csv import StatementRow, parse_statement_csv
+from .statement_excel import parse_statement_excel
 
 
 @dataclass(frozen=True)
@@ -19,8 +20,11 @@ class StatementPreview:
     duplicates: list[StatementRow]
 
 
-def _statement_preview(account, content):
-    rows = parse_statement_csv(content)
+def _statement_preview(account, content, file_format):
+    parsers = {"csv": parse_statement_csv, "xlsx": parse_statement_excel}
+    if file_format not in parsers:
+        raise ValidationError("Choose a CSV or XLSX bank statement.")
+    rows = parsers[file_format](content)
     if any(row.posted_on > timezone.localdate() for row in rows):
         raise ValidationError("Statement entries cannot be dated in the future.")
     seen = set(StatementLine.objects.filter(
@@ -33,23 +37,23 @@ def _statement_preview(account, content):
     return StatementPreview(digest, new, duplicates)
 
 
-def preview_statement(workspace, actor, *, account_id, content):
+def preview_statement(workspace, actor, *, account_id, content, file_format="csv"):
     if workspace.owner_id != actor.pk or not actor.is_active:
         raise PermissionDenied
     account = company_funds(workspace).filter(pk=account_id, kind=FundsAccount.Kind.BANK).first()
     if not account:
         raise ValidationError("Choose a bank account in this workspace.")
-    return _statement_preview(account, content)
+    return _statement_preview(account, content, file_format)
 
 
 @transaction.atomic
-def import_statement(workspace, actor, *, account_id, content, preview_digest, skip_known=False):
+def import_statement(workspace, actor, *, account_id, content, preview_digest, skip_known=False, file_format="csv"):
     """Stage confirmed statement entries independently of the accounting ledger."""
     lock_books(workspace, actor)
     account = company_funds(workspace).filter(pk=account_id, kind=FundsAccount.Kind.BANK).first()
     if not account:
         raise ValidationError("Choose a bank account in this workspace.")
-    preview = _statement_preview(account, content)
+    preview = _statement_preview(account, content, file_format)
     if preview.digest != preview_digest:
         raise ValidationError("The file changed after preview. Preview it again.")
     existing = StatementBatch.objects.filter(account=account, file_digest=preview.digest).first()

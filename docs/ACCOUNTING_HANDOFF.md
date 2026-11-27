@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 05D · Credit controls and reviewed MSE dates
+
+- **Completed:** company party credit terms and limits, one-time contractual default application, credit exposure and past-due calculations. Reviewed supplier invoices can record a separate MSE deadline with acceptance, written terms and evidence.
+- **Pending:** private statements, posting and allocation forms, credit-warning placement, and manual reminders. Automatic eligibility classification, statutory filings and interest/tax treatment remain out of scope.
+- **Changed files:** settlement models, balance projection, credit/deadline services, tests and documents. **Migration:** settlements 0004.
+- **Tests:** 63 focused passed. Full runs each passed 178 (83.850 s normal, 83.726 s reverse). Django and migration checks passed.
+- **Assumptions:** conservative positive receivable exposure, party credit defaults do not rewrite prior due dates, MSE tracking starts only after documented eligibility and acceptance review. Statutory source links are in the assumptions document.
+- **Verified commit:** `d2ba18f4911c53ebffd7ef276fdfb807a9b49a4e`.
+- **Exact next task:** expose private owner statements with ageing, unassigned funds and overdue/credit status. Then connect existing payment, allocation, release and due-date services and generate manual reminder drafts without sending messages.
+
 ## Checkpoint 05C · Bill allocations and released credits
 
 - **Completed:** allocate current customer/supplier funds against matching posted invoices and control ledgers within an open period. Bound receipt/payout and invoice amounts, enforce retries and chronological events, and record append-only partial allocation reversals. As-of projections show invoice outstanding or credit and unassigned funds. A later return keeps the invoice credit visible until explicitly released.

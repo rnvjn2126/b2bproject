@@ -79,3 +79,5 @@
 - 05B: 56 focused tests passed. Full runs passed 171 in 83.060 and 83.065 seconds. Django and migration checks passed. Two concurrent receipts on file-backed SQLite returned the same payment with one journal. Verified reversal dates, parties, ledger classifications, retry/reference checks and rollback.
 
 - 05C: 60 focused tests passed. Full normal/reverse runs passed 175 in 83.100 and 83.078 seconds. Django and migration checks passed. A file-backed concurrency probe accepted one competing allocation and preserved caps. Tests cover advances, unused funds, matched control accounts, invoice credits, explicit release and dated reversals.
+
+- 05D: 63 focused tests passed. Both full runs passed 178 (83.850 and 83.726 seconds). Django and migration checks passed. Tests verify exposure, due defaults, foreign-party rejection, reviewed date evidence, the 15-day no-agreement date and the 45-day written cap.

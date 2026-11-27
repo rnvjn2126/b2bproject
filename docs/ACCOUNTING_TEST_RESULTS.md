@@ -89,3 +89,5 @@
 ## Overnight Checkpoint 06, partial
 
 - 06A: 38 focused tests passed. Full normal/reverse runs passed 187 (87.988 and 87.855 seconds). Django and migration checks passed. Transfers and both account balances reconciled to the paise. Tests cover new petty cash use, company scoping and masking.
+
+- 06B: 41 focused passed. Both full runs passed 190 (83.736 and 83.720 seconds). Checks passed. Tests verify all four electronic types, cheque event ordering, reference duplicates, wrong ledger-side rejection and no payment creation.

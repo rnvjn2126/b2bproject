@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06B · Manual payment references and cheque events
+
+- **Completed:** scoped UPI, NEFT, RTGS, IMPS and cheque reference recording. Optional journal-line associations require the same bank account, amount and direction. Dated cheque events record staff-reported presentation, clearing and return without ledger changes.
+- **Pending:** statement CSV/Excel preview/import, matching, reconciliation, unmatched review and private bank UI.
+- **Changed files:** banking models, instrument service, tests, migration and documentation. **Migration:** banking 0002.
+- **Tests:** 41 focused passed. Both full runs passed 190 (83.736 s normal, 83.720 s reverse). Django and migration checks passed.
+- **Verified commit:** `a0c3ede01ee35287d53d61088f3b17bca61f3a70`.
+- **Exact next task:** add bounded synthetic CSV preview and committed statement staging. Reject malformed rows, detect overlaps per bank account, and keep all imports separate from the ledger. Then add Excel parsing and review-only reconciliation.
+
 ## Checkpoint 06A · Company funds accounts and books
 
 - **Completed:** register multiple workspace bank, cash and petty-cash asset ledgers. Transfer between distinct accounts through the existing sealed contra engine. Read date-filtered cash or bank books with opening, running and closing balances. Existing cash and settlement forms recognize newly registered accounts.

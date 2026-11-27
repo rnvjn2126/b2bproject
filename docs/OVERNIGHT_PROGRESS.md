@@ -2,13 +2,13 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `17b16721b28e2a46a1152d23a98ac3900f5a7ec3`.
+- **Latest implementation commit:** `a0c3ede01ee35287d53d61088f3b17bca61f3a70`.
 - **Active checkpoint:** 06, Banking and reconciliation. Partial.
-- **Last verified task:** company-scoped bank/cash/petty-cash ledger registration, contra transfer and date-based books.
-- **Changed files:** banking app, accounting/shared funds rules, settlements integration, settings and checkpoint documents.
-- **Migrations:** banking 0001, verified on disposable SQLite.
-- **Latest tests:** 38 focused and both 187-test suites passed (87.988 and 87.855 seconds). Django and migration checks passed.
-- **Pending and exact next task:** add manual reference and cheque history, then private bank operations and CSV/Excel statement preview/import, duplicate handling and reconciliation. Keep references informational. No live bank connections.
+- **Last verified task:** staff-entered electronic payment references and cheque event history, with optional validated journal association.
+- **Changed files:** banking model, instrument service, tests, migration and documentation.
+- **Migrations:** banking 0002, verified on disposable SQLite.
+- **Latest tests:** 41 focused and both 190-test runs passed (83.736 and 83.720 seconds). Django and migration checks passed.
+- **Exact next task:** implement bounded CSV preview/import and account-scoped overlap detection without posting, then Excel, reconciliation and owner screens.
 
 ## Resume on Windows
 

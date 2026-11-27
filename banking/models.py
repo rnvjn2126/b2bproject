@@ -110,3 +110,10 @@ class StatementLine(models.Model):
                                    name="banking_valid_statement_line"),
             models.UniqueConstraint(fields=["account", "fingerprint"], name="banking_unique_statement_line"),
         ]
+
+
+class StatementMatch(models.Model):
+    statement_line = models.OneToOneField(StatementLine, on_delete=models.PROTECT, related_name="match")
+    journal_line = models.OneToOneField("accounting.JournalLine", on_delete=models.PROTECT, related_name="bank_match")
+    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    confirmed_at = models.DateTimeField(auto_now_add=True)

@@ -3,7 +3,8 @@
 <section class="card">
   <h1>Receivables and payables</h1>
   <div class="actions"><a href="{% url 'accounting:settlements:payment_create' %}">Record receipt or payment</a>
-    <a href="{% url 'accounting:settlements:credit_profile' %}">Set party credit terms</a></div>
+    <a href="{% url 'accounting:settlements:credit_profile' %}">Set party credit terms</a>
+    <a href="{% url 'accounting:bank_reconciliation' %}">Bank reconciliation</a></div>
   <form method="get" class="inline-form">
     {{ form.as_p }}
     <button type="submit">Show statement</button>

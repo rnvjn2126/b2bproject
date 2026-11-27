@@ -1,0 +1,12 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Review bank match</h1>
+  <p>{{ entry.account }} · {{ entry.posted_on|date:"d M Y" }} · {{ entry.get_direction_display }} INR {{ entry.amount|floatformat:2 }} · {{ entry.reference }}</p>
+  <p>Confirm only after comparing the statement entry with the posted journal.</p>
+  {% if candidates %}
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Confirm match</button></form>
+  {% else %}<p>No available suggested matches.</p>{% endif %}
+  <a href="{% url 'accounting:bank_reconciliation' %}">Back to reconciliation</a>
+</section>
+{% endblock %}

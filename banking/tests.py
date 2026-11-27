@@ -1,12 +1,13 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import IntegrityError
-from django.test import TestCase
+from django.db import IntegrityError, transaction
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
 
 from accounting.models import Journal, Ledger
 from accounting.services import post_journal, setup_books
@@ -14,7 +15,8 @@ from dashboard.models import BusinessAccount, Customer
 from settlements.services import record_party_payment
 
 from .instruments import record_cheque_event, record_instrument
-from .models import ChequeEvent, ReportedInstrument, StatementBatch, StatementLine
+from .models import ChequeEvent, ReportedInstrument, StatementBatch, StatementLine, StatementMatch
+from .reconciliation import confirm_match, suggest_matches, unmatched_report
 from .services import funds_book, register_funds_account, transfer_funds
 from .statements import import_statement, preview_statement
 
@@ -204,3 +206,79 @@ class BankingTests(TestCase):
                 import_statement(self.workspace, self.owner, account_id=self.bank.pk, content=file, preview_digest=preview.digest)
         self.assertFalse(StatementBatch.objects.exists())
         self.assertFalse(StatementLine.objects.exists())
+
+    def test_reconciliation_ranks_reference_and_preserves_unmatched_totals(self):
+        day = date(2026, 5, 1)
+        content = self.statement_csv("2026-05-01,MATCH,Deposit,,10",
+                                     "2026-05-02,SECOND,Another deposit,,10",
+                                     "2026-05-02,OUT,Withdrawal,3.25,")
+        upload = {"account_id": self.bank.pk, "content": content}
+        preview = preview_statement(self.workspace, self.owner, **upload)
+        batch = import_statement(self.workspace, self.owner, **upload, preview_digest=preview.digest)
+        first = batch.lines.get(reference="MATCH")
+        second = batch.lines.get(reference="SECOND")
+
+        def transfer(amount, reference, posted_on=day):
+            return transfer_funds(self.workspace, self.owner, from_id=self.cash.pk, to_id=self.bank.pk,
+                                  posting_on=posted_on, amount=Decimal(amount), reference=reference,
+                                  submission_key=uuid4())
+
+        nearby = transfer("10", "DIFFERENT").lines.get(side="D")
+        matching = transfer("10", "match", day + timedelta(days=2)).lines.get(side="D")
+        wrong_journal = transfer("9", "INVALID")
+        self.assertEqual(suggest_matches(self.workspace, self.owner, statement_line_id=first.pk), [matching, nearby])
+        for invalid in (wrong_journal.lines.get(side="D"), matching.journal.lines.get(side="C")):
+            with self.assertRaisesMessage(ValidationError, "same account, amount and direction"):
+                confirm_match(self.workspace, self.owner, statement_line_id=first.pk, journal_line_id=invalid.pk)
+        with self.assertRaises(PermissionDenied):
+            suggest_matches(self.workspace, self.other, statement_line_id=first.pk)
+        with self.assertRaises(ValidationError):
+            confirm_match(self.other_workspace, self.other, statement_line_id=first.pk, journal_line_id=matching.pk)
+        kwargs = {"statement_line_id": first.pk, "journal_line_id": matching.pk}
+        result = confirm_match(self.workspace, self.owner, **kwargs)
+        self.assertEqual(result.confirmed_by, self.owner)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            StatementMatch.objects.filter(pk=result.pk).update(confirmed_by=self.other)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            StatementMatch.objects.create(statement_line=second, journal_line=wrong_journal.lines.get(side="D"),
+                                          confirmed_by=self.owner)
+        self.assertEqual(confirm_match(self.workspace, self.owner, **kwargs), result)
+        self.assertEqual(suggest_matches(self.workspace, self.owner, statement_line_id=first.pk), [])
+        with self.assertRaisesMessage(ValidationError, "already reconciled"):
+            confirm_match(self.workspace, self.owner, **(kwargs | {"journal_line_id": nearby.pk}))
+        with self.assertRaisesMessage(ValidationError, "already reconciled"):
+            confirm_match(self.workspace, self.owner, **(kwargs | {"statement_line_id": second.pk}))
+        report = unmatched_report(self.workspace, self.owner, account_id=self.bank.pk,
+                                  start_on=day, end_on=day + timedelta(days=3))
+        self.assertEqual((report.statement_net, report.ledger_net, report.difference),
+                         (Decimal("6.75"), Decimal("19"), Decimal("-12.25")))
+        self.assertEqual(StatementMatch.objects.count(), 1)
+        self.assertEqual(Journal.objects.count(), 3)
+
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_owner_reconciliation_views_confirm_with_csrf(self):
+        day = date(2026, 5, 1)
+        upload = {"account_id": self.bank.pk, "content": self.statement_csv("2026-05-01,REF,Deposit,,10")}
+        preview = preview_statement(self.workspace, self.owner, **upload)
+        batch = import_statement(self.workspace, self.owner, **upload, preview_digest=preview.digest)
+        entry = batch.lines.get()
+        journal = transfer_funds(self.workspace, self.owner, from_id=self.cash.pk, to_id=self.bank.pk,
+                                 posting_on=day, amount=Decimal("10"), reference="REF", submission_key=uuid4())
+        line = journal.lines.get(side="D")
+        report = reverse("accounting:bank_reconciliation")
+        confirm = reverse("accounting:bank_reconciliation_confirm", args=[entry.pk])
+        self.client.force_login(self.owner)
+        self.assertContains(self.client.get(report, {"account": self.bank.pk, "start_on": day, "end_on": day}),
+                            "Review matches")
+        self.assertContains(self.client.get(confirm), journal.transaction_reference)
+        self.assertFalse(StatementMatch.objects.exists())
+        locked = Client(enforce_csrf_checks=True)
+        locked.force_login(self.owner)
+        self.assertEqual(locked.post(confirm, {"journal_line_id": line.pk}).status_code, 403)
+        with self.settings(INTERNAL_INVOICE_ISSUANCE=False):
+            self.assertEqual(self.client.get(report).status_code, 404)
+        self.assertEqual(self.client.post(confirm, {"journal_line_id": line.pk}).status_code, 302)
+        self.assertEqual(StatementMatch.objects.get().journal_line, line)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(confirm).status_code, 404)

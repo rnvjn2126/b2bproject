@@ -1,0 +1,21 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>Bank reconciliation</h1>
+  <form method="get">{{ form.as_p }}<button type="submit">Show unmatched entries</button></form>
+</section>
+{% if report %}
+<section class="card">
+  <h2>Unmatched statement entries</h2>
+  <p>Unmatched net statement movement INR {{ report.statement_net|floatformat:2 }}. Ledger movement INR {{ report.ledger_net|floatformat:2 }}. Difference INR {{ report.difference|floatformat:2 }}.</p>
+  <ul>{% for line in report.statements %}
+    <li>{{ line.posted_on|date:"d M Y" }} · {{ line.get_direction_display }} INR {{ line.amount|floatformat:2 }} · {{ line.reference }}
+      <a href="{% url 'accounting:bank_reconciliation_confirm' line.pk %}">Review matches</a></li>
+  {% empty %}<li>No unmatched statement entries.</li>{% endfor %}</ul>
+  <h2>Unmatched bank ledger entries</h2>
+  <ul>{% for line in report.journal_lines %}
+    <li>{{ line.journal.date|date:"d M Y" }} · <a href="{% url 'accounting:journal' line.journal_id %}">{{ line.journal.transaction_reference }}</a> · {{ line.get_side_display }} INR {{ line.amount|floatformat:2 }}</li>
+  {% empty %}<li>No unmatched bank ledger entries.</li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

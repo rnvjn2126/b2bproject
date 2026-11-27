@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 04K · Private A4 invoice layout
+
+- **Completed:** owners can update registration letterhead and a bounded PNG/JPEG logo. Drafts copy the branding data and issued records retain it with the document. The private A4 view displays the original amounts in words and current cancellation or return status.
+- **Pending:** complete private issue/review actions for synthetic pilot operation. Statutory printing, notes not arising from returns, release and PostgreSQL verification remain open.
+- **Changed files:** accounting URL registration, invoicing form, registration model, draft service, views, tests, A4 CSS/templates and documentation. **Migration:** invoicing 0008.
+- **Tests:** 47 focused passed. Both full runs passed 162 (87.270 s normal, 88.029 s reverse). Django and migration checks passed. Chrome checked A4 CSS, hidden screen-only controls, logo, words and phone layout.
+- **Security:** only PNG/JPEG permitted; bounded decode and re-encoding remove upload metadata. No public upload path exists. Print is owner-only, gated and noncacheable.
+- **Verified commit:** `d4186fa413c75a38ff7fe43c9805549b18d4c1a6`.
+- **Exact next task:** connect owner-only synthetic review controls to the existing issue and correction services. Use POST plus CSRF, preserve server-side validation and keep the operational gate off by default.
+
 ## Checkpoint 04J · Scoped internal returns
 
 - **Completed:** partial/full sales return credits and purchase return debits link to the original invoice and distinct sealed journals. Cumulative quantity and value checks prevent over-returning. Exact component allocations reconcile to the original invoice after a full return. Returned invoices cannot be fully cancelled.

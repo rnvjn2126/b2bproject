@@ -2,14 +2,15 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `d8bcefb4db111ada860a323e690662d60c226203`.
+- **Latest implementation commit:** `d4186fa413c75a38ff7fe43c9805549b18d4c1a6`.
 - **Active checkpoint:** 04, Invoicing and Indian GST. Partial.
-- **Last verified task:** sales and purchase return adjustments post sealed journals, preserve all original invoice evidence and prevent excess or duplicate returns.
-- **Changed files:** accounting journal kinds, invoicing models and services, tests and checkpoint documents.
-- **Migrations:** accounting 0008 and invoicing 0007, exercised on SQLite.
-- **Latest tests:** 45 focused passed. Both full suites passed 160 (82.130 and 82.249 seconds). Django and migration drift checks passed. A file-backed SQLite challenge proved return quantity serialization.
-- **Pending:** private A4 print and branding, non-return statutory notes and professional review. PostgreSQL execution remains open.
-- **Exact next task:** add scoped branding and A4 print of immutable issued invoice snapshots, gated to internal owners. Keep statutory issue and export disabled.
+- **Last verified task:** private A4 invoice view and registration branding, with immutable logo and letterhead snapshots. Existing gated issue, cancellation and returns remain intact.
+- **Changed files:** accounting URL registration, invoicing registration model, forms, draft service, views, tests, CSS/templates and documentation.
+- **Migrations:** invoicing 0008, applied on disposable SQLite.
+- **Latest tests:** 47 focused and both 162-test suites passed (87.270 and 88.029 seconds). Django and migration checks passed. Chrome verified A4 media and mobile.
+- **Pending:** internal owner controls for the issue/correction services and independent non-return adjustments. Statutory review and PostgreSQL execution remain open.
+- **Exact next task:** add gated, CSRF-protected, same-company owner review controls for issuing and correcting invoices with the existing services. Continue using synthetic data and keep default-off controls.
+
 
 ## Resume on Windows
 

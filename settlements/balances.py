@@ -7,6 +7,8 @@ from django.db.models import Prefetch
 
 from invoicing.models import InvoiceReturn, IssuedInvoice
 
+from .models import PartyPayment
+
 
 @dataclass(frozen=True)
 class InvoiceBalance:
@@ -51,3 +53,9 @@ def invoice_balances(workspace, as_of):
             adjusted = invoice.total - sum((entry.amount for entry in invoice.posted_returns), Decimal(0))
         rows.append(InvoiceBalance(invoice, due_on, adjusted, ageing_bucket(due_on, as_of)))
     return rows
+
+
+def active_payments(workspace, as_of):
+    return PartyPayment.objects.filter(
+        workspace=workspace, journal__workspace=workspace, journal__sealed=True, journal__date__lte=as_of,
+    ).exclude(journal__reversal__sealed=True, journal__reversal__date__lte=as_of)

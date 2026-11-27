@@ -4,7 +4,7 @@ from uuid import uuid4
 from django import forms
 
 from accounting.models import AccountGroup, Ledger
-from accounting.services import CASH_LEDGER_CODES
+from accounting.services import funds_ledgers
 from dashboard.models import Customer, Supplier
 from invoicing.models import IssuedInvoice
 
@@ -40,12 +40,11 @@ class PaymentForm(PartyForm):
     def __init__(self, *args, workspace, **kwargs):
         super().__init__(*args, workspace=workspace, **kwargs)
         same_company = Ledger.objects.filter(workspace=workspace, group__workspace=workspace)
-        self.fields["funds_ledger"].queryset = same_company.filter(
-            code__in=CASH_LEDGER_CODES, group__kind=AccountGroup.Kind.ASSET,
-        )
+        funds = funds_ledgers(workspace)
+        self.fields["funds_ledger"].queryset = funds
         self.fields["control_ledger"].queryset = same_company.filter(
             group__kind__in=(AccountGroup.Kind.ASSET, AccountGroup.Kind.LIABILITY),
-        ).exclude(code__in=CASH_LEDGER_CODES)
+        ).exclude(pk__in=funds)
 
 
 class AllocationForm(forms.Form):

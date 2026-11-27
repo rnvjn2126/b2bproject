@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import DecimalValidator
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import AccountGroup, FinancialYear, Journal, JournalLine, Ledger, Period, VoucherDraft
@@ -38,6 +39,12 @@ TRADE_VOUCHER_KINDS = (Journal.Kind.SALES, Journal.Kind.PURCHASE, Journal.Kind.D
 INVOICE_JOURNAL_KINDS = (Journal.Kind.SALES_INVOICE, Journal.Kind.PURCHASE_INVOICE,
                          Journal.Kind.SALES_RETURN, Journal.Kind.PURCHASE_RETURN)
 REVIEW_VOUCHER_KINDS = (Journal.Kind.GENERAL,) + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS
+
+
+def funds_ledgers(workspace):
+    return Ledger.objects.filter(
+        workspace=workspace, group__workspace=workspace, group__kind=AccountGroup.Kind.ASSET,
+    ).filter(Q(code__in=CASH_LEDGER_CODES) | Q(funds_account__workspace=workspace))
 
 
 def lock_books(workspace, actor):
@@ -123,7 +130,8 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
     if kind in CASH_VOUCHER_KINDS:
         if len(lines) != 2 or lines[0][0].pk == lines[1][0].pk:
             raise ValidationError("Cash vouchers need two distinct ledgers.")
-        cash_sides = {side for ledger, side, _ in lines if ledger.code in CASH_LEDGER_CODES}
+        cash_ids = set(funds_ledgers(workspace).filter(pk__in=(ledger.pk for ledger, _, _ in lines)).values_list("pk", flat=True))
+        cash_sides = {side for ledger, side, _ in lines if ledger.pk in cash_ids}
         required_sides = {
             Journal.Kind.RECEIPT: {"D"}, Journal.Kind.PAYMENT: {"C"}, Journal.Kind.CONTRA: {"D", "C"},
         }

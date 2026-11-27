@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from accounting.models import AccountGroup, Journal, Ledger
-from accounting.services import CASH_LEDGER_CODES, lock_books, post_journal
+from accounting.services import funds_ledgers, lock_books, post_journal
 from dashboard.models import Customer, Supplier
 from invoicing.models import IssuedInvoice
 from invoicing.tax import check_decimal
@@ -64,9 +64,10 @@ def record_party_payment(workspace, actor, *, posting_on, amount, funds_ledger_i
         return existing
 
     choices = Ledger.objects.filter(workspace=workspace, group__workspace=workspace).select_related("group")
-    funds = choices.filter(pk=funds_ledger_id, code__in=CASH_LEDGER_CODES, group__kind=AccountGroup.Kind.ASSET).first()
+    funds_choices = funds_ledgers(workspace)
+    funds = funds_choices.select_related("group").filter(pk=funds_ledger_id).first()
     expected_kind = AccountGroup.Kind.ASSET if receipt else AccountGroup.Kind.LIABILITY
-    control = choices.filter(pk=control_ledger_id, group__kind=expected_kind).exclude(code__in=CASH_LEDGER_CODES).first()
+    control = choices.filter(pk=control_ledger_id, group__kind=expected_kind).exclude(pk__in=funds_choices).first()
     if not funds or not control:
         raise ValidationError("Choose a cash or bank ledger and the correct party control ledger in this workspace.")
     if external_reference and PartyPayment.objects.filter(

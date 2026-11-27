@@ -4,7 +4,7 @@ from django import forms
 from django.forms import formset_factory
 
 from .models import AccountGroup, Branch, CostCentre, Journal, JournalLine, Ledger
-from .services import CASH_LEDGER_CODES, MANUAL_JOURNAL_KINDS, REVIEW_VOUCHER_KINDS
+from .services import MANUAL_JOURNAL_KINDS, REVIEW_VOUCHER_KINDS, funds_ledgers
 
 
 class YearForm(forms.Form):
@@ -45,8 +45,8 @@ class CashVoucherForm(AllocatedPostingForm):
     def __init__(self, *args, workspace, kind, **kwargs):
         super().__init__(*args, workspace=workspace, **kwargs)
         ledgers = Ledger.objects.filter(workspace=workspace)
-        cash = ledgers.filter(code__in=CASH_LEDGER_CODES)
-        other = ledgers.exclude(code__in=CASH_LEDGER_CODES)
+        cash = funds_ledgers(workspace)
+        other = ledgers.exclude(pk__in=cash)
         self.fields["debit"].queryset = other if kind == Journal.Kind.PAYMENT else cash
         self.fields["credit"].queryset = other if kind == Journal.Kind.RECEIPT else cash
         self.fields["debit"].label, self.fields["credit"].label = {

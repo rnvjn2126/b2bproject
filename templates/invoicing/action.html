@@ -1,0 +1,21 @@
+{% extends "accounting/base.html" %}
+{% block books %}
+<section class="card">
+  <h1>{{ title }}</h1>
+  <p>Internal use only. Saved total INR {{ total|floatformat:2 }}.</p>
+  {% if blocked %}
+    <p role="status">{{ blocked }}</p>
+  {% else %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">{{ submit }}</button>
+    </form>
+  {% endif %}
+  {% if draft %}
+    <a href="{% url 'accounting:invoice_draft' draft.pk %}">Back to draft</a>
+  {% elif invoice %}
+    <a href="{% url 'accounting:invoice_print' invoice.pk %}">Back to internal invoice</a>
+  {% endif %}
+</section>
+{% endblock %}

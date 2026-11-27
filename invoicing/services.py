@@ -10,7 +10,7 @@ from django.utils import timezone
 from accounting.services import lock_books
 from orders.models import OrderMovement, SalesOrder
 
-from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .models import CompanyGSTRegistration, InvoiceDraft, IssuedInvoice, TaxRate
 from .tax import calculate_line, invoice_total, validate_gstin
 
 
@@ -30,7 +30,7 @@ def eligible_movements(workspace):
 @transaction.atomic
 def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin, item_code,
                   place_of_supply, local_component, inclusive, discount, freight, round_off,
-                  purchase_unit_price=None, supplier_invoice_date=None):
+                  purchase_unit_price=None, supplier_invoice_date=None, replace_estimate=False):
     """Snapshot a domestic goods estimate for one movement. The draft has no accounting effect."""
     lock_books(workspace, actor)
     if not isinstance(inclusive, bool):
@@ -39,7 +39,13 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
     registration = CompanyGSTRegistration.objects.filter(workspace=workspace, pk=registration_id).first()
     if not movement or not registration:
         raise ValidationError("Choose a confirmed movement and GST registration in this workspace.")
-    if InvoiceDraft.objects.filter(movement=movement).exists():
+    existing = InvoiceDraft.objects.filter(workspace=workspace, movement=movement).first()
+    if replace_estimate:
+        if (not existing or existing.kind != InvoiceDraft.Kind.PURCHASE or existing.snapshot.get("supplier_invoice_date")
+                or IssuedInvoice.objects.filter(draft=existing).exists()
+                or purchase_unit_price is None or supplier_invoice_date is None):
+            raise ValidationError("Only a purchase estimate can be replaced with both supplier actuals.")
+    elif existing:
         raise ValidationError("This movement already has an internal invoice draft.")
 
     validate_gstin(registration.gstin)
@@ -73,9 +79,8 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
                          inclusive=inclusive, rate=rate, supplier_state=supplier_state,
                          place_of_supply=place_of_supply, local_component=local_component)
     total = invoice_total([tax], round_off)
-    return InvoiceDraft.objects.create(
-        workspace=workspace, movement=movement, registration=registration, rate=rate, kind=kind,
-        supply_on=movement.date, total=total, created_by=actor,
+    values = dict(
+        registration=registration, rate=rate, kind=kind, supply_on=movement.date, total=total,
         snapshot={
             "company": {"gstin": registration.gstin, "name": registration.registered_name,
                         "address": registration.registered_address, "letterhead": registration.letterhead,
@@ -94,3 +99,9 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
             "tax": {component: str(amount) for component, amount in asdict(tax).items()},
         },
     )
+    if existing:
+        for field, value in values.items():
+            setattr(existing, field, value)
+        existing.save(update_fields=values)
+        return existing
+    return InvoiceDraft.objects.create(workspace=workspace, movement=movement, created_by=actor, **values)

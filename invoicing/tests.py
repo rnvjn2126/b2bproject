@@ -614,6 +614,77 @@ class InvoiceDraftTests(TestCase):
         self.registration.refresh_from_db()
         self.assertEqual((self.registration.letterhead, self.registration.logo_png), ("", b""))
 
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_private_review_routes_issue_and_apply_adjustments(self):
+        self.client.force_login(self.owner)
+        draft = self.draft(self.dispatch)
+        _, issue = self.issue_inputs(draft)
+        issued_url = reverse("accounting:invoice_issue", args=[draft.pk])
+        values = {"posting_on": draft.supply_on.isoformat(), "confirmed_total": str(draft.total), **issue["ledger_ids"]}
+        self.assertContains(self.client.get(issued_url), "Confirm and post")
+        self.assertFalse(IssuedInvoice.objects.exists())
+        response = self.client.post(issued_url, values)
+        invoice = IssuedInvoice.objects.get()
+        printed = reverse("accounting:invoice_print", args=[invoice.pk])
+        self.assertRedirects(response, printed)
+        self.assertContains(self.client.post(issued_url, values | {"confirmed_total": "0.01"}), "must match the saved draft")
+        return_url = reverse("accounting:invoice_return", args=[invoice.pk])
+        cancel_url = reverse("accounting:invoice_cancel", args=[invoice.pk])
+        self.assertContains(self.client.get(return_url), "Record financial return")
+        self.assertFalse(InvoiceReturn.objects.exists())
+        adjustment = {"posting_on": draft.supply_on.isoformat(), "reason": "Synthetic owner adjustment"}
+        self.assertRedirects(self.client.post(return_url, adjustment | {"quantity": "1", "submission_key": uuid4()}), printed)
+        self.assertContains(self.client.post(cancel_url, adjustment), "with recorded returns")
+        self.assertContains(self.client.get(printed), "Return recorded")
+        self.assertEqual(Journal.objects.count(), 2)
+
+    @override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+    def test_purchase_estimate_replacement_and_later_posting(self):
+        self.client.force_login(self.owner)
+        estimate = self.draft(self.receipt)
+        actuals_url = reverse("accounting:invoice_actuals", args=[self.receipt.pk])
+        self.assertContains(self.client.get(actuals_url), "Replace purchase estimate")
+        invalid = self.client.post(actuals_url, self.invoice_payload())
+        self.assertContains(invalid, "both supplier actuals")
+        self.assertRedirects(self.client.post(actuals_url, self.invoice_payload() | {
+            "purchase_unit_price": "75", "supplier_invoice_date": self.receipt.date.isoformat(),
+        }), reverse("accounting:invoice_draft", args=[estimate.pk]))
+        self.assertEqual(self.client.get(actuals_url).status_code, 404)
+        estimate.refresh_from_db()
+        self.assertEqual((InvoiceDraft.objects.count(), estimate.total), (1, Decimal("420.00")))
+        issue = self.purchase_issue_inputs(estimate)
+        url = reverse("accounting:invoice_issue", args=[estimate.pk])
+        response = self.client.post(url, {"posting_on": self.receipt.date.isoformat(), "confirmed_total": "420.00",
+                                          "supplier_reference": "inv/11", "recoverable_input_tax": "yes",
+                                          **issue["ledger_ids"]})
+        invoice = IssuedInvoice.objects.get(draft=estimate)
+        self.assertRedirects(response, reverse("accounting:invoice_print", args=[invoice.pk]))
+        self.assertTrue(invoice.recoverable_input_tax)
+
+    def test_issue_and_correction_routes_require_gate_owner_and_csrf(self):
+        self.client.force_login(self.owner)
+        draft = self.draft(self.dispatch)
+        issue_url = reverse("accounting:invoice_issue", args=[draft.pk])
+        self.assertEqual(self.client.get(issue_url).status_code, 404)
+        self.assertEqual(self.client.post(issue_url).status_code, 404)
+        _, issue = self.issue_inputs(draft)
+        with self.settings(INTERNAL_INVOICE_ISSUANCE=True):
+            invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+            cancel_url = reverse("accounting:invoice_cancel", args=[invoice.pk])
+            strict = Client(enforce_csrf_checks=True)
+            strict.force_login(self.owner)
+            self.assertEqual(strict.post(issue_url).status_code, 403)
+            self.assertEqual(strict.post(cancel_url).status_code, 403)
+            self.client.force_login(self.other)
+            self.assertEqual(self.client.get(issue_url).status_code, 404)
+            self.assertEqual(self.client.get(cancel_url).status_code, 404)
+            manager = get_user_model().objects.create_user(username="issue-manager")
+            TeamMembership.objects.create(account=self.workspace, user=manager, role=TeamMembership.Role.MANAGER)
+            self.client.force_login(manager)
+            self.assertEqual(self.client.post(issue_url).status_code, 403)
+            self.assertEqual(self.client.post(cancel_url).status_code, 403)
+        self.assertFalse(InvoiceCancellation.objects.exists())
+
     def invoice_payload(self):
         return {
             "registration_id": self.registration.pk, "party_gstin": "24BBBBB0000B1Z0", "item_code": "000000",

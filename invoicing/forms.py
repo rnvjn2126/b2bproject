@@ -1,9 +1,14 @@
+from decimal import Decimal
 from io import BytesIO
+from uuid import uuid4
 
 from django import forms
 from PIL import Image
 
-from .models import CompanyGSTRegistration, TaxRate
+from accounting.models import Ledger
+
+from .models import CompanyGSTRegistration, InvoiceDraft, TaxRate
+from .posting import INVOICE_LEDGER_KINDS, plan_invoice_posting
 from .tax import validate_gstin
 
 
@@ -83,3 +88,59 @@ class InvoiceDraftForm(forms.Form):
             (registration.pk, registration.gstin)
             for registration in CompanyGSTRegistration.objects.filter(workspace=workspace).order_by("gstin")
         ]
+
+
+class InvoicePostingDateForm(forms.Form):
+    posting_on = forms.DateField(label="Posting date", widget=forms.DateInput(attrs={"type": "date"}))
+
+
+class InvoiceIssueForm(InvoicePostingDateForm):
+    confirmed_total = forms.DecimalField(max_digits=15, decimal_places=2, min_value=0)
+    supplier_reference = forms.CharField(max_length=16)
+    recoverable_input_tax = forms.TypedChoiceField(
+        label="Purchase input-tax treatment", choices=[("", "Select treatment"), ("yes", "Recoverable"),
+                                                       ("no", "Include in cost")], coerce=lambda value: value == "yes",
+    )
+
+    def __init__(self, *args, workspace, draft, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.draft = draft
+        self.purchase = draft.kind == InvoiceDraft.Kind.PURCHASE
+        if not self.purchase:
+            self.fields.pop("supplier_reference")
+            self.fields.pop("recoverable_input_tax")
+        self.plans = {
+            treatment: plan_invoice_posting(draft, recoverable_input_tax=treatment)
+            for treatment in ((True, False) if self.purchase else (None,))
+        }
+        ledgers = Ledger.objects.filter(workspace=workspace, group__workspace=workspace)
+        roles = dict.fromkeys(role for plan in self.plans.values() for role, _, _ in plan)
+        for role in roles:
+            self.fields[role] = forms.ModelChoiceField(
+                ledgers.filter(group__kind__in=INVOICE_LEDGER_KINDS[role]),
+                label=f"{role.replace('_', ' ').capitalize()} ledger", required=False,
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.purchase and "recoverable_input_tax" not in cleaned:
+            return cleaned
+        ledger_ids = {}
+        for role, _, _ in self.plans[cleaned.get("recoverable_input_tax")]:
+            ledger = cleaned.get(role)
+            if ledger is None:
+                if role not in self.errors:
+                    self.add_error(role, "Choose a ledger for the selected treatment.")
+            else:
+                ledger_ids[role] = ledger.pk
+        cleaned["ledger_ids"] = ledger_ids
+        return cleaned
+
+
+class InvoiceCancelForm(InvoicePostingDateForm):
+    reason = forms.CharField(max_length=500, widget=forms.Textarea(attrs={"rows": 3}))
+
+
+class InvoiceReturnForm(InvoiceCancelForm):
+    quantity = forms.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
+    submission_key = forms.UUIDField(widget=forms.HiddenInput, initial=uuid4)

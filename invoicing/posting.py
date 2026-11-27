@@ -10,6 +10,14 @@ from .tax import check_decimal
 
 GST_COMPONENTS = ("cgst", "sgst", "utgst", "igst", "cess")
 
+GROUP_KIND = AccountGroup.Kind
+INVOICE_LEDGER_KINDS = {
+    "receivable": {GROUP_KIND.ASSET}, "payable": {GROUP_KIND.LIABILITY}, "sales": {GROUP_KIND.INCOME},
+    "purchases": {GROUP_KIND.ASSET, GROUP_KIND.EXPENSE}, "round_off": {GROUP_KIND.INCOME, GROUP_KIND.EXPENSE},
+    **{f"input_{component}": {GROUP_KIND.ASSET} for component in GST_COMPONENTS},
+    **{f"output_{component}": {GROUP_KIND.LIABILITY} for component in GST_COMPONENTS},
+}
+
 
 def plan_invoice_posting(draft, *, recoverable_input_tax=None):
     """Return (ledger role, side, amount) proposals. No journal is created."""
@@ -73,15 +81,8 @@ def resolve_invoice_lines(workspace, draft, ledger_ids, *, recoverable_input_tax
 
     ledgers = Ledger.objects.filter(workspace=workspace, group__workspace=workspace).select_related("group")
     ledgers = ledgers.in_bulk(required.values())
-    kind = AccountGroup.Kind
-    allowed = {
-        "receivable": {kind.ASSET}, "payable": {kind.LIABILITY}, "sales": {kind.INCOME},
-        "purchases": {kind.ASSET, kind.EXPENSE}, "round_off": {kind.INCOME, kind.EXPENSE},
-        **{f"input_{component}": {kind.ASSET} for component in GST_COMPONENTS},
-        **{f"output_{component}": {kind.LIABILITY} for component in GST_COMPONENTS},
-    }
     for role, pk in required.items():
         ledger = ledgers.get(pk)
-        if ledger is None or ledger.group.kind not in allowed[role]:
+        if ledger is None or ledger.group.kind not in INVOICE_LEDGER_KINDS[role]:
             raise ValidationError("An invoice ledger is unavailable or has the wrong account classification.")
     return [(ledgers[required[role]], side, amount) for role, side, amount in plan]

@@ -1,9 +1,9 @@
 {% extends "accounting/base.html" %}
 {% block books %}
 <section class="card">
-  <h1>Prepare internal invoice draft</h1>
+  <h1>{% if replace_estimate %}Replace purchase estimate{% else %}Prepare internal invoice draft{% endif %}</h1>
   <p>Movement {{ movement.reference }} · {{ movement.date|date:"d M Y" }}</p>
-  <p>Drafts have no ledger effect. {% if movement.purchase_order_id %}Enter the supplier invoice unit price and date together, or leave both blank to use the purchase order estimate.{% endif %} Set up registrations and dated rates in <a href="{% url 'accounting:gst_settings' %}">GST settings</a>.</p>
+  <p>Drafts have no ledger effect. {% if movement.purchase_order_id %}Enter the supplier invoice unit price and date together.{% if not replace_estimate %} Leave both blank to use the purchase order estimate.{% endif %}{% endif %} Set up registrations and dated rates in <a href="{% url 'accounting:gst_settings' %}">GST settings</a>.</p>
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}

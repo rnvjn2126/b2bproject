@@ -10,6 +10,12 @@
 <body>
 <main>
   <p class="screen-only"><a href="{% url 'accounting:invoice_draft' invoice.draft_id %}">Back to draft</a> · Print using your browser.</p>
+  {% if not invoice.cancellation %}
+  <nav class="screen-only" aria-label="Internal invoice actions">
+    <a href="{% url 'accounting:invoice_return' invoice.pk %}">Record financial return</a>
+    {% if not returned %} · <a href="{% url 'accounting:invoice_cancel' invoice.pk %}">Cancel invoice</a>{% endif %}
+  </nav>
+  {% endif %}
   <header>
     {% if snapshot.company.logo %}<img class="company-logo" src="data:image/png;base64,{{ snapshot.company.logo }}" alt="">{% endif %}
     <div>

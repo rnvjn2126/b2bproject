@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 05A · Contractual due dates and ageing foundation
+
+- **Completed:** settlement module records a company-owner contractual due date once per issued invoice. Its as-of projection reads sealed invoices and applies posted returns and cancellations on their effective dates. Age buckets cover current, 1–30, 31–60, 61–90 and over 90 days. Missing due dates are identified separately.
+- **Pending:** actual payments, advances, bill allocation, statements, terms/limits, reminder drafts and MSME tracking. Projection currently reports adjusted invoices before payment allocation and has no public or owner-facing report.
+- **Changed files:** new `settlements/` app, Django app settings, shared synthetic invoice test fixture and documentation. **Migration:** settlements 0001.
+- **Tests:** 53 invoicing, accounting and settlement tests passed. Both full runs passed 168 (84.823 s normal, 84.381 s reverse). Django and migration checks passed.
+- **Assumptions:** a due date records the contract, independent of the point in time it was entered. Purchase terms may start at the supplier document date before receipt/posting. Missing terms produce no overdue inference. Statutory deadlines are separate.
+- **Verified commit:** `703bbb86ee449cf07b15e35324902b0134391fab`.
+- **Next task:** record owner-controlled receipt/payment with a sealed journal and party/control-account mapping. Add idempotency and nonblank external reference deduplication, then extend the as-of report with allocations and reversals.
+
 ## Checkpoint 04L · Internal sales and purchase invoice workflow
 
 - **Completed:** private owner review, issue, cancellation and return forms use the existing atomic services and default-off feature gate. An unissued purchase estimate can be replaced once with confirmed supplier actuals. Repeated issue requests must match the original inputs. Chrome verified native issue and cancellation.

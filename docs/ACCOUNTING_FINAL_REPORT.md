@@ -9,7 +9,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 02 Ledgers and vouchers | Complete for internal vouchers | Eight voucher types, draft and approval workflow, ledger statements, day book and trial balance. |
 | 03 Sales and purchase orders | Complete for operational orders | Accepted quotation conversion, split procurement, approvals, cancellation, partial movements, pending reports and private PDFs. Orders do not create journals. |
 | 04 Invoicing and GST | Partial | Owner GST registration and dated rate settings, domestic Decimal calculations, owner-only movement-based draft screens and balanced GST posting proposals with company ledger mapping. Gated sales and purchase issue adds immutable records and sealed journals. Internal cancellation preserves original records and posts a separate reversing journal. Internal return credits/debits reconcile to the original invoice. Branded A4 preview passes browser verification. Gated owner forms verified. Non-return statutory notes and statutory release remain open. |
-| 05 Receivables and payables | Active | Gated invoices provide a testable source. Credit dates, ageing and allocation remain open. |
+| 05 Receivables and payables | Partial | Contractual due dates and as-of invoice ageing are verified. Payments, allocation, credit controls and terms remain open. |
 | 06 Banking | Pending | Requires posted settlement workflow and bank matching rules. |
 | 07 Inventory | Pending | Goods receipts and dispatch exist operationally. The stock ledger is pending. |
 | 08 Valuation and procurement | Pending | Requires verified inventory movements and accounting integration. |
@@ -41,8 +41,9 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 04J | 45 passed (invoicing and accounting) | 160 passed, 82.130 s | 160 passed, 82.249 s |
 | 04K | 47 passed (invoicing and accounting) | 162 passed, 87.270 s | 162 passed, 88.029 s |
 | 04L | 50 passed (invoicing and accounting) | 165 passed, 93.157 s | 165 passed, 93.034 s |
+| 05A | 53 passed (settlement, invoicing and accounting) | 168 passed, 84.823 s | 168 passed, 84.381 s |
 
-Django and migration drift checks passed through 04L. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
+Django and migration drift checks passed through 05A. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 
 ## Reconciliation, security and release gates
 
@@ -60,3 +61,5 @@ Django and migration drift checks passed through 04L. Native Chrome verified reg
 - GST settings, calculation and internal draft preparation in `invoicing/`, with migrations 0001–0008 and accounting migrations 0006–0008, plus accounting navigation, `templates/invoicing/` and the GST source register. The migrations were exercised on disposable test databases.
 
 See the [tracker](ACCOUNTING_CHECKPOINTS.md) for granular progress and the [handoff](ACCOUNTING_HANDOFF.md) for implementation commits. [Overnight progress](OVERNIGHT_PROGRESS.md) contains exact restart commands.
+
+Settlement foundations are in `settlements/` with migration `0001_initial` and shared synthetic invoice fixtures in `invoicing/test_data.py`.

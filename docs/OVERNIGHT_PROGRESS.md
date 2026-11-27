@@ -2,15 +2,14 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `32511cb580d2228c0706ef46c77d209e4ebd7c81`.
-- **Active checkpoint:** 05, Receivables, payables and payments. Statutory release work in 04 remains gated separately.
-- **Last verified task:** private, disabled-by-default owner workflow for sales/purchase approval, returns and cancellation, with A4 preview.
-- **Changed files:** accounting URL registration, invoice forms, posting and draft services, tests, views and templates.
-- **Migrations:** none for 04L. Invoicing migrations 0001–0008 verified on disposable SQLite.
-- **Latest tests:** 50 focused passed. Both 165-test suites passed (93.157 and 93.034 seconds). Django and migration checks passed. Chrome standalone verified native issue and phone-width cancellation after an initial sign-in timeout.
-- **Pending:** statutory workflow and statutory notes, PostgreSQL checks and the independent Checkpoint 05 work.
-- **Exact next task:** add contractual due date records and posted-invoice ageing as-of a selected date, with cancellation/return adjustments and company scope. Then add payments, allocations and tested statutory timeline inputs. Update instructions after the next verified slice.
-
+- **Latest implementation commit:** `703bbb86ee449cf07b15e35324902b0134391fab`.
+- **Active checkpoint:** 05, Receivables, payables and payments. Partial. Statutory release in 04 remains gated.
+- **Last verified task:** company-scoped contractual due dates and as-of projection from posted invoice, return and cancellation evidence.
+- **Changed files:** new `settlements/` app, Django app registration, shared synthetic invoice fixture and documentation.
+- **Migrations:** settlements 0001, exercised on disposable SQLite.
+- **Latest tests:** 53 focused passed. Full runs each passed 168 (84.823 and 84.381 seconds). Django and migration checks passed.
+- **Pending:** receipts/payments, allocation, advances, adjustments, statements, credit limits and terms, reminders and verified MSME tracking.
+- **Exact next task:** add company-owner receipt/payment records linked atomically to sealed cash/bank journals with party and reference deduplication. Follow with bill allocation and reversal-aware outstanding/ageing reports.
 
 ## Resume on Windows
 

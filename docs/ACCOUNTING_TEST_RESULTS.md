@@ -71,3 +71,7 @@
 - 04K: 47 invoicing/accounting tests passed. Full normal/reverse runs passed 162 (87.270 and 88.029 seconds). Django and migration checks passed. Chrome verified the A4 stylesheet, mobile fit, branding and amount words. Tests verified image bounds and round-trip re-encoding, historical branding, tenant isolation and no-cache headers.
 
 - 04L: 50 focused tests passed. Full normal/reverse suites passed 165 (93.157 and 93.034 seconds). Django and migration checks passed. The first Chrome harness timed out at sign-in alongside regression runs. The standalone retry passed native owner issue, preview and mobile cancellation.
+
+## Overnight Checkpoint 05, partial
+
+- 05A: 53 focused tests passed. Full normal/reverse runs passed 168 in 84.823 and 84.381 seconds. Django and migration checks passed. Tests cover due-date boundaries, owner and company scope, supplier dates and as-of return/cancellation adjustments.

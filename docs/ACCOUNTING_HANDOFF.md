@@ -2,6 +2,14 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06 complete · Internal banking pilot
+
+- Company bank, cash and petty cash accounts, ledger books, transfers, manually reported UPI/NEFT/RTGS/IMPS references and cheque events are available in the gated owner workflow. CSV and XLSX support preview, explicit confirmation, duplicate handling, suggested/manual matching and unmatched totals.
+- Exact reference search covers candidates outside the default seven-day window. Matches are immutable. A future correction should preserve both the old match and a separate reversal event.
+- Both final full suites passed 202 (185.475 s normal, 184.366 s reverse). Eighteen banking tests, Django/migration checks, Chrome at 390 px and a populated SQLite 0003→0004 upgrade passed. The first upgrade probe targeted only banking and left auth migrations incomplete. Migrating all apps before preparing the older banking schema fixed the probe.
+- Implementation commit `84caf9f1c1285a7e803e646eae3597fe4c4ba414`. No migration in 06G. Latest banking migration 0004. PostgreSQL and release review remain pending. All banking evidence and browser data were synthetic.
+- Exact next task is Checkpoint 07. Inspect the existing catalogue and order movements, then implement structured steel geometry, theoretical weights and explicit unit conversions while preserving actual weights and current quotation behavior.
+
 ## Checkpoint 06F · Excel statement import
 
 - Bounded XLSX parsing shares the CSV row validation, preview and duplicate detection. Formulas, external links, macros and unsupported archives are rejected.

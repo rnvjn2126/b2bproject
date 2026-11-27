@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 06A · Company funds accounts and books
+
+- **Completed:** register multiple workspace bank, cash and petty-cash asset ledgers. Transfer between distinct accounts through the existing sealed contra engine. Read date-filtered cash or bank books with opening, running and closing balances. Existing cash and settlement forms recognize newly registered accounts.
+- **Pending:** manually recorded instrument references and cheque tracking, import, preview, reconciliation, unmatched review and private bank UI. No bank connection, raw account number or payment verification.
+- **Changed files:** banking app, settings, accounting funds selection/engine, settlement forms/services and documents. **Migration:** banking 0001.
+- **Tests:** 38 focused passed. Both full runs passed 187 (87.988 s normal, 87.855 s reverse). Django and migration checks passed. Tests cover cash transfers, opening/closing reconciliation, petty-cash receipts, idempotency, masking and scope.
+- **Verified commit:** `17b16721b28e2a46a1152d23a98ac3900f5a7ec3`.
+- **Exact next task:** store manually reported UPI, NEFT, RTGS, IMPS and cheque references with scoped association to existing journal lines. Track dated manual cheque events without marking a payment independently verified.
+
 ## Checkpoint 05F · Verified internal settlement workflow
 
 - **Completed for the internal pilot:** owner screens post receipts/payment, allocate or release funds, capture due dates and configurable credit terms, show sales credit exposure and track reviewed MSE dates. Statements show dated outstanding, credits and unassigned funds. Overdue reminders are prepared for manual review only.

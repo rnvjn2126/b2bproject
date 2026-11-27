@@ -85,3 +85,7 @@
 - 05E: 16 settlement tests passed after correcting a test assertion. Full runs passed 181 (94.815 and 94.654 seconds). Checks passed. After fixing the browser harness and retrying without parallel tests, Chrome verified filtered statements, unassigned balances and manual reminder preview at phone width.
 
 - 05F: 69 focused tests passed after fixing optional blank payment narration. Full runs passed 184 in 90.558 and 90.334 seconds. Django and migration checks passed. Chrome verified native receipt posting and phone-width allocation using synthetic records. No customer was contacted.
+
+## Overnight Checkpoint 06, partial
+
+- 06A: 38 focused tests passed. Full normal/reverse runs passed 187 (87.988 and 87.855 seconds). Django and migration checks passed. Transfers and both account balances reconciled to the paise. Tests cover new petty cash use, company scoping and masking.

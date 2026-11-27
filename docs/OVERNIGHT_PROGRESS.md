@@ -2,13 +2,13 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `26892e4a47b8f08462aa33f9d0dbfe629046e17b`.
-- **Active checkpoint:** 06, Banking and reconciliation. Checkpoint 05 completed for the disabled-by-default synthetic/internal pilot. Statutory release work in 04 remains gated.
-- **Last verified task:** owner-facing payment, allocation, release, terms, credit warnings and statements.
-- **Changed files:** invoicing review, settlement forms/URLs/views/services/tests, templates and documentation.
-- **Migrations:** none in 05F. Settlement migrations 0001–0004 were exercised on SQLite.
-- **Latest tests:** 69 focused and both 184-test suites passed (90.558 and 90.334 seconds). Django and migration checks passed. Chrome verified receipt and allocation at phone width.
-- **Exact next task:** register multiple company bank/cash/petty cash ledger accounts and verified transfer/book behaviour, then implement statement import and reconciliation. No bank integrations or verification of user-entered references.
+- **Latest implementation commit:** `17b16721b28e2a46a1152d23a98ac3900f5a7ec3`.
+- **Active checkpoint:** 06, Banking and reconciliation. Partial.
+- **Last verified task:** company-scoped bank/cash/petty-cash ledger registration, contra transfer and date-based books.
+- **Changed files:** banking app, accounting/shared funds rules, settlements integration, settings and checkpoint documents.
+- **Migrations:** banking 0001, verified on disposable SQLite.
+- **Latest tests:** 38 focused and both 187-test suites passed (87.988 and 87.855 seconds). Django and migration checks passed.
+- **Pending and exact next task:** add manual reference and cheque history, then private bank operations and CSV/Excel statement preview/import, duplicate handling and reconciliation. Keep references informational. No live bank connections.
 
 ## Resume on Windows
 

@@ -33,3 +33,25 @@ class PartyPayment(models.Model):
             models.UniqueConstraint(fields=["workspace", "funds_ledger", "external_reference"],
                                     condition=~Q(external_reference=""), name="settlements_unique_payment_reference"),
         ]
+
+
+class PaymentAllocation(models.Model):
+    payment = models.ForeignKey(PartyPayment, on_delete=models.PROTECT, related_name="allocations")
+    invoice = models.ForeignKey("invoicing.IssuedInvoice", on_delete=models.PROTECT, related_name="allocations")
+    reverses = models.ForeignKey("self", on_delete=models.PROTECT, null=True, related_name="adjustments")
+    posted_on = models.DateField()
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    reason = models.CharField(max_length=250, blank=True)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def signed_amount(self):
+        return -self.amount if self.reverses_id else self.amount
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gt=0), name="settlements_positive_allocation"),
+            models.UniqueConstraint(fields=["payment", "submission_key"], name="settlements_unique_allocation_key"),
+        ]

@@ -14,8 +14,9 @@ from invoicing.issuance import cancel_internal_invoice, issue_internal_purchase,
 from invoicing.returns import record_invoice_return
 from invoicing.test_data import InvoiceFixture
 
-from .balances import active_payments, ageing_bucket, invoice_balances
-from .models import PartyPayment
+from .allocations import record_payment_allocation
+from .balances import active_payments, ageing_bucket, invoice_balances, unallocated_payments
+from .models import PartyPayment, PaymentAllocation
 from .services import record_party_payment, set_invoice_due_date
 
 
@@ -74,7 +75,7 @@ class InvoiceBalanceTests(InvoiceFixture, TestCase):
         self.assertLess(terms.due_on, invoice.posting_on)
 
 
-class PartyPaymentTests(InvoiceFixture, TestCase):
+class SettlementFixture(InvoiceFixture):
     def payment_values(self, receipt=True):
         setup_books(self.workspace, self.owner, 2026)
         ids = dict(Ledger.objects.filter(workspace=self.workspace).values_list("code", "pk"))
@@ -85,6 +86,8 @@ class PartyPaymentTests(InvoiceFixture, TestCase):
             **({"customer_id": self.order.customer_id} if receipt else {"supplier_id": self.receipt.purchase_order.supplier_id}),
         }
 
+
+class PartyPaymentTests(SettlementFixture, TestCase):
     def test_customer_receipt_is_sealed_immutable_and_idempotent(self):
         values = self.payment_values()
         payment = record_party_payment(self.workspace, self.owner, **values)
@@ -131,3 +134,82 @@ class PartyPaymentTests(InvoiceFixture, TestCase):
                 record_party_payment(self.workspace, self.owner, **values)
         self.assertFalse(Journal.objects.exists())
         self.assertFalse(PartyPayment.objects.exists())
+
+
+@override_settings(INTERNAL_INVOICE_ISSUANCE=True)
+class PaymentAllocationTests(SettlementFixture, TestCase):
+    def setup_receivable(self, amount):
+        values = self.payment_values() | {"amount": Decimal(amount), "posting_on": date(2026, 4, 20)}
+        payment = record_party_payment(self.workspace, self.owner, **values)
+        draft = self.draft(self.dispatch)
+        _, issue = self.issue_inputs(draft)
+        invoice = issue_internal_sale(self.workspace, self.owner, **issue)
+        return invoice, payment
+
+    def allocate(self, invoice, payment, amount, **overrides):
+        values = {"invoice_id": invoice.pk, "payment_id": payment.pk, "posted_on": invoice.posting_on,
+                  "amount": Decimal(amount), "submission_key": uuid4()}
+        return record_payment_allocation(self.workspace, self.owner, **(values | overrides))
+
+    def test_advance_partial_and_excess_receipt_remain_separate_from_invoice_balance(self):
+        invoice, payment = self.setup_receivable("500")
+        day = invoice.posting_on
+        key = uuid4()
+        self.assertEqual(unallocated_payments(self.workspace, payment.journal.date), [(payment, Decimal("500"))])
+        entry = self.allocate(invoice, payment, "200", submission_key=key)
+        self.assertEqual(self.allocate(invoice, payment, "200", submission_key=key), entry)
+        row, = invoice_balances(self.workspace, day)
+        self.assertEqual((row.allocated, row.outstanding), (Decimal("200"), Decimal("136")))
+        with self.assertRaisesMessage(ValidationError, "invoice balance"):
+            self.allocate(invoice, payment, "137")
+        self.allocate(invoice, payment, "136")
+        self.assertEqual(invoice_balances(self.workspace, day)[0].outstanding, Decimal("0"))
+        self.assertEqual(unallocated_payments(self.workspace, day), [(payment, Decimal("164"))])
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            PaymentAllocation.objects.filter(pk=entry.pk).update(amount="1")
+        self.assertEqual(Journal.objects.count(), 2)
+
+    def test_return_creates_invoice_credit_until_explicit_allocation_adjustment(self):
+        invoice, payment = self.setup_receivable("336")
+        day = date(2026, 6, 1)
+        original = self.allocate(invoice, payment, "336")
+        record_invoice_return(self.workspace, self.owner, invoice_id=invoice.pk, posting_on=day,
+                              quantity=Decimal("1"), reason="Synthetic return", submission_key=uuid4())
+        self.assertEqual(invoice_balances(self.workspace, day)[0].outstanding, Decimal("-112"))
+        self.assertEqual(unallocated_payments(self.workspace, day)[0][1], Decimal("0"))
+        self.allocate(invoice, payment, "112", reverses_id=original.pk, posted_on=day, reason="Transfer credit")
+        self.assertEqual(invoice_balances(self.workspace, day)[0].outstanding, Decimal("0"))
+        self.assertEqual(unallocated_payments(self.workspace, day)[0][1], Decimal("112"))
+        with self.assertRaisesMessage(ValidationError, "original allocation"):
+            self.allocate(invoice, payment, "225", reverses_id=original.pk, posted_on=day, reason="Too large")
+        self.assertEqual(invoice_balances(self.workspace, invoice.posting_on)[0].outstanding, Decimal("0"))
+
+    def test_payment_reversal_reopens_invoice_on_its_posting_date(self):
+        invoice, payment = self.setup_receivable("336")
+        date_reversed = date(2026, 6, 1)
+        self.allocate(invoice, payment, "100")
+        post_journal(self.workspace, self.owner, date=date_reversed, kind=Journal.Kind.REVERSAL,
+                     reference="REVERSED", narration="Synthetic payment reversal", submission_key=uuid4(),
+                     reverses=payment.journal)
+        self.assertEqual(invoice_balances(self.workspace, invoice.posting_on)[0].outstanding, Decimal("236"))
+        self.assertEqual(invoice_balances(self.workspace, date_reversed)[0].outstanding, Decimal("336"))
+        self.assertEqual(unallocated_payments(self.workspace, date_reversed), [])
+        with self.assertRaisesMessage(ValidationError, "not available"):
+            self.allocate(invoice, payment, "1", posted_on=date_reversed)
+
+    def test_rejects_other_party_and_checks_supplier_allocations(self):
+        invoice, _ = self.setup_receivable("336")
+        values = self.payment_values(receipt=False) | {"external_reference": "SUP-X"}
+        payment = record_party_payment(self.workspace, self.owner, **values)
+        with self.assertRaisesMessage(ValidationError, "same party"):
+            self.allocate(invoice, payment, "10")
+        day = self.receipt.date
+        draft = self.draft(self.receipt, purchase_unit_price=Decimal("75"), supplier_invoice_date=day)
+        purchase = issue_internal_purchase(self.workspace, self.owner, **self.purchase_issue_inputs(draft))
+        self.allocate(purchase, payment, "120")
+        row, = invoice_balances(self.workspace, day, invoice_id=purchase.pk)
+        self.assertEqual(row.outstanding, Decimal("300"))
+        with self.assertRaises(PermissionDenied):
+            record_payment_allocation(self.workspace, self.other, invoice_id=purchase.pk, payment_id=payment.pk,
+                                      posted_on=day, amount=Decimal("1"), submission_key=uuid4())
+        self.assertEqual(invoice_balances(self.other_workspace, day), [])

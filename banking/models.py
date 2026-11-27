@@ -78,3 +78,35 @@ class ChequeEvent(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["instrument", "submission_key"], name="banking_unique_cheque_event"),
         ]
+
+
+class StatementBatch(models.Model):
+    account = models.ForeignKey(FundsAccount, on_delete=models.PROTECT)
+    file_digest = models.CharField(max_length=64)
+    imported_rows = models.PositiveIntegerField()
+    duplicate_rows = models.PositiveIntegerField()
+    imported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["account", "file_digest"], name="banking_unique_statement_file"),
+        ]
+
+
+class StatementLine(models.Model):
+    account = models.ForeignKey(FundsAccount, on_delete=models.PROTECT)
+    batch = models.ForeignKey(StatementBatch, on_delete=models.PROTECT, related_name="lines")
+    posted_on = models.DateField()
+    reference = models.CharField(max_length=80, blank=True)
+    description = models.CharField(max_length=250, blank=True)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    direction = models.CharField(max_length=3, choices=ReportedInstrument.Direction.choices)
+    fingerprint = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(amount__gt=0, direction__in=("in", "out")),
+                                   name="banking_valid_statement_line"),
+            models.UniqueConstraint(fields=["account", "fingerprint"], name="banking_unique_statement_line"),
+        ]

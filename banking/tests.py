@@ -1,9 +1,11 @@
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 
 from accounting.models import Journal, Ledger
@@ -12,8 +14,9 @@ from dashboard.models import BusinessAccount, Customer
 from settlements.services import record_party_payment
 
 from .instruments import record_cheque_event, record_instrument
-from .models import ChequeEvent, ReportedInstrument
+from .models import ChequeEvent, ReportedInstrument, StatementBatch, StatementLine
 from .services import funds_book, register_funds_account, transfer_funds
+from .statements import import_statement, preview_statement
 
 
 class BankingTests(TestCase):
@@ -132,3 +135,72 @@ class BankingTests(TestCase):
         self.assertEqual(list(cheque.cheque_events.values_list("state", flat=True)),
                          [ChequeEvent.State.PRESENTED, ChequeEvent.State.CLEARED, ChequeEvent.State.RETURNED])
         self.assertFalse(Journal.objects.exists())
+
+
+    def statement_csv(self, *rows):
+        header = "date,reference,description,debit,credit"
+        return chr(10).join((header, *rows)).encode("utf-8")
+
+    def test_statement_preview_is_read_only_and_commit_detects_overlap_and_replay(self):
+        initial = self.statement_csv("2026-05-01,R1,Synthetic deposit,,250.01",
+                                     "2026-05-02,R2,Synthetic withdrawal,30.00,")
+        args = {"account_id": self.bank.pk, "content": initial}
+        preview = preview_statement(self.workspace, self.owner, **args)
+        self.assertEqual([(line.direction, line.amount) for line in preview.new],
+                         [("in", Decimal("250.01")), ("out", Decimal("30.00"))])
+        self.assertFalse(StatementLine.objects.exists())
+        batch = import_statement(self.workspace, self.owner, **args, preview_digest=preview.digest)
+        self.assertEqual(import_statement(self.workspace, self.owner, **args, preview_digest=preview.digest), batch)
+        self.assertEqual((batch.imported_rows, batch.duplicate_rows), (2, 0))
+
+        overlap = self.statement_csv("2026-05-02,r2,Updated synthetic description,30,",
+                                     "2026-05-03,R3,Synthetic other,,10.50")
+        options = args | {"content": overlap}
+        updated = preview_statement(self.workspace, self.owner, **options)
+        self.assertEqual((len(updated.new), len(updated.duplicates)), (1, 1))
+        with self.assertRaisesMessage(ValidationError, "overlaps"):
+            import_statement(self.workspace, self.owner, **options, preview_digest=updated.digest)
+        with self.assertRaisesMessage(ValidationError, "file changed"):
+            import_statement(self.workspace, self.owner, **options, preview_digest=preview.digest, skip_known=True)
+        next_batch = import_statement(self.workspace, self.owner, **options, preview_digest=updated.digest, skip_known=True)
+        self.assertEqual((next_batch.imported_rows, next_batch.duplicate_rows), (1, 1))
+        self.assertEqual(StatementLine.objects.count(), 3)
+        self.assertFalse(Journal.objects.exists())
+
+    def test_statement_preview_rejects_malformed_ambiguous_and_foreign_inputs(self):
+        duplicate = "2026-05-01,,Synthetic repeated debit,10.00,"
+        for rows in (
+            ("2026-05-01,A,B,12,1",), ("not-a-date,A,B,,10",), ("2026-05-01,A,B,,9.001",),
+            ("2099-01-01,A,B,,10",), ("2026-05-01,A,B,,0",), (duplicate, duplicate),
+        ):
+            with self.subTest(rows=rows), self.assertRaises(ValidationError):
+                preview_statement(self.workspace, self.owner, account_id=self.bank.pk, content=self.statement_csv(*rows))
+        content = self.statement_csv("2026-05-01,R,Synthetic deposit,,1")
+        with self.assertRaises(PermissionDenied):
+            preview_statement(self.workspace, self.other, account_id=self.bank.pk, content=content)
+        with self.assertRaises(ValidationError):
+            preview_statement(self.other_workspace, self.other, account_id=self.bank.pk, content=content)
+        self.assertFalse(StatementBatch.objects.exists())
+
+    def test_preview_digest_and_overlap_belong_to_selected_account(self):
+        content = self.statement_csv("2026-05-01,R,Synthetic deposit,,1")
+        prior = preview_statement(self.workspace, self.owner, account_id=self.bank.pk, content=content)
+        import_statement(self.workspace, self.owner, account_id=self.bank.pk, content=content, preview_digest=prior.digest)
+        ledger = Ledger.objects.create(workspace=self.workspace, code="1011", name="Second synthetic bank",
+                                       group=self.bank_ledger.group)
+        second = register_funds_account(self.workspace, self.owner, ledger_id=ledger.pk,
+                                        name="Second synthetic bank", kind="bank")
+        other = preview_statement(self.workspace, self.owner, account_id=second.pk, content=content)
+        self.assertNotEqual(other.digest, prior.digest)
+        self.assertEqual((len(other.new), len(other.duplicates)), (1, 0))
+        with self.assertRaises(ValidationError):
+            import_statement(self.workspace, self.owner, account_id=second.pk, content=content, preview_digest=prior.digest)
+
+    def test_statement_rows_and_batch_roll_back_together(self):
+        file = self.statement_csv("2026-05-01,R,Synthetic deposit,,1")
+        preview = preview_statement(self.workspace, self.owner, account_id=self.bank.pk, content=file)
+        with patch("banking.statements.StatementLine.objects.bulk_create", side_effect=IntegrityError):
+            with self.assertRaises(IntegrityError):
+                import_statement(self.workspace, self.owner, account_id=self.bank.pk, content=file, preview_digest=preview.digest)
+        self.assertFalse(StatementBatch.objects.exists())
+        self.assertFalse(StatementLine.objects.exists())

@@ -15,8 +15,8 @@ The [numbered specifications](checkpoints/) define each checkpoint's scope. A ch
 | 06 | Banking and reconciliation | Complete for the gated local pilot. Both 202-test suites and Chrome checks passed. |
 | 07 | Steel-specific inventory | Complete for the gated local pilot. Both final runs passed 223 tests. Chrome, a populated SQLite migration upgrade and two-thread stock probes passed. Work paused by request. |
 | 08 | Inventory valuation and procurement | Complete for the gated local pilot. Valuation, cost journals, procurement, late charges, cutting and scrap verified. Both full runs passed 261 tests. PostgreSQL and production accounting approval remain release gates. |
-| 09 | Financial reporting | Active. Extend existing sealed-ledger statements with the remaining reports, comparisons and authorised exports. |
-| 10 | Tally migration and interoperability | Assigned. Depends on stable accounting, voucher and stock import targets |
+| 09 | Financial reporting | Complete for local owner reporting. Ledger-based dashboard, statements, registers, analysis and private PDF, Excel and CSV downloads verified. Both full runs passed 270 tests. |
+| 10 | Tally migration and interoperability | Active. Verify supported TallyPrime formats before implementing bounded, staged imports. |
 | 11 | Customer acquisition | Assigned. Reuses quote constraints, catalogue and company branding |
 | 12 | Advanced accounting and taxation | Assigned. Depends on reconciled invoices, ledgers and official sources |
 | 13 | Permissions, experience and performance | Assigned. Builds on existing authentication and workspace membership |

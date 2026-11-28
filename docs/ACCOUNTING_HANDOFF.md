@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 09 complete · Owner financial reporting
+
+- The finance dashboard shows posted income, expenses, net profit, sales less linked COGS, cash and bank, working capital, outstanding invoices, ageing and stock value. Select a date range or financial year and compare with the previous period or year. Existing statements and ledger pages remain the drill-down for sealed journals.
+- Cash flow excludes transfers between tracked cash accounts and separately identifies opening setup. It shows operating, investing and financing flows when the chart provides a clear classification. Mixed and unclear counterpart accounts remain visible for review. [IFRS Foundation cash-flow standard summary](https://www.ifrs.org/issued-standards/list-of-standards/ias-7-statement-of-cash-flows/)
+- Sales and purchase registers include sealed invoice, return and cancellation entries. New invoices freeze the catalogue identity and label. Older documents use their recorded description. Customer and product profitability show only matched gross profit where original stock cost or its correction is available. Quotation values do not feed these reports.
+- Owner-only PDF, Excel and CSV exports apply effective dates and supported ledger and branch filters. Excel writes label text literally and preserves large exact amounts. CSV neutralises spreadsheet formula prefixes. Tested the downloadable data and rendered sample PDF and workbook views.
+- Implementation commits `4a6f1327058fd4c382ab5719c428cb612dbdb9d0` and `b4c0f79f2b6862f30b8b7803a066100128c787f0` cover the reporting engine and registers. Export implementation `1c8d2ebc529c7f8e2c08707b8092afba25c8f9ce`. Changed accounting and invoicing services, owner forms, routes, templates and export utilities. No migration.
+- Targeted accounting, inventory and invoicing passed 118 tests. Django and migration drift checks passed. Edge at 390 px verified the dashboard date comparison, register navigation and authenticated Excel download. Both full suites passed 270 tests (90.496 s normal, 90.352 s reverse). After widening the PDF headers and labelling the export link group, all three export tests passed again and the PDF was re-rendered and reviewed.
+- Begin Checkpoint 10. Verify the current TallyPrime XML and spreadsheet exchange formats and design bounded dry runs, audit history and atomic imports. Test compatibility with synthetic files before any live interoperability claim.
+
 ## Checkpoint 08 complete · Inventory valuation and procurement pilot
 
 - A cut records one stock issue and each finished, remnant or scrap receipt atomically. It carries grade, heat, batch, mill and manufacturer identity to distinct output lots. Measured weight is conserved and its allocation preserves every paisa of the input cost.

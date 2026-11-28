@@ -54,6 +54,7 @@ urlpatterns = [
     path("finance/", report_views.dashboard, name="finance"),
     path("finance/registers/<slug:kind>/", report_views.register, name="trade_register"),
     path("finance/analysis/", report_views.finance_analysis, name="finance_analysis"),
+    path("finance/export/<slug:report_name>/<slug:format_name>/", report_views.export, name="finance_export"),
     path("audit/", views.audit_history, name="audit_history"),
     path("ledgers/<int:pk>/", views.balances, name="ledger"),
 ]

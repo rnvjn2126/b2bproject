@@ -6,6 +6,11 @@
     {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
     <button type="submit">Apply filters</button>
   </form>
+  {% if ledger %}
+    {% include "accounting/report_downloads.html" with report_name="ledger" %}
+  {% else %}
+    {% include "accounting/report_downloads.html" with report_name="trial-balance" %}
+  {% endif %}
   {% if totals %}
   <p>All amounts in INR. A negative opening balance represents a credit.</p>
   <div class="table-scroll" tabindex="0"><table>

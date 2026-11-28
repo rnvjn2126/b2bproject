@@ -6,6 +6,12 @@ from django import template
 register = template.Library()
 
 
+@register.simple_tag
+def export_formats():
+    return (("pdf", "PDF"), ("xlsx", "Excel"), ("csv", "CSV"))
+
+
+
 @register.filter
 def inr(value):
     if value is None:

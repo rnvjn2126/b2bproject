@@ -10,6 +10,7 @@
 {% if entries %}
 <section class="card">
   <h2>Posted documents</h2>
+  {% include "accounting/report_downloads.html" with report_name=export_name %}
   <div class="table-scroll" tabindex="0" role="region" aria-label="Posted register">
     <table class="table-wide">
       <thead><tr><th scope="col">Posting date</th><th scope="col">Invoice</th><th scope="col">Event</th><th scope="col">Party</th>

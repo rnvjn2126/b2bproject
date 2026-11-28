@@ -19,6 +19,7 @@ from django.db.models import Count, F, Prefetch, Q
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+from .csv_exports import safe_csv_cell
 from .forms import (
     UserPreferencesForm, QuotationDefaultsForm, BusinessAccountForm, CustomerForm, DailyReportForm, FollowUpForm, ProductCSVImportForm, ProductForm,
     QuoteCreateForm, QuotePricingSettingsForm, QuoteStatusForm, RFQForm, RFQLineFormSet,
@@ -32,12 +33,6 @@ from .models import (
     AuditEvent, BusinessAccount, Customer, FollowUp, Product, Quote, QuoteLine, QuotePricingSettings,
     UserPreferences, QuotationDefaults, RFQ, RFQLine, Supplier, SupplierOffer, TeamInvitation, TeamMembership,
 )
-
-
-def _safe_csv_cell(value):
-    text = "" if value is None else str(value)
-    # Spreadsheet programs may execute cells that begin with formula characters.
-    return "'" + text if text.lstrip(" \t\r\n").startswith(("=", "+", "-", "@")) else text
 
 
 @login_required
@@ -632,7 +627,7 @@ def product_csv_export(request):
     writer.writerow(ProductCSVImportForm.EXPECTED_HEADERS)
     products = Product.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
     for product in products:
-        writer.writerow(_safe_csv_cell(value) for value in (
+        writer.writerow(safe_csv_cell(value) for value in (
             product.name, product.grade, product.shape, product.dimensions,
             product.unit, product.weight_basis, product.weight_kg, product.notes,
         ))
@@ -650,7 +645,7 @@ def customer_csv_export(request):
     writer.writerow(("name", "company_name", "email", "phone", "billing_address", "notes"))
     customers = Customer.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
     for customer in customers:
-        writer.writerow(_safe_csv_cell(value) for value in (
+        writer.writerow(safe_csv_cell(value) for value in (
             customer.name, customer.company_name, customer.email, customer.phone,
             customer.billing_address, customer.notes,
         ))
@@ -668,7 +663,7 @@ def supplier_csv_export(request):
     writer.writerow(("name", "company_name", "email", "phone", "address", "notes"))
     suppliers = Supplier.objects.filter(owner=account_owner(request.user)).order_by("name", "id")
     for supplier in suppliers:
-        writer.writerow(_safe_csv_cell(value) for value in (
+        writer.writerow(safe_csv_cell(value) for value in (
             supplier.name, supplier.company_name, supplier.email, supplier.phone,
             supplier.address, supplier.notes,
         ))

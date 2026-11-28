@@ -25,6 +25,7 @@ LOAN_GROUPS = {"LIABILITY-2", "LIABILITY-3"}
 CASH_FLOW_SECTIONS = (("operating", "Operating"), ("investing", "Investing"), ("financing", "Financing"),
                       ("review", "Needs classification"))
 KINDS = AccountGroup.Kind
+AGE_BUCKETS = ("Current", "1–30", "31–60", "61–90", "Over 90", "No due date")
 
 
 def comparison_dates(start, end, mode):
@@ -145,10 +146,12 @@ def financial_overview(workspace, actor, start, end):
     cogs = sum((amount if side == JournalLine.Side.DEBIT else -amount for side, amount in cost_lines.iterator()), ZERO)
 
     invoice_totals = defaultdict(Decimal)
+    by_age = defaultdict(Decimal)
     past_due = ZERO
     for row in invoice_balances(workspace, end):
         if row.outstanding > 0:
             invoice_totals[row.invoice.kind] += row.outstanding
+            by_age[row.bucket, row.invoice.kind] += row.outstanding
             if row.due_on and row.due_on < end and row.invoice.kind == InvoiceDraft.Kind.SALES:
                 past_due += row.outstanding
     uncosted_sales = IssuedInvoice.objects.filter(
@@ -162,4 +165,6 @@ def financial_overview(workspace, actor, start, end):
         "sales": sales, "cogs": cogs, "gross": sales - cogs, "uncosted_sales": uncosted_sales,
         "cash": cash_flow(workspace, start, end, chart_groups), "working_capital": _working_capital(statements, chart),
         "receivables": invoice_totals["sales"], "payables": invoice_totals["purchase"], "past_due": past_due, "stock": stock,
+        "ageing": [{"bucket": bucket, "receivables": by_age[bucket, "sales"], "payables": by_age[bucket, "purchase"]}
+                   for bucket in AGE_BUCKETS],
     }

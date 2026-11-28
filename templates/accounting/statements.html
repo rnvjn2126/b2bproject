@@ -11,12 +11,14 @@
 {% if statements %}
 <section class="card">
   <h2>Profit and loss</h2>
+  {% include "accounting/report_downloads.html" with report_name="profit-loss" %}
   <p>{{ form.cleaned_data.start|date:"d M Y" }} through {{ form.cleaned_data.end|date:"d M Y" }} · INR</p>
   {% include "accounting/statement_table.html" with sections=statements.profit_loss %}
   <p><strong>Net result</strong> ₹{{ statements.net_result|floatformat:2 }}</p>
 </section>
 <section class="card">
   <h2>Balance sheet</h2>
+  {% include "accounting/report_downloads.html" with report_name="balance-sheet" %}
   <p>As of {{ form.cleaned_data.end|date:"d M Y" }} · INR</p>
   {% include "accounting/statement_table.html" with sections=statements.balance_sheet %}
   <dl>

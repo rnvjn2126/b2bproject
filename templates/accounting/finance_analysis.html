@@ -9,15 +9,18 @@
 {% if result %}
 <section class="card">
   <h2>Customer profitability</h2>
+  {% include "accounting/report_downloads.html" with report_name="customer-profit" %}
   {% include "accounting/profitability_table.html" with rows=result.customer label="Customer" only %}
 </section>
 <section class="card">
   <h2>Product profitability</h2>
+  {% include "accounting/report_downloads.html" with report_name="product-profit" %}
   {% include "accounting/profitability_table.html" with rows=result.product label="Product" only %}
   <p>Gross profit uses revenue with linked stock costs. Missing costs are flagged for review.</p>
 </section>
 <section class="card">
   <h2>Posted expenses</h2>
+  {% include "accounting/report_downloads.html" with report_name="expenses" %}
   <div class="table-scroll" tabindex="0" role="region" aria-label="Posted expenses">
     <table class="table-wide">
       <thead><tr><th scope="col">Expense account</th><th scope="col">Net expense</th></tr></thead>

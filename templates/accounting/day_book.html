@@ -6,6 +6,7 @@
     {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
     <button type="submit">Apply filters</button>
   </form>
+  {% include "accounting/report_downloads.html" with report_name="day-book" %}
   <div class="table-scroll" tabindex="0"><table>
     <thead><tr><th scope="col">Journal</th><th scope="col">Date</th><th scope="col">Type</th><th scope="col">External reference</th><th scope="col">Debit (INR)</th><th scope="col">Credit (INR)</th></tr></thead>
     <tbody>{% for journal, debit, credit in rows %}

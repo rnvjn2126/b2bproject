@@ -10,6 +10,7 @@
 {% if report %}
 <section class="card">
   <h2>Performance</h2>
+  {% include "accounting/report_downloads.html" with report_name="overview" %}
   <p>{{ report.start|date:"d M Y" }} through {{ report.end|date:"d M Y" }}</p>
   <div class="pipeline-grid">
     <div class="metric"><span>Posted income</span><strong>{{ report.income|inr }}</strong></div>
@@ -54,6 +55,7 @@
 {% endif %}
 <section class="card">
   <h2>Cash flow</h2>
+  {% include "accounting/report_downloads.html" with report_name="cash-flow" %}
   <p>Opening balance {{ report.cash.opening|inr }} · Opening adjustments {{ report.cash.opening_adjustments|inr }}</p>
   <div class="table-scroll" tabindex="0" role="region" aria-label="Cash flow by activity">
     <table class="table-wide">
@@ -75,5 +77,33 @@
     <p>Unclassified assets {{ report.working_capital.other_assets|inr }} · Unclassified liabilities {{ report.working_capital.other_liabilities|inr }}</p>
   {% endif %}
 </section>
+<section class="card">
+  <h2>Invoice ageing</h2>
+  {% include "accounting/report_downloads.html" with report_name="ageing" %}
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Receivables and payables ageing">
+    <table class="table-wide">
+      <thead><tr><th scope="col">Due by</th><th scope="col">Receivables</th><th scope="col">Payables</th></tr></thead>
+      <tbody>{% for row in report.ageing %}
+        <tr><th scope="row">{{ row.bucket }}</th><td>{{ row.receivables|inr }}</td><td>{{ row.payables|inr }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+{% if report.stock %}
+<section class="card">
+  <h2>Stock summary</h2>
+  {% include "accounting/report_downloads.html" with report_name="stock" %}
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Stock summary by product and unit">
+    <table class="table-wide">
+      <thead><tr><th scope="col">Product</th><th scope="col">Unit</th><th scope="col">On hand</th><th scope="col">Valued quantity</th><th scope="col">Stock value</th></tr></thead>
+      <tbody>{% for pool in report.stock.pools|slice:":10" %}
+        <tr><th scope="row">{{ pool.product }}</th><td>{{ pool.unit }}</td><td>{{ pool.on_hand|floatformat:"-3" }}</td>
+          <td>{{ pool.valued_quantity|floatformat:"-3" }}</td><td>{{ pool.inventory_value|inr }}</td></tr>
+      {% empty %}<tr><td colspan="5">No stock movements through {{ report.end|date:"d M Y" }}.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% if report.stock.pools|length > 10 %}<p>Download the report for the full stock listing.</p>{% endif %}
+</section>
+{% endif %}
 {% endif %}
 {% endblock %}

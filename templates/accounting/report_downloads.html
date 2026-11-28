@@ -1,0 +1,9 @@
+{% load indian_finance %}
+{% export_formats as report_formats %}
+{% if form.is_valid %}
+<div class="record-actions" role="group" aria-label="{{ label|default:'Report' }} downloads">
+  {% for format_name, format_label in report_formats %}
+    <a href="{% url 'accounting:finance_export' report_name format_name %}?start={{ form.cleaned_data.start|date:'Y-m-d' }}&amp;end={{ form.cleaned_data.end|date:'Y-m-d' }}{% if ledger %}&amp;ledger={{ ledger.pk }}{% endif %}{% if form.cleaned_data.branch %}&amp;branch={{ form.cleaned_data.branch.pk }}{% endif %}">{{ label|default:"Download" }} {{ format_label }}</a>
+  {% endfor %}
+</div>
+{% endif %}

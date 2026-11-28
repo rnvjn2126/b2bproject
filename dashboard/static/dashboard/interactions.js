@@ -24,10 +24,21 @@ window.addEventListener("pageshow", () => {
   document.querySelectorAll('form[aria-busy]').forEach(form => form.removeAttribute("aria-busy"));
 });
 
-document.getElementById("add-line")?.addEventListener("click", () => {
-  const total = document.getElementById("id_lines-TOTAL_FORMS");
-  const index = Number(total.value);
-  const html = document.getElementById("empty-line").innerHTML.replaceAll("__prefix__", index);
-  document.getElementById("rfq-lines").insertAdjacentHTML("beforeend", html);
-  total.value = index + 1;
-});
+function addFormRows(buttonId, totalId, templateId, listId) {
+  const button = document.getElementById(buttonId);
+  if (!button) return;
+  const total = document.getElementById(totalId);
+  const maximum = Number(button.dataset.max || Infinity);
+  button.disabled = Number(total.value) >= maximum;
+  button.addEventListener("click", () => {
+    const index = Number(total.value);
+    if (index >= maximum) return;
+    const html = document.getElementById(templateId).innerHTML.replaceAll("__prefix__", index);
+    document.getElementById(listId).insertAdjacentHTML("beforeend", html);
+    total.value = index + 1;
+    button.disabled = Number(total.value) >= maximum;
+  });
+}
+
+addFormRows("add-line", "id_lines-TOTAL_FORMS", "empty-line", "rfq-lines");
+addFormRows("add-output", "id_outputs-TOTAL_FORMS", "empty-output", "cut-outputs");

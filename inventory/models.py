@@ -404,3 +404,35 @@ class PurchaseCostCorrection(models.Model):
             | Q(cancellation__isnull=True, invoice_return__isnull=False),
             name="inventory_one_purchase_cost_source",
         )]
+
+
+class StockCut(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    source = models.OneToOneField(ValuationEvent, related_name="cut_source", on_delete=models.PROTECT)
+    fingerprint = models.CharField(max_length=64)
+    submission_key = models.UUIDField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["workspace", "submission_key"], name="inventory_unique_cut_submission"),
+        ]
+
+
+class StockCutOutput(models.Model):
+    class Kind(models.TextChoices):
+        FINISHED = "finished", "Finished steel"
+        REMNANT = "remnant", "Reusable remnant"
+        SCRAP = "scrap", "Recoverable scrap"
+
+    cut = models.ForeignKey(StockCut, related_name="outputs", on_delete=models.PROTECT)
+    receipt = models.OneToOneField(ValuationEvent, related_name="cut_output", on_delete=models.PROTECT)
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+
+    class Meta:
+        ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(condition=Q(kind__in=["finished", "remnant", "scrap"]),
+                                   name="inventory_valid_cut_output_kind"),
+        ]

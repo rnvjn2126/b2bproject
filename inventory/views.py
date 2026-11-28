@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Prefetch
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -14,7 +14,8 @@ from accounting.views import owner_only
 
 from . import forms
 from .counts import record_physical_count
-from .models import LotCertificate, SteelSpecification, StockCount, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
+from .cutting import CutOutput, record_stock_cut
+from .models import LotCertificate, SteelSpecification, StockCount, StockCut, StockCutOutput, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
 from .purchase_costs import capitalise_purchase_cost
 from .reconciliation import reconcile_stock_to_ledger
 from .reports import reorder_status, set_reorder_policy, stock_ageing
@@ -214,3 +215,32 @@ def valuation_review(request, workspace):
         "form": form, "result": result, "policy": ValuationPolicy.objects.filter(workspace=workspace).first(),
         "stock_cost_actions": STOCK_COST_ACTIONS if settings.INTERNAL_STOCK_ACCOUNTING else {},
     })
+
+
+@owner_only
+@never_cache
+@require_http_methods(["GET", "POST"])
+def cut_stock(request, workspace):
+    _check_access(workspace)
+    data = request.POST if request.method == "POST" else None
+    form = forms.CutStockForm(data, workspace=workspace, initial={"posted_on": timezone.localdate()})
+    outputs = forms.CutOutputs(data, prefix="outputs", form_kwargs={"workspace": workspace})
+    if form.is_valid() and outputs.is_valid():
+        try:
+            record_stock_cut(
+                workspace, request.user, **form.arguments(),
+                outputs=[CutOutput(**part.arguments()) for part in outputs if part.cleaned_data],
+            )
+        except ValidationError as error:
+            form.add_error(None, error.messages)
+        else:
+            messages.success(request, "Stock cut saved.")
+            return redirect("accounting:inventory:cut_stock")
+    cuts = StockCut.objects.filter(workspace=workspace, source__movement__workspace=workspace).select_related(
+        "source__movement__lot__product",
+    ).prefetch_related(Prefetch(
+        "outputs", queryset=StockCutOutput.objects.filter(receipt__movement__workspace=workspace).select_related(
+            "receipt__movement__lot__product",
+        ),
+    )).order_by("-source__movement__posted_on", "-pk")[:20]
+    return render(request, "inventory/cut_stock.html", {"form": form, "outputs": outputs, "cuts": cuts})

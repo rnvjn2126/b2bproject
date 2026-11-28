@@ -8,7 +8,8 @@ from dashboard.models import Product, Supplier
 from invoicing.models import InvoiceDraft, IssuedInvoice
 
 from .costing import CostMethod
-from .models import ReservationAction, SteelSpecification, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
+from .cutting import MAX_CUT_OUTPUTS
+from .models import ReservationAction, SteelSpecification, StockCutOutput, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
 from .reconciliation import stock_asset_ledgers
 from .reports import company_positions
 
@@ -199,3 +200,23 @@ class SaleStockCostForm(InvoiceStockCostForm):
         self.fields["expense_ledger_id"].queryset = Ledger.objects.filter(
             workspace=workspace, group__workspace=workspace, group__kind=AccountGroup.Kind.EXPENSE,
         )
+
+
+class CutStockForm(StockEntryForm):
+    lot_id = forms.ModelChoiceField(StockLot.objects.none(), label="Input lot")
+    source_id = forms.ModelChoiceField(StorageLocation.objects.none(), label="Input location")
+    quantity = forms.DecimalField(label="Input quantity", min_value=POSITIVE, max_digits=14, decimal_places=3)
+    actual_kg = forms.DecimalField(label="Measured input weight (kg)", min_value=Decimal("0.000001"),
+                                   max_digits=18, decimal_places=6)
+
+
+class CutOutputForm(CompanyForm):
+    kind = forms.ChoiceField(choices=StockCutOutput.Kind.choices)
+    lot_id = forms.ModelChoiceField(StockLot.objects.none(), label="Output lot")
+    location_id = forms.ModelChoiceField(StorageLocation.objects.none(), label="Output location")
+    quantity = forms.DecimalField(min_value=POSITIVE, max_digits=14, decimal_places=3)
+    actual_kg = forms.DecimalField(label="Measured output weight (kg)", min_value=Decimal("0.000001"),
+                                   max_digits=18, decimal_places=6)
+
+
+CutOutputs = forms.formset_factory(CutOutputForm, extra=3, max_num=MAX_CUT_OUTPUTS, validate_max=True)

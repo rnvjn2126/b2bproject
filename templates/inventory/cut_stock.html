@@ -1,0 +1,37 @@
+{% extends "accounting/base.html" %}
+{% block title %}Steel cutting · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <p><a href="{% url 'accounting:inventory:overview' %}">Back to inventory</a></p>
+  <h1>Steel cutting</h1>
+  <p>Register separate output lots with the same grade and mill traceability first. Weigh the input and every output, including recoverable scrap.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <h2>Outputs</h2>
+    {{ outputs.management_form }}{{ outputs.non_form_errors }}
+    <div id="cut-outputs">
+      {% for row in outputs %}<fieldset class="row"><legend>Output {{ forloop.counter }}</legend>{{ row.as_p }}</fieldset>{% endfor %}
+    </div>
+    <template id="empty-output"><fieldset class="row"><legend>Additional output</legend>{{ outputs.empty_form.as_p }}</fieldset></template>
+    <div class="record-actions">
+      <button type="button" class="secondary" id="add-output" data-max="{{ outputs.max_num }}">Add output</button>
+      <button type="submit">Record cut</button>
+    </div>
+  </form>
+</section>
+<section class="card">
+  <h2>Recent cuts</h2>
+  {% for cut in cuts %}
+    <article>
+      <h3>{{ cut.source.movement.posted_on|date:"d M Y" }} · {{ cut.source.movement.reference }}</h3>
+      <p>{{ cut.source.movement.lot }} · {{ cut.source.movement.actual_kg|floatformat:"-6" }} kg input</p>
+      <ul>
+        {% for row in cut.outputs.all %}
+          <li>{{ row.get_kind_display }} · {{ row.receipt.movement.lot }} · {{ row.receipt.movement.actual_kg|floatformat:"-6" }} kg · INR {{ row.receipt.amount|floatformat:"2" }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+  {% empty %}<p>No cuts recorded.</p>{% endfor %}
+</section>
+{% endblock %}

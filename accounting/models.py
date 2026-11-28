@@ -168,3 +168,32 @@ class VoucherDraft(models.Model):
     @property
     def number(self):
         return f"VCH-{self.pk}"
+
+
+class TallyImportBatch(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    file_digest = models.CharField(max_length=64)
+    execution_key = models.CharField(max_length=64)
+    created_count = models.PositiveIntegerField()
+    reused_count = models.PositiveIntegerField()
+    source_format = models.CharField(max_length=5)
+    opening_journal = models.ForeignKey(Journal, null=True, on_delete=models.PROTECT)
+    opening_amount = models.DecimalField(max_digits=18, decimal_places=2)
+    imported_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-imported_at", "-pk"]
+        constraints = [models.UniqueConstraint(fields=["workspace", "execution_key"], name="tally_unique_batch")]
+
+
+class TallyImportRecord(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    batch = models.ForeignKey(TallyImportBatch, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=8)
+    identity = models.CharField(max_length=64)
+    fingerprint = models.CharField(max_length=64)
+    target_id = models.PositiveBigIntegerField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["workspace", "kind", "identity"], name="tally_unique_record")]

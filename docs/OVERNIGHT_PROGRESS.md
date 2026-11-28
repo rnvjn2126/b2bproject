@@ -2,12 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `958131e5d66436c86320978653ecb2f12fc64dd9`.
+- **Latest implementation commit:** `a0eaaf5be985f5485ff2febb1618ca4aca6ed8d5`.
 - **Active checkpoint:** 08, Inventory valuation and procurement. Partial.
-- **Last verified task:** Owner valuation review, stock-to-ledger reconciliation and supplier rate board with split recommendations.
-- **Changed files and migrations:** Inventory costing/reconciliation/procurement services, models, views, URLs, forms, tests, templates and migrations 0006–0007.
-- **Latest tests:** 40 inventory tests passed. Both full runs passed 242 tests. Django, migration drift and populated SQLite 0005→0007 checks passed. Both Chrome attempts timed out at sign-in.
-- **Exact next task:** Implement sealed COGS posting and corrections tied to issued sales invoices and exact dispatches. Keep financial posting gated. Acquisition clearing, landed cost adjustments, cut/remnant and scrap handling, returns and PostgreSQL verification remain open.
+- **Last verified task:** Gated sales and purchase inventory journals and atomic matched invoice corrections.
+- **Changed files and migrations:** Accounting, invoicing and inventory services, models, owner forms, views and templates. Added accounting migrations 0009–0010 and inventory migrations 0008–0009.
+- **Latest tests:** 120 targeted tests, Django and migration drift checks passed. Both latest full runs passed 242 before the stock journal work. New screens still need browser verification.
+- **Exact next task:** Implement and verify measured cutting, traced remnants and scrap, then late freight and packaging. Financial pilot remains default off. Review cost variances and verify PostgreSQL before release.
 
 ## Resume on Windows
 

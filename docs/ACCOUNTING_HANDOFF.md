@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 08E–08F · Sealed costs of sale and purchase acquisitions
+
+- An issued sales invoice can post cost only from the exact valued stock issue linked to its approved dispatch. The owner selects the inventory asset and cost-of-sales expense ledgers. The service validates the sealed invoice, checks the period and prior asset balance, and prevents duplicate posting. Zero cost is recorded without an empty journal.
+- An issued purchase invoice can capitalise only the acquisition debit supported by the exact receipt. A debit already posted to the reviewed inventory asset is linked without posting twice. Recoverable GST stays on its own ledger. Quotes and orders alone create no revenue or cost-of-sales postings.
+- Costed invoices require proof of a same-lot stock receipt or issue to cancel or return. Financial correction, valuation and cost journal are atomic. Partial sales returns restore the original issue cost with cumulative paise rounding. Purchase returns stop for review when the stock issue value differs from the invoice correction. The original invoice, stock movement and cost evidence remain immutable.
+- Local pilot settings keep monetary stock posting disabled by default. The owner-only acquisition, sales cost and matched invoice correction screens were exercised by Django tests. PostgreSQL, late costs, stock variances, cases without restock evidence and statutory use require review. [IFRS Foundation inventory standard summary](https://www.ifrs.org/issued-standards/list-of-standards/ias-2-inventories/)
+- Implementation commits `3351a1b028cbfda082e68bc96ca9ed5a243b5ffb` and `a0eaaf5be985f5485ff2febb1618ca4aca6ed8d5`. Added accounting migrations 0009–0010 and inventory migrations 0008–0009. Focused runs passed 114 tests after sales costing and 120 after acquisitions and owner forms. Django and migration drift checks passed. The latest full suites are the earlier 242-test runs.
+- Next task is the owner cutting workflow. Record an atomic issue and traced finished, remnant and scrap receipts, conserve measured mass and split existing inventory value across outputs. Then add reviewed late freight and packaging with standalone cost evidence.
+
 ## Checkpoint 08C–08D · Supplier rates and stock-to-ledger review
 
 - Owners can record dated supplier rates and see history, availability and an expiry warning. Recommendations use the latest rate from each supplier, exclude expired records, convert kilograms and tonnes, enforce delivery limits and list quantities left unfilled. The comparison includes the full freight and packaging of each selected supplier once.

@@ -466,3 +466,13 @@ class LandedChargeAllocation(models.Model):
             models.UniqueConstraint(fields=["charge", "purchase"], name="inventory_unique_landed_purchase"),
             models.CheckConstraint(condition=Q(amount__gte=0), name="inventory_valid_landed_amount"),
         ]
+
+
+class ScrapDisposal(models.Model):
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    issue = models.OneToOneField(ValuationEvent, on_delete=models.PROTECT)
+    inventory_ledger = models.ForeignKey("accounting.Ledger", related_name="+", on_delete=models.PROTECT)
+    loss_ledger = models.ForeignKey("accounting.Ledger", related_name="+", on_delete=models.PROTECT)
+    journal = models.OneToOneField("accounting.Journal", null=True, on_delete=models.PROTECT)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)

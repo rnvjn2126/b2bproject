@@ -5,12 +5,13 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
-from accounting.models import AccountGroup, Journal, JournalLine, Ledger, Period
+from accounting.models import AccountGroup, Journal, Ledger, Period
 from accounting.services import lock_books, post_journal
 from invoicing.models import InvoiceDraft, InvoiceReturn, IssuedInvoice
 from invoicing.tax import rounded
 
 from .models import SaleCost, SaleCostCorrection, StockMovement, ValuationEvent
+from .reconciliation import posted_asset_balance
 from .stock import unvalued_stock_correction
 from .valuation import value_stock_movement
 
@@ -59,12 +60,7 @@ def post_sale_cost(workspace, actor, *, invoice_id, inventory_ledger_id, expense
                                  ends_before__gt=invoice.posting_on, locked_at__isnull=True).exists():
         raise ValidationError("The cost posting date needs an open period.")
     if issue.amount:
-        balances = JournalLine.objects.filter(
-            ledger=asset, journal__workspace=workspace, journal__sealed=True, journal__date__lte=invoice.posting_on,
-        ).order_by().values_list("side", "amount")
-        asset_balance = sum((amount if side == JournalLine.Side.DEBIT else -amount
-                             for side, amount in balances.iterator()), Decimal(0))
-        if asset_balance < issue.amount:
+        if posted_asset_balance(workspace, asset, invoice.posting_on) < issue.amount:
             raise ValidationError("Post the reviewed acquisition cost to the inventory ledger before costing the sale.")
         journal = post_journal(
             workspace, actor, date=invoice.posting_on, kind=Journal.Kind.STOCK_COST,

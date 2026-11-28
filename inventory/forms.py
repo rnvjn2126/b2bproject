@@ -248,3 +248,24 @@ class LandedChargeForm(CompanyForm):
             "kind": self.cleaned_data["kind"],
             "posted_on": self.cleaned_data["posted_on"],
         }
+
+
+class ScrapDisposalForm(StockEntryForm):
+    lot_id = forms.ModelChoiceField(StockLot.objects.none(), label="Scrap lot")
+    source_id = forms.ModelChoiceField(StorageLocation.objects.none(), label="Stock location")
+    quantity = forms.DecimalField(min_value=POSITIVE, max_digits=14, decimal_places=3)
+    actual_kg = forms.DecimalField(label="Measured scrap weight (kg)", min_value=Decimal("0.000001"),
+                                   max_digits=18, decimal_places=6)
+    inventory_ledger_id = forms.ModelChoiceField(Ledger.objects.none(), label="Inventory asset ledger")
+    loss_ledger_id = forms.ModelChoiceField(Ledger.objects.none(), label="Scrap loss expense ledger")
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        scrap = StockCutOutput.objects.filter(cut__workspace=workspace, kind=StockCutOutput.Kind.SCRAP)
+        self.fields["lot_id"].queryset = self.fields["lot_id"].queryset.filter(
+            pk__in=scrap.values("receipt__movement__lot_id"),
+        )
+        self.fields["inventory_ledger_id"].queryset = stock_asset_ledgers(workspace)
+        self.fields["loss_ledger_id"].queryset = Ledger.objects.filter(
+            workspace=workspace, group__workspace=workspace, group__kind=AccountGroup.Kind.EXPENSE,
+        )

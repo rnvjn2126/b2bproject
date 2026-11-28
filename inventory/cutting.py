@@ -51,6 +51,8 @@ def record_stock_cut(workspace, actor, *, lot_id, source_id, quantity, actual_kg
             raise ValidationError("Choose a valid output type and lot from this company.")
         if any(getattr(source, key) != getattr(target, key) for key in TRACE_FIELDS):
             raise ValidationError("Output lots must preserve the input lot's grade and mill traceability.")
+        if StockCutOutput.objects.filter(receipt__movement__lot=target).exclude(kind=part.kind).exists():
+            raise ValidationError("An output lot must keep its original cut classification.")
         validate_stock_input(target, part.quantity, posted_on, reference, submission_key)
         validate_decimal(part.actual_kg, digits=18, places=6, label="measured output weight", positive=True)
     if sum(part.actual_kg for part in outputs) != actual_kg:

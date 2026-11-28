@@ -7,13 +7,16 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from accounting.models import Journal
+from accounting.models import Journal, Ledger
+from accounting.services import post_journal, setup_books
 from dashboard.models import Product
 
 from . import test_movements
 from .costing import CostMethod
 from .cutting import CutOutput, record_stock_cut
 from .models import StockCut, StockMovement, StockPosition
+from .reconciliation import reconcile_stock_to_ledger
+from .scrap import dispose_scrap
 from .reservations import reserve_stock
 from .stock import record_stock_movement
 from .stock_setup import register_lot
@@ -112,3 +115,34 @@ class StockCutTests(TestCase):
         self.assertIn("no-store", screen.headers["Cache-Control"])
         self.client.force_login(self.other)
         self.assertNotContains(self.client.get(url), "SYN-CUT")
+
+    @override_settings(INTERNAL_STOCK_ACCOUNTING=True, INTERNAL_INVENTORY=True)
+    def test_scrap_disposal_posts_loss_and_reconciles_without_duplicate_stock_issue(self):
+        record_stock_cut(self.workspace, self.owner, **self.inputs())
+        setup_books(self.workspace, self.owner, 2026)
+        asset = Ledger.objects.get(workspace=self.workspace, code="1200")
+        loss = Ledger.objects.get(workspace=self.workspace, code="5100")
+        capital = Ledger.objects.get(workspace=self.workspace, code="3000")
+        args = dict(lot_id=self.target_lots[2].pk, source_id=self.a.pk, quantity=D(3), actual_kg=D(3),
+                    posted_on=self.day, reference="SYN-SCRAP", submission_key=uuid4(),
+                    inventory_ledger_id=asset.pk, loss_ledger_id=loss.pk)
+        with self.assertRaisesMessage(ValidationError, "inventory asset balance"):
+            dispose_scrap(self.workspace, self.owner, **args)
+        self.assertEqual(StockMovement.objects.count(), 5)
+        post_journal(self.workspace, self.owner, date=self.day, kind=Journal.Kind.GENERAL, reference="SYN-LEDGER",
+                     narration="Synthetic inventory balance", submission_key=uuid4(),
+                     lines=[(asset, "D", D(500)), (capital, "C", D(500))])
+        with self.assertRaisesMessage(ValidationError, "recoverable scrap"):
+            dispose_scrap(self.workspace, self.owner, **(args | {"lot_id": self.target_lots[0].pk}))
+        self.client.force_login(self.owner)
+        url = reverse("accounting:inventory:action", args=["scrap-disposal"])
+        self.assertContains(self.client.get(url), "Dispose of recovered scrap")
+        self.assertRedirects(self.client.post(url, {key: str(value) for key, value in args.items()}),
+                             reverse("accounting:inventory:overview"))
+        item = dispose_scrap(self.workspace, self.owner, **args)
+        self.assertEqual(list(item.journal.lines.values_list("side", "amount")), [("D", D(30)), ("C", D(30))])
+        self.assertEqual(StockMovement.objects.count(), 6)
+        self.assertContains(self.client.get(reverse("accounting:inventory:cut_stock")), "SYN-SCRAP")
+        report = reconcile_stock_to_ledger(self.workspace, self.owner, ledger_id=asset.pk, as_of=self.day)
+        self.assertTrue(report.reconciled)
+        self.assertEqual(report.inventory_value, D(470))

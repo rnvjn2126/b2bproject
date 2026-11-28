@@ -16,12 +16,13 @@ from . import forms
 from .counts import record_physical_count
 from .cutting import CutOutput, record_stock_cut
 from .landed_costs import allocate_purchase_charge
-from .models import LandedCharge, LotCertificate, SteelSpecification, StockCount, StockCut, StockCutOutput, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
+from .models import LandedCharge, LotCertificate, ScrapDisposal, SteelSpecification, StockCount, StockCut, StockCutOutput, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
 from .purchase_costs import capitalise_purchase_cost
 from .reconciliation import reconcile_stock_to_ledger
 from .reports import reorder_status, set_reorder_policy, stock_ageing
 from .reservations import record_reservation_action, reserve_stock
 from .sale_costs import post_sale_cost
+from .scrap import dispose_scrap
 from .services import save_specification
 from .stock import record_stock_movement
 from .stock_setup import MAX_CERTIFICATE_BYTES, attach_lot_certificate, register_location, register_lot, register_warehouse
@@ -44,6 +45,7 @@ ACTIONS = {
 STOCK_COST_ACTIONS = {
     "landed-charge": ("Allocate freight or packaging", forms.LandedChargeForm, allocate_purchase_charge),
     "purchase-cost": ("Capitalise a purchase", forms.InvoiceStockCostForm, capitalise_purchase_cost),
+    "scrap-disposal": ("Dispose of recovered scrap", forms.ScrapDisposalForm, dispose_scrap),
     "sale-cost": ("Post the cost of a sale", forms.SaleStockCostForm, post_sale_cost),
 }
 FORM_HELP = {
@@ -248,4 +250,10 @@ def cut_stock(request, workspace):
             "receipt__movement__lot__product",
         ),
     )).order_by("-source__movement__posted_on", "-pk")[:20]
-    return render(request, "inventory/cut_stock.html", {"form": form, "outputs": outputs, "cuts": cuts})
+    disposals = ScrapDisposal.objects.filter(workspace=workspace).select_related(
+        "issue__movement__lot__product", "journal",
+    ).order_by("-issue__movement__posted_on", "-pk")[:20] if settings.INTERNAL_STOCK_ACCOUNTING else ()
+    return render(request, "inventory/cut_stock.html", {
+        "form": form, "outputs": outputs, "cuts": cuts, "disposals": disposals,
+        "scrap_disposal_enabled": settings.INTERNAL_STOCK_ACCOUNTING,
+    })

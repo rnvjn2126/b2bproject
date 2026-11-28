@@ -97,12 +97,15 @@ def reconcile_stock_to_ledger(workspace, actor, *, ledger_id, as_of):
     for anchor_id, amount in allocations.iterator():
         pool_by_anchor[anchor_id].inventory_value += amount
 
+    return StockReconciliation(
+        as_of, ledger, tuple(sorted(pools.values(), key=lambda pool: (pool.product, pool.unit))), posted_asset_balance(workspace, ledger, as_of),
+    )
+
+
+def posted_asset_balance(workspace, ledger, as_of):
     lines = JournalLine.objects.filter(
         ledger=ledger, journal__workspace=workspace, journal__sealed=True, journal__date__lte=as_of,
     ).order_by().values_list("side", "amount")
     # Sum Decimal rows exactly on SQLite as well as PostgreSQL.
-    ledger_balance = sum((amount if side == JournalLine.Side.DEBIT else -amount
+    return sum((amount if side == JournalLine.Side.DEBIT else -amount
                           for side, amount in lines.iterator()), Decimal("0.00"))
-    return StockReconciliation(
-        as_of, ledger, tuple(sorted(pools.values(), key=lambda pool: (pool.product, pool.unit))), ledger_balance,
-    )

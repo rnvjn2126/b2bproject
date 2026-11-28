@@ -9,7 +9,7 @@
   <p>Posted by {{ journal.submitted_by.get_username }} on {{ journal.posted_at|date:"d M Y, H:i T" }}.</p>
   {% if journal.reverses %}<p>Reverses <a href="{% url 'accounting:journal' journal.reverses_id %}">journal {{ journal.reverses_id }}</a>.</p>
   {% elif journal.reversal %}<p>Reversed by <a href="{% url 'accounting:journal' journal.reversal.pk %}">journal {{ journal.reversal.pk }}</a>.</p>
-  {% elif journal.kind == "stock_in" or journal.kind == "stock_landed" or journal.kind == "stock_cost" or journal.kind == "stock_return" %}<p>Use the invoice correction workflow to adjust stock cost.</p>
+  {% elif journal.kind == "stock_in" or journal.kind == "stock_landed" or journal.kind == "stock_cost" or journal.kind == "stock_return" or journal.kind == "stock_scrap" %}<p>This journal is linked to protected inventory evidence.</p>
   {% else %}<p><a href="{% url 'accounting:reverse' journal.pk %}">Reverse this journal</a></p>{% endif %}
   <div class="table-scroll" tabindex="0"><table>
     <thead><tr><th scope="col">Ledger</th><th scope="col">Side</th><th scope="col">Amount (INR)</th></tr></thead>

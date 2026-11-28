@@ -14,7 +14,7 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 07 Inventory | Complete for the gated local pilot | Verified geometry and unit conversions, warehouse, lot and mill traceability, stock movements, reservations, physical counts and adjustments, reorder and lot ageing. Owner screens were tested in Chrome. Work paused here by request. |
 | 08 Valuation and procurement | Complete for the gated local pilot | Verified FIFO and weighted average, supplier rates and split procurement, purchase and sales costing, matched returns, late charges, cutting, scrap disposal and reconciliation. Posting remains default-off pending production review. |
 | 09 Financial reports | Complete for local owner reporting | Date and year filters, statements, cash flow, receivable/payable ageing, stock value, registers, expenses and linked profitability, with private PDF, XLSX and CSV downloads. Classification and multi-company audit remain production review items. |
-| 10 Tally migration | Pending | Requires stable import targets and verification against current TallyPrime documentation. |
+| 10 Tally migration | Complete for the gated local file pilot | Owner-only XML and prepared Excel imports, balanced ledger openings, audit history and a synthetic voucher XML round trip. Live TallyPrime, JSON and advanced allocations remain pending. |
 | 11 Customer acquisition | Pending | Existing quote features remain. This checkpoint has no new acceptance result. |
 | 12 Advanced accounting | Pending | Requires reconciled GST posting, official source review and professional verification of statutory workflows. |
 | 13 Permissions and performance | Pending | Existing roles protect the delivered screens. Granular ERP roles and performance review remain open. |
@@ -60,6 +60,9 @@ Work ran locally on `ai/accounting-overnight` from baseline `c9659aa490d51902cb2
 | 08 through 08D | 40 inventory passed | 242 passed, 156.369 s | 242 passed, 153.826 s |
 | 08 final | 134 targeted passed | 261 passed, 89.726 s | 261 passed, 89.041 s |
 | 09 final | 118 targeted passed, then 3 export tests after layout polish | 270 passed, 90.496 s | 270 passed, 90.352 s |
+| 10 final | 51 accounting and banking tests passed | 278 passed, 86.599 s | 278 passed, 86.617 s |
+
+Checkpoint 10 passed Django and migration drift checks. Edge verified the owner’s upload-to-export flow at 390 px with synthetic files.
 
 Django and migration drift checks passed through Checkpoint 09. Edge verified owner finance filters, register navigation and an authenticated XLSX export at 390 px. A synthetic PDF and XLSX were visually reviewed. Native Chrome verified registration submission and the settings layout at a 390 px viewport. Chrome checks covered the journal, audit, voucher approval, day book and accepted quotation conversion to an approved order. Browser checks used synthetic data. GST settings and invoice draft screens are owner-only. Chrome verified native sales and purchase draft creation at desktop and phone widths. The first targeted run for 04B failed because the synthetic quote fixture omitted mandatory pricing fields. After adding them, all seven focused tests passed.
 

@@ -2,12 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `1c8d2ebc529c7f8e2c08707b8092afba25c8f9ce`.
-- **Active checkpoint:** 10, Tally migration and interoperability. Ready to begin after verified Checkpoint 09.
-- **Last verified task:** Owner finance dashboard, sealed registers and authorised PDF, Excel and CSV exports.
-- **Changed files and migrations:** Accounting report services, routes, owner forms and templates, invoicing snapshots, shared export sanitisation and tests. No migration in Checkpoint 09.
-- **Latest tests:** 118 targeted tests passed. Django and migration drift checks passed. Edge, PDF rendering and workbook checks passed. Both full regression runs passed 270 tests. Three export tests passed again after layout polish.
-- **Exact next task:** Read Checkpoint 10 and verify current official TallyPrime import and export formats before implementing preview or field mapping. Financial pilot remains default off. Review cost variances, additional correction cases and PostgreSQL before release.
+- **Latest implementation commit:** `29b90a0475702b1cd2f15c9e9f33edc491d5970c`.
+- **Active checkpoint:** 11, customer acquisition. Checkpoint 10 is verified for the gated local file pilot.
+- **Last verified task:** Owner preview and confirmation for the Tally XML and XLSX file migration pilot.
+- **Changed files and migrations:** Accounting Tally import/export and owner workflow, shared workbook safety inspector, tests and migration 0013.
+- **Latest tests:** 51 targeted and 278 in each full run passed. Django and migration drift checks passed. Edge exercised the Tally XML upload, preview, confirmation, history and voucher export at 390 px.
+- **Exact next task:** Start deterministic extraction with manual review in the existing new-enquiry workflow. Tally JSON, advanced imports and live TallyPrime tests remain open. Financial pilot remains default off. Review cost variances, additional correction cases and PostgreSQL before release.
 
 ## Resume on Windows
 
@@ -19,7 +19,7 @@ git status --short --branch
 git log -5 --oneline
 Get-Content AGENTS.md
 Get-Content docs/ACCOUNTING_HANDOFF.md -TotalCount 20
-Get-Content docs/checkpoints/10-tally-integration.md
+Get-Content docs/checkpoints/11-customer-acquisition.md
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py check
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py makemigrations --check --dry-run
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py test --noinput

@@ -2,6 +2,15 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 10 complete for the local Tally file pilot
+
+- The owner can preview and commit scoped Tally XML or prepared XLSX. The workflow supports groups, ledgers, customers, suppliers, catalogue items, balanced ledger openings and accounting-only sales, purchase, receipt and payment vouchers. It keeps an immutable import history and requires the same file and mapping to confirm.
+- A worksheet mapping can resolve alternate column names. Duplicate record identities are reused or rejected on conflict. XML voucher export round-tripped through the synthetic importer into a second workspace, and re-import into the original workspace reused the original journals.
+- Implementation commits `a087a75d1e255da1123a040095d77640d0efa93b` and `29b90a0475702b1cd2f15c9e9f33edc491d5970c`. Added accounting migration 0013. Changes cover import and export processors, owner forms, the shared workbook safety inspector, private URLs and templates.
+- Targeted accounting and banking tests passed 51. Django and migration drift checks passed. The full regression suite passed 278 tests in normal order (86.599 s) and reverse order (86.617 s). Edge at 390 px verified native XML upload, read-only preview, confirmation, import history and four-voucher export. An initial targeted run caught the distinct customer billing address field and the supplier address field. The corrected mapping passed.
+- The pilot leaves JSON, nonzero stock opening quantities, specialised voucher allocations and live TallyPrime compatibility for review. Enable locally with `DJANGO_INTERNAL_TALLY_IMPORT=1`. The [format and operating notes](TALLY_MIGRATION.md) link the current vendor references.
+- Begin Checkpoint 11 with deterministic, manually reviewed enquiry extraction using the existing workspace-scoped RFQ form.
+
 ## Checkpoint 09 complete · Owner financial reporting
 
 - The finance dashboard shows posted income, expenses, net profit, sales less linked COGS, cash and bank, working capital, outstanding invoices, ageing and stock value. Select a date range or financial year and compare with the previous period or year. Existing statements and ledger pages remain the drill-down for sealed journals.
@@ -10,7 +19,6 @@ Current branch: `ai/accounting-overnight`.
 - Owner-only PDF, Excel and CSV exports apply effective dates and supported ledger and branch filters. Excel writes label text literally and preserves large exact amounts. CSV neutralises spreadsheet formula prefixes. Tested the downloadable data and rendered sample PDF and workbook views.
 - Implementation commits `4a6f1327058fd4c382ab5719c428cb612dbdb9d0` and `b4c0f79f2b6862f30b8b7803a066100128c787f0` cover the reporting engine and registers. Export implementation `1c8d2ebc529c7f8e2c08707b8092afba25c8f9ce`. Changed accounting and invoicing services, owner forms, routes, templates and export utilities. No migration.
 - Targeted accounting, inventory and invoicing passed 118 tests. Django and migration drift checks passed. Edge at 390 px verified the dashboard date comparison, register navigation and authenticated Excel download. Both full suites passed 270 tests (90.496 s normal, 90.352 s reverse). After widening the PDF headers and labelling the export link group, all three export tests passed again and the PDF was re-rendered and reviewed.
-- Begin Checkpoint 10. Verify the current TallyPrime XML and spreadsheet exchange formats and design bounded dry runs, audit history and atomic imports. Test compatibility with synthetic files before any live interoperability claim.
 
 ## Checkpoint 08 complete · Inventory valuation and procurement pilot
 

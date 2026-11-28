@@ -2,36 +2,16 @@ import csv
 from datetime import date, datetime, time
 from io import BytesIO, StringIO
 from xml.etree.ElementTree import ParseError
-from zipfile import ZIP_DEFLATED, ZIP_STORED, BadZipFile, ZipFile
+from zipfile import BadZipFile
 
-from defusedxml.ElementTree import parse
 from defusedxml.common import DefusedXmlException
 from django.core.exceptions import ValidationError
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
+from dashboard.workbook_security import inspect_xlsx_archive
+
 from .statement_csv import MAX_STATEMENT_BYTES, MAX_STATEMENT_ROWS, STATEMENT_COLUMNS, parse_statement_csv
-
-
-def _inspect_archive(content):
-    with ZipFile(BytesIO(content)) as archive:
-        members = archive.infolist()
-        if len(members) > 40 or sum(part.file_size for part in members) > 4 * 1024 * 1024:
-            raise ValidationError("The workbook contains too much expanded data.")
-        if len({part.filename for part in members}) != len(members):
-            raise ValidationError("The workbook contains repeated archive entries.")
-        for part in members:
-            if part.compress_type not in (ZIP_STORED, ZIP_DEFLATED):
-                raise ValidationError("The workbook uses an unsupported archive compression.")
-            name = part.filename.lower()
-            if part.flag_bits & 1 or "vbaproject" in name or name.startswith("xl/externallinks/"):
-                raise ValidationError("Use an unencrypted XLSX workbook without macros or external workbook links.")
-            if name.endswith((".xml", ".rels")):
-                with archive.open(part) as source:
-                    document = parse(source, forbid_dtd=True)
-                if name.endswith(".rels") and any(element.get("TargetMode") == "External"
-                                                  for element in document.getroot()):
-                    raise ValidationError("Remove external links from the workbook.")
 
 
 def _row_values(cells, number):
@@ -59,7 +39,7 @@ def parse_statement_excel(content):
     if not isinstance(content, bytes) or not 0 < len(content) <= MAX_STATEMENT_BYTES:
         raise ValidationError("Choose an XLSX workbook up to 256 KB.")
     try:
-        _inspect_archive(content)
+        inspect_xlsx_archive(content)
         workbook = load_workbook(BytesIO(content), read_only=True, data_only=False, keep_links=False)
         try:
             if len(workbook.sheetnames) != 1 or len(workbook.worksheets) != 1:

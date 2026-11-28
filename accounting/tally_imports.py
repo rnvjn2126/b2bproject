@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -13,6 +13,7 @@ from dashboard.models import Customer, Product, Supplier
 
 from .models import AccountGroup, Journal, Ledger, TallyImportBatch, TallyImportRecord
 from .services import lock_books, post_journal
+from .tally_excel import SHEET_COLUMNS, parse_tally_excel
 from .tally_xml import GroupRow, LedgerRow, StockRow, VoucherRow, parse_tally_xml
 
 
@@ -35,10 +36,20 @@ def fingerprint(value):
 def normalise_mapping(mapping):
     if mapping is None:
         return {}
-    if not isinstance(mapping, dict) or set(mapping) - {"groups", "ledgers"}:
-        raise ValidationError("Use a mapping with groups and ledgers.")
+    if not isinstance(mapping, dict) or set(mapping) - {"groups", "ledgers", "columns"}:
+        raise ValidationError("Use mappings for groups, ledgers or workbook columns.")
     result = {}
     for category, source in mapping.items():
+        if category == "columns":
+            if not isinstance(source, dict) or set(source) - SHEET_COLUMNS.keys():
+                raise ValidationError("Map workbook columns on the supported worksheets.")
+            for sheet, columns in source.items():
+                if (not isinstance(columns, dict) or set(columns) - SHEET_COLUMNS[sheet].keys()
+                        or any(not isinstance(value, str) or not 1 <= len(value.strip()) <= 80 for value in columns.values())):
+                    raise ValidationError("Map a supported field to a worksheet heading.")
+            result[category] = {sheet: {field: label.strip() for field, label in columns.items()}
+                                for sheet, columns in source.items()}
+            continue
         if not isinstance(source, dict) or len(source) > 500:
             raise ValidationError("Each mapping must map source names to existing account codes.")
         converted = {}
@@ -97,7 +108,7 @@ class ImportPlan:
         target = create()
         self.pending.append(TallyImportRecord(workspace=self.workspace, kind=kind, identity=key[1],
                                               fingerprint=content, target_id=target.pk))
-        self.rows.append((kind, name, str(target)))
+        self.rows.append((kind, name, "Validated for posting" if kind == "voucher" else str(target)))
         return target.pk
 
     def group_named(self, name):
@@ -221,6 +232,18 @@ class ImportPlan:
         lines.sort(key=lambda line: (line[0].pk, line[1], line[2]))
 
         def create():
+            try:
+                original_key = UUID(row.key)
+            except ValueError:
+                original_key = None
+            if original_key is not None:
+                local = Journal.objects.filter(workspace=self.workspace, submission_key=original_key, sealed=True).first()
+                if local:
+                    recorded = sorted(local.lines.values_list("ledger_id", "side", "amount"))
+                    submitted = [(ledger.pk, side, amount) for ledger, side, amount in lines]
+                    if (local.kind, local.date, local.narration, recorded) != (row.kind, row.date, row.narration, submitted):
+                        raise ValidationError("The exported voucher identity conflicts with an existing local journal.")
+                    return local
             return post_journal(
                 self.workspace, self.actor, date=row.date, kind=row.kind, reference=f"Tally {row.kind} {row.number}",
                 narration=row.narration, submission_key=uuid5(NAMESPACE_URL, f"tally/{self.workspace.pk}/{row.key.casefold()}"),
@@ -232,13 +255,19 @@ class ImportPlan:
 
 
 @transaction.atomic
-def run_tally_import(workspace, actor, content, *, opening_on=None, mapping=None, confirmed_key=None):
+def run_tally_import(workspace, actor, content, *, opening_on=None, mapping=None, confirmed_key=None, source_format="xml"):
     lock_books(workspace, actor)
     mapping = normalise_mapping(mapping)
     if opening_on is not None and type(opening_on) is not date:
         raise ValidationError("Choose a valid opening date.")
-    source_format = "xml"
-    rows = parse_tally_xml(content)
+    if source_format == "xml":
+        if mapping.get("columns"):
+            raise ValidationError("Worksheet column mappings apply to Excel files.")
+        rows = parse_tally_xml(content)
+    elif source_format == "xlsx":
+        rows = parse_tally_excel(content, mapping.get("columns", {}))
+    else:
+        raise ValidationError("Choose a supported Tally XML or XLSX file.")
     raw = hashlib.sha256(content).hexdigest()
     key = fingerprint([source_format, raw, mapping, opening_on])
     if confirmed_key is not None and confirmed_key != key:

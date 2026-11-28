@@ -168,4 +168,5 @@ PUBLIC_SIGNUP_ENABLED = DEBUG
 # Internal issue requires review before it can be exposed to business users.
 INTERNAL_INVOICE_ISSUANCE = False
 INTERNAL_STOCK_ACCOUNTING = False
+INTERNAL_TALLY_IMPORT = DEBUG and os.environ.get("DJANGO_INTERNAL_TALLY_IMPORT") == "1"
 INTERNAL_INVENTORY = DEBUG and os.environ.get("DJANGO_INTERNAL_INVENTORY") == "1"

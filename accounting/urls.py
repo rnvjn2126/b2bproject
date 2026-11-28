@@ -3,7 +3,7 @@ from django.urls import include, path
 from banking import account_views, views as bank_views
 from invoicing import views as invoice_views
 
-from . import report_views, views, voucher_views
+from . import report_views, tally_views, views, voucher_views
 from .models import Journal
 
 app_name = "accounting"
@@ -52,6 +52,8 @@ urlpatterns = [
     path("trial-balance/", views.balances, name="trial_balance"),
     path("statements/", views.statements, name="statements"),
     path("finance/", report_views.dashboard, name="finance"),
+    path("tally/", tally_views.migration, name="tally_migration"),
+    path("tally/vouchers.xml", tally_views.download, name="tally_export"),
     path("finance/registers/<slug:kind>/", report_views.register, name="trade_register"),
     path("finance/analysis/", report_views.finance_analysis, name="finance_analysis"),
     path("finance/export/<slug:report_name>/<slug:format_name>/", report_views.export, name="finance_export"),

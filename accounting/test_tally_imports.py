@@ -1,9 +1,13 @@
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from openpyxl import Workbook
 
 from dashboard.models import BusinessAccount, Customer, Product, Supplier
 
@@ -131,3 +135,86 @@ class TallyImportTests(TestCase):
             parse_tally_xml(envelope('<STOCKITEM NAME="Synthetic"><BASEUNITS>kg</BASEUNITS><OPENINGBALANCE>5 kg</OPENINGBALANCE></STOCKITEM>'))
         with self.assertRaisesMessage(ValidationError, "equal total debits and credits"):
             parse_tally_xml(envelope(voucher("Sales", "3", "Cash", "Steel sales", 200).replace(">200</AMOUNT>", ">100</AMOUNT>")))
+
+    def test_excel_fields_map_into_the_same_atomic_posting_pipeline(self):
+        file = BytesIO()
+        book = Workbook()
+        ledgers = book.active
+        ledgers.title = "Ledgers"
+        ledgers.append(["Ledger label", "Parent", "Opening Balance"])
+        ledgers.append(["Cash", "Cash-in-Hand", "-1000.00"])
+        ledgers.append(["Capital", "Capital Account", "1000.00"])
+        items = book.create_sheet("Stock Items")
+        items.append(["Name", "Base Units"])
+        items.append(["Synthetic workbook plate", "kg"])
+        vouchers = book.create_sheet("Vouchers")
+        vouchers.append(["Voucher Type", "Date", "Voucher Number", "Ledger Name", "Debit", "Credit"])
+        vouchers.append(["Receipt", date(2026, 5, 2), "WB-1", "Cash", 25, None])
+        vouchers.append(["Receipt", date(2026, 5, 2), "WB-1", "Steel sales", None, 25])
+        book.save(file)
+        options = {"mapping": {"columns": {"ledgers": {"name": "Ledger label"}}}, "source_format": "xlsx"}
+        check = self.run_document(file.getvalue(), **options)
+        sheet_batch = self.run_document(file.getvalue(), confirmed_key=check.key, **options)
+        self.assertEqual(sheet_batch.source_format, "xlsx")
+        self.assertEqual((sheet_batch.opening_amount, sheet_batch.created_count), (1000, 4))
+        self.assertEqual(Journal.objects.count(), 2)
+        self.assertTrue(Product.objects.filter(name="Synthetic workbook plate").exists())
+
+    def test_excel_formula_and_duplicate_column_mapping_are_rejected(self):
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "Stock Items"
+        worksheet.append(["Name", "Base Units"])
+        worksheet.append(["=SyntheticItem", "kg"])
+        file = BytesIO()
+        workbook.save(file)
+        with self.assertRaisesMessage(ValidationError, "Formulas"):
+            self.run_document(file.getvalue(), source_format="xlsx")
+        with self.assertRaisesMessage(ValidationError, "one destination field"):
+            self.run_document(file.getvalue(), source_format="xlsx",
+                              mapping={"columns": {"stock items": {"unit": "Name"}}})
+        self.assertFalse(Product.objects.exists())
+
+    @override_settings(INTERNAL_TALLY_IMPORT=True)
+    def test_owner_preview_confirmation_history_and_export_preserve_scope(self):
+        url = reverse("accounting:tally_migration")
+        private = Client(enforce_csrf_checks=True)
+        private.force_login(self.owner)
+        response = private.get(url)
+        self.assertContains(response, "Tally migration")
+        upload = envelope(MASTERS + VOUCHERS)
+        payload = {"opening_on": self.opening.isoformat(), "source": SimpleUploadedFile("synthetic.xml", upload)}
+        self.assertEqual(private.post(url, payload).status_code, 403)
+        payload["source"] = SimpleUploadedFile("synthetic.xml", upload)
+        payload["csrfmiddlewaretoken"] = private.cookies["csrftoken"].value
+        response = private.post(url, payload)
+        self.assertContains(response, "Commit validated import")
+        token = response.context["confirmation"].initial["preview_token"]
+        self.assertFalse(TallyImportBatch.objects.exists())
+        confirmation = {
+            "action": "confirm", "confirm-opening_on": self.opening.isoformat(),
+            "confirm-preview_token": token, "confirm-source": SimpleUploadedFile("synthetic.xml", upload),
+            "csrfmiddlewaretoken": payload["csrfmiddlewaretoken"],
+        }
+        private.force_login(self.other)
+        confirmation["csrfmiddlewaretoken"] = private.cookies["csrftoken"].value
+        self.assertContains(private.post(url, confirmation), "Run a new import preview")
+        private.force_login(self.owner)
+        confirmation["csrfmiddlewaretoken"] = private.cookies["csrftoken"].value
+        confirmation["confirm-source"] = SimpleUploadedFile("synthetic.xml", upload)
+        self.assertRedirects(private.post(url, confirmation), url)
+        self.assertContains(private.get(url), "10 new")
+        exported = private.get(reverse("accounting:tally_export"), {"start": self.opening, "end": date(2026, 5, 2)})
+        self.assertEqual(exported.status_code, 200)
+        self.assertIn("no-store", exported.headers["Cache-Control"])
+        self.assertEqual(len(parse_tally_xml(exported.content)), 4)
+        replay = self.run_document(exported.content)
+        self.run_document(exported.content, confirmed_key=replay.key)
+        self.assertEqual(Journal.objects.count(), 5)
+        other_preview = run_tally_import(self.foreign, self.other, envelope(MASTERS), opening_on=self.opening)
+        run_tally_import(self.foreign, self.other, envelope(MASTERS), opening_on=self.opening, confirmed_key=other_preview.key)
+        other_vouchers = run_tally_import(self.foreign, self.other, exported.content)
+        run_tally_import(self.foreign, self.other, exported.content, confirmed_key=other_vouchers.key)
+        self.assertEqual(Journal.objects.filter(workspace=self.foreign, sealed=True).count(), 5)
+        with self.settings(INTERNAL_TALLY_IMPORT=False):
+            self.assertEqual(private.get(url).status_code, 404)

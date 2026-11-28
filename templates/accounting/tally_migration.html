@@ -1,0 +1,59 @@
+{% extends "accounting/base.html" %}
+{% load indian_finance %}
+{% block title %}Tally migration · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <h1>Tally migration</h1>
+  <p>Use a synthetic XML or XLSX export in this local pilot. Import the chart and masters before importing vouchers that refer to them.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}{{ form.as_p }}
+    <button name="action" value="preview" type="submit">Preview and validate</button>
+  </form>
+</section>
+{% if preview %}
+<section class="card">
+  <h2>Dry-run result</h2>
+  {% if preview.previously_committed %}
+    <p>This exact file and mapping were already imported.</p>
+  {% else %}
+    <p>{{ preview.created }} new import records · {{ preview.reused }} previously recorded</p>
+    <p>Opening debits {{ preview.opening_debit|inr }} · Opening credits {{ preview.opening_credit|inr }}</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Import preview">
+      <table class="table-wide">
+        <thead><tr><th scope="col">Type</th><th scope="col">Source name or ID</th><th scope="col">Target or result</th></tr></thead>
+        <tbody>{% for kind, source, target in preview.rows %}
+          <tr><td>{{ kind|capfirst }}</td><th scope="row">{{ source }}</th><td>{{ target }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+{% if confirmation %}
+<section class="card">
+  <h2>Confirm the import</h2>
+  <p>Select the same file again. The preview is valid for 15 minutes.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}{{ confirmation.as_p }}
+    <button name="action" value="confirm" type="submit">Commit validated import</button>
+  </form>
+</section>
+{% endif %}
+<section class="card">
+  <h2>Import history</h2>
+  <ul>{% for batch in history %}
+    <li>{{ batch.imported_at|date:"d M Y H:i" }} · {{ batch.source_format|upper }} · {{ batch.created_count }} new · {{ batch.reused_count }} reused
+      {% if batch.opening_journal_id %}· <a href="{% url 'accounting:journal' batch.opening_journal_id %}">Opening journal</a>{% endif %}</li>
+  {% empty %}<li>No completed imports.</li>{% endfor %}</ul>
+  {% if history.has_previous %}<a href="{% querystring page=history.previous_page_number %}">Previous</a>{% endif %}
+  {% if history.has_next %}<a href="{% querystring page=history.next_page_number %}">Next</a>{% endif %}
+</section>
+<section class="card">
+  <h2>Export accounting vouchers</h2>
+  <p>Export sealed sales, purchase, payment and receipt vouchers as XML for a compatibility check. Match their ledger names in the receiving company.</p>
+  <form method="get" action="{% url 'accounting:tally_export' %}" class="inline-form">
+    {% for field in export_dates %}<div>{{ field.label_tag }}{{ field }}</div>{% endfor %}
+    <button type="submit">Download voucher XML</button>
+  </form>
+</section>
+{% endblock %}

@@ -2,6 +2,7 @@
 {% block books %}
 <section class="card">
   <h1>Accounts</h1>
+  {% if tally_enabled %}<p><a href="{% url 'accounting:tally_migration' %}">Tally migration</a></p>{% endif %}
   {% if inventory_enabled %}<p><a href="{% url 'accounting:inventory:overview' %}">Steel inventory</a></p>{% endif %}
   <p>Set up your company books before posting journals. Each financial year runs from April to March.</p>
   <form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Set up financial year</button></form>

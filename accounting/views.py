@@ -52,6 +52,7 @@ def home(request, workspace):
     return render(request, "accounting/home.html", {
         "form": form, "years": FinancialYear.objects.filter(workspace=workspace).prefetch_related("periods"),
         "inventory_enabled": workspace is not None and settings.INTERNAL_INVENTORY,
+        "tally_enabled": workspace is not None and settings.INTERNAL_TALLY_IMPORT,
     })
 
 

@@ -8,6 +8,7 @@
   <div class="record-actions">
     <a href="{% url 'accounting:inventory:action' 'valuation-method' %}">Set valuation method</a>
     <a href="{% url 'accounting:inventory:action' 'value-movement' %}">Value stock movement</a>
+    {% for key, action in stock_cost_actions.items %}<a href="{% url 'accounting:inventory:action' key %}">{{ action.0 }}</a>{% endfor %}
   </div>
   <p>Valuation records stock cost for this pilot. Journal entries are posted separately.</p>
 </section>

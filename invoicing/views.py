@@ -13,6 +13,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from accounting.services import lock_books
 from accounting.views import owner_only
 from dashboard.accounts import business_account_for
+from inventory.models import StockMovement
 from settlements.terms import customer_credit_exposure
 
 from .forms import (
@@ -199,8 +200,19 @@ def invoice_adjust(request, workspace, pk, action):
         raise Http404
     invoice = get_object_or_404(IssuedInvoice, workspace=workspace, pk=pk)
     cancelling = action == "cancel"
+    movements = None
+    sale_cost = getattr(invoice, "sale_cost", None)
+    purchase_cost = getattr(invoice, "purchase_cost", None)
+    if sale_cost or purchase_cost:
+        if not settings.INTERNAL_STOCK_ACCOUNTING:
+            raise Http404
+        original = sale_cost.issue.movement if sale_cost else purchase_cost.receipt.movement
+        kind = StockMovement.Kind.RECEIPT if sale_cost else StockMovement.Kind.ISSUE
+        movements = StockMovement.objects.filter(
+            workspace=workspace, lot=original.lot, kind=kind, order_movement__isnull=True, physical_count__isnull=True,
+        ).order_by("-posted_on", "-pk")
     form_class = InvoiceCancelForm if cancelling else InvoiceReturnForm
-    form = form_class(request.POST if request.method == "POST" else None,
+    form = form_class(request.POST if request.method == "POST" else None, stock_movements=movements,
                       initial={"posting_on": timezone.localdate()})
     if request.method == "POST" and form.is_valid():
         service = cancel_internal_invoice if cancelling else record_invoice_return

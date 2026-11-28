@@ -140,6 +140,19 @@ class InvoiceIssueForm(InvoicePostingDateForm):
 class InvoiceCancelForm(InvoicePostingDateForm):
     reason = forms.CharField(max_length=500, widget=forms.Textarea(attrs={"rows": 3}))
 
+    def __init__(self, *args, stock_movements=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if stock_movements is not None:
+            self.fields["restock_movement_id"] = forms.ModelChoiceField(
+                stock_movements, label="Confirmed stock movement",
+            )
+            self.fields["restock_movement_id"].label_from_instance = lambda movement: (
+                f"{movement.posted_on} · {movement.get_kind_display()} · {movement.quantity:g} · {movement.reference}"
+            )
+
+    def clean_restock_movement_id(self):
+        return self.cleaned_data["restock_movement_id"].pk
+
 
 class InvoiceReturnForm(InvoiceCancelForm):
     quantity = forms.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))

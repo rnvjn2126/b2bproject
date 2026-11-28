@@ -377,3 +377,30 @@ class SaleCostCorrection(models.Model):
             | Q(cancellation__isnull=True, invoice_return__isnull=False),
             name="inventory_one_sale_cost_source",
         )]
+
+
+class PurchaseCost(models.Model):
+    invoice = models.OneToOneField("invoicing.IssuedInvoice", related_name="purchase_cost", on_delete=models.PROTECT)
+    receipt = models.OneToOneField(ValuationEvent, on_delete=models.PROTECT)
+    source_line = models.OneToOneField("accounting.JournalLine", on_delete=models.PROTECT)
+    inventory_ledger = models.ForeignKey("accounting.Ledger", on_delete=models.PROTECT)
+    journal = models.OneToOneField("accounting.Journal", null=True, related_name="purchase_cost", on_delete=models.PROTECT)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+
+class PurchaseCostCorrection(models.Model):
+    purchase_cost = models.ForeignKey(PurchaseCost, related_name="corrections", on_delete=models.PROTECT)
+    issue = models.OneToOneField(ValuationEvent, on_delete=models.PROTECT)
+    cancellation = models.OneToOneField("invoicing.InvoiceCancellation", null=True, on_delete=models.PROTECT)
+    invoice_return = models.OneToOneField("invoicing.InvoiceReturn", null=True, on_delete=models.PROTECT)
+    journal = models.OneToOneField("accounting.Journal", null=True, on_delete=models.PROTECT)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=Q(cancellation__isnull=False, invoice_return__isnull=True)
+            | Q(cancellation__isnull=True, invoice_return__isnull=False),
+            name="inventory_one_purchase_cost_source",
+        )]

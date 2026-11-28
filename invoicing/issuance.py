@@ -8,7 +8,7 @@ from django.db import transaction
 
 from accounting.models import Journal, Period
 from accounting.services import lock_books, post_journal
-from inventory.sale_costs import apply_sale_cost_correction
+from inventory.invoice_costs import apply_inventory_cost_correction
 
 from .models import InvoiceCancellation, InvoiceDraft, IssuedInvoice
 from .posting import plan_invoice_posting, resolve_invoice_lines
@@ -122,7 +122,7 @@ def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason,
     if existing:
         if existing.reason != reason or existing.reversal.date != posting_on:
             raise ValidationError("This invoice was already cancelled with different inputs.")
-        return apply_sale_cost_correction(workspace, actor, existing, restock_movement_id)
+        return apply_inventory_cost_correction(workspace, actor, existing, restock_movement_id)
     if invoice.returns.exists():
         raise ValidationError("An invoice with recorded returns cannot be fully cancelled.")
 
@@ -132,4 +132,4 @@ def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason,
         reverses=invoice.journal, invoice_correction=True,
     )
     correction = InvoiceCancellation.objects.create(invoice=invoice, reversal=reversal, reason=reason, cancelled_by=actor)
-    return apply_sale_cost_correction(workspace, actor, correction, restock_movement_id)
+    return apply_inventory_cost_correction(workspace, actor, correction, restock_movement_id)

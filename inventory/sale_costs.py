@@ -11,6 +11,7 @@ from invoicing.models import InvoiceDraft, InvoiceReturn, IssuedInvoice
 from invoicing.tax import rounded
 
 from .models import SaleCost, SaleCostCorrection, StockMovement, ValuationEvent
+from .stock import unvalued_stock_correction
 from .valuation import value_stock_movement
 
 
@@ -97,11 +98,10 @@ def restore_sale_cost(workspace, actor, *, movement_id, correction):
     document = correction.journal if is_return else correction.reversal
     if document.workspace_id != workspace.pk or not document.sealed:
         raise ValidationError("Choose a sealed invoice correction in this company.")
-    receipt = StockMovement.objects.filter(
-        pk=movement_id, workspace=workspace, lot=cost.issue.movement.lot, kind=StockMovement.Kind.RECEIPT,
-        posted_on=document.date, quantity=quantity, order_movement__isnull=True, physical_count__isnull=True,
-        valuation__isnull=True,
-    ).first()
+    receipt = unvalued_stock_correction(
+        workspace, movement_id=movement_id, original=cost.issue.movement, kind=StockMovement.Kind.RECEIPT,
+        posted_on=document.date, quantity=quantity,
+    )
     if receipt is None:
         raise ValidationError("Choose the unvalued restock receipt for the same lot, quantity and correction date.")
     returned = sum((entry.receipt.movement.quantity for entry in cost.corrections.select_related("receipt__movement")),
@@ -124,13 +124,3 @@ def restore_sale_cost(workspace, actor, *, movement_id, correction):
             reverses=cost.journal if not is_return else None, stock_workflow=True,
         )
     return SaleCostCorrection.objects.create(sale_cost=cost, receipt=valued, journal=journal, recorded_by=actor, **source)
-
-
-def apply_sale_cost_correction(workspace, actor, correction, restock_movement_id):
-    if hasattr(correction.invoice, "sale_cost"):
-        if restock_movement_id is None:
-            raise ValidationError("Choose the confirmed stock receipt for this costed invoice correction.")
-        restore_sale_cost(workspace, actor, movement_id=restock_movement_id, correction=correction)
-    elif restock_movement_id is not None:
-        raise ValidationError("A restock receipt can only be assigned to a costed sales invoice.")
-    return correction

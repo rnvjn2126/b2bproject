@@ -8,7 +8,7 @@ from django.db import transaction
 
 from accounting.models import Journal
 from accounting.services import lock_books, post_journal
-from inventory.sale_costs import apply_sale_cost_correction
+from inventory.invoice_costs import apply_inventory_cost_correction
 
 from .models import InvoiceDraft, InvoiceReturn, IssuedInvoice
 from .tax import check_decimal, rounded
@@ -36,7 +36,7 @@ def record_invoice_return(workspace, actor, *, invoice_id, posting_on, quantity,
         if entry.submission_key == submission_key:
             if (entry.quantity, entry.journal.date, entry.reason) != (quantity, posting_on, reason):
                 raise ValidationError("This submission already belongs to a different return.")
-            return apply_sale_cost_correction(workspace, actor, entry, restock_movement_id)
+            return apply_inventory_cost_correction(workspace, actor, entry, restock_movement_id)
     if hasattr(invoice, "cancellation"):
         raise ValidationError("A cancelled invoice cannot receive returns.")
     if previous and posting_on < previous[-1].journal.date:
@@ -82,4 +82,4 @@ def record_invoice_return(workspace, actor, *, invoice_id, posting_on, quantity,
         invoice=invoice, journal=journal, sequence=sequence, submission_key=submission_key,
         quantity=quantity, amount=amount, reason=reason, recorded_by=actor,
     )
-    return apply_sale_cost_correction(workspace, actor, correction, restock_movement_id)
+    return apply_inventory_cost_correction(workspace, actor, correction, restock_movement_id)

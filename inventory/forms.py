@@ -3,8 +3,9 @@ from uuid import uuid4
 
 from django import forms
 
-from accounting.models import Ledger
+from accounting.models import AccountGroup, Ledger
 from dashboard.models import Product, Supplier
+from invoicing.models import InvoiceDraft, IssuedInvoice
 
 from .costing import CostMethod
 from .models import ReservationAction, SteelSpecification, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
@@ -174,3 +175,27 @@ class StockReconciliationForm(CompanyForm):
     def __init__(self, *args, workspace, **kwargs):
         super().__init__(*args, workspace=workspace, **kwargs)
         self.fields["ledger_id"].queryset = stock_asset_ledgers(workspace)
+
+
+class InvoiceStockCostForm(CompanyForm):
+    invoice_kind = InvoiceDraft.Kind.PURCHASE
+    invoice_id = forms.ModelChoiceField(IssuedInvoice.objects.none(), label="Issued invoice")
+    inventory_ledger_id = forms.ModelChoiceField(Ledger.objects.none(), label="Inventory asset ledger")
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        self.fields["invoice_id"].queryset = IssuedInvoice.objects.filter(
+            workspace=workspace, kind=self.invoice_kind, cancellation__isnull=True, journal__sealed=True,
+        ).order_by("-posting_on", "-pk")
+        self.fields["inventory_ledger_id"].queryset = stock_asset_ledgers(workspace)
+
+
+class SaleStockCostForm(InvoiceStockCostForm):
+    invoice_kind = InvoiceDraft.Kind.SALES
+    expense_ledger_id = forms.ModelChoiceField(Ledger.objects.none(), label="Cost-of-sales expense ledger")
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        self.fields["expense_ledger_id"].queryset = Ledger.objects.filter(
+            workspace=workspace, group__workspace=workspace, group__kind=AccountGroup.Kind.EXPENSE,
+        )

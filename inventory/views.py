@@ -15,9 +15,11 @@ from accounting.views import owner_only
 from . import forms
 from .counts import record_physical_count
 from .models import LotCertificate, SteelSpecification, StockCount, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
+from .purchase_costs import capitalise_purchase_cost
 from .reconciliation import reconcile_stock_to_ledger
 from .reports import reorder_status, set_reorder_policy, stock_ageing
 from .reservations import record_reservation_action, reserve_stock
+from .sale_costs import post_sale_cost
 from .services import save_specification
 from .stock import record_stock_movement
 from .stock_setup import MAX_CERTIFICATE_BYTES, attach_lot_certificate, register_location, register_lot, register_warehouse
@@ -36,6 +38,10 @@ ACTIONS = {
     "valuation-method": ("Set valuation method", forms.ValuationMethodForm, set_valuation_method),
     "value-movement": ("Value stock movement", forms.ValueMovementForm, value_stock_movement),
     "reorder": ("Save reorder threshold", forms.ReorderForm, set_reorder_policy),
+}
+STOCK_COST_ACTIONS = {
+    "purchase-cost": ("Capitalise a purchase", forms.InvoiceStockCostForm, capitalise_purchase_cost),
+    "sale-cost": ("Post the cost of a sale", forms.SaleStockCostForm, post_sale_cost),
 }
 FORM_HELP = {
     "value-movement": "Enter material cost for receipts. Leave material blank and other costs at zero for issues and transfers.",
@@ -107,9 +113,10 @@ def _save(request, workspace, title, form_class, save, *, description="", **iden
 @require_http_methods(["GET", "POST"])
 def action(request, workspace, kind):
     _check_access(workspace)
-    if kind not in ACTIONS:
+    actions = ACTIONS | STOCK_COST_ACTIONS if settings.INTERNAL_STOCK_ACCOUNTING else ACTIONS
+    if kind not in actions:
         raise Http404
-    return _save(request, workspace, *ACTIONS[kind], description=FORM_HELP.get(kind, ""))
+    return _save(request, workspace, *actions[kind], description=FORM_HELP.get(kind, ""))
 
 
 @owner_only
@@ -205,4 +212,5 @@ def valuation_review(request, workspace):
             form.add_error(None, error.messages)
     return render(request, "inventory/valuation_review.html", {
         "form": form, "result": result, "policy": ValuationPolicy.objects.filter(workspace=workspace).first(),
+        "stock_cost_actions": STOCK_COST_ACTIONS if settings.INTERNAL_STOCK_ACCOUNTING else {},
     })

@@ -135,3 +135,10 @@ def record_stock_movement(workspace, actor, *, lot_id, kind, source_id=None, des
         theoretical_kg=_theoretical_mass(lot, quantity), posted_on=posted_on, reference=reference,
         submission_key=submission_key, recorded_by=actor,
     )
+
+
+def unvalued_stock_correction(workspace, *, movement_id, original, kind, posted_on, quantity):
+    return StockMovement.objects.filter(
+        pk=movement_id, workspace=workspace, lot=original.lot, kind=kind, posted_on=posted_on, quantity=quantity,
+        order_movement__isnull=True, physical_count__isnull=True, valuation__isnull=True,
+    ).first()

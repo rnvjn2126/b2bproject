@@ -88,6 +88,8 @@ class Journal(models.Model):
         PURCHASE_INVOICE = "buy_invoice", "Internal purchase invoice"
         SALES_RETURN = "sale_return", "Internal sales return credit"
         PURCHASE_RETURN = "buy_return", "Internal purchase return debit"
+        STOCK_COST = "stock_cost", "Stock cost of sales"
+        STOCK_RETURN = "stock_return", "Stock cost return"
         REVERSAL = "reversal", "Reversal"
 
     workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
@@ -141,7 +143,7 @@ class VoucherDraft(models.Model):
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     kind = models.CharField(max_length=12, choices=[
         (value, label) for value, label in Journal.Kind.choices if value not in (Journal.Kind.SALES_INVOICE, Journal.Kind.PURCHASE_INVOICE,
-                         Journal.Kind.SALES_RETURN, Journal.Kind.PURCHASE_RETURN)
+                         Journal.Kind.SALES_RETURN, Journal.Kind.PURCHASE_RETURN, Journal.Kind.STOCK_COST, Journal.Kind.STOCK_RETURN)
     ])
     date = models.DateField()
     reference = models.CharField(max_length=100, blank=True)

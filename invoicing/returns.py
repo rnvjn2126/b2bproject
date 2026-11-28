@@ -8,14 +8,15 @@ from django.db import transaction
 
 from accounting.models import Journal
 from accounting.services import lock_books, post_journal
+from inventory.sale_costs import apply_sale_cost_correction
 
 from .models import InvoiceDraft, InvoiceReturn, IssuedInvoice
 from .tax import check_decimal, rounded
 
 
 @transaction.atomic
-def record_invoice_return(workspace, actor, *, invoice_id, posting_on, quantity, reason, submission_key):
-    """Record a financial return only. It does not change physical stock or issue a GST note."""
+def record_invoice_return(workspace, actor, *, invoice_id, posting_on, quantity, reason, submission_key, restock_movement_id=None):
+    """Post a financial return and restore cost only for an explicitly linked restock receipt."""
     if not settings.INTERNAL_INVOICE_ISSUANCE:
         raise PermissionDenied("Internal invoice issuance is disabled.")
     lock_books(workspace, actor)
@@ -35,7 +36,7 @@ def record_invoice_return(workspace, actor, *, invoice_id, posting_on, quantity,
         if entry.submission_key == submission_key:
             if (entry.quantity, entry.journal.date, entry.reason) != (quantity, posting_on, reason):
                 raise ValidationError("This submission already belongs to a different return.")
-            return entry
+            return apply_sale_cost_correction(workspace, actor, entry, restock_movement_id)
     if hasattr(invoice, "cancellation"):
         raise ValidationError("A cancelled invoice cannot receive returns.")
     if previous and posting_on < previous[-1].journal.date:
@@ -77,7 +78,8 @@ def record_invoice_return(workspace, actor, *, invoice_id, posting_on, quantity,
         narration=reason, submission_key=uuid5(NAMESPACE_URL, f"steel-quotes/return/{invoice.pk}/{submission_key}"),
         lines=lines,
     )
-    return InvoiceReturn.objects.create(
+    correction = InvoiceReturn.objects.create(
         invoice=invoice, journal=journal, sequence=sequence, submission_key=submission_key,
         quantity=quantity, amount=amount, reason=reason, recorded_by=actor,
     )
+    return apply_sale_cost_correction(workspace, actor, correction, restock_movement_id)

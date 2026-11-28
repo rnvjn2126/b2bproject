@@ -38,6 +38,7 @@ CASH_LEDGER_CODES = ("1000", "1010")
 TRADE_VOUCHER_KINDS = (Journal.Kind.SALES, Journal.Kind.PURCHASE, Journal.Kind.DEBIT_NOTE, Journal.Kind.CREDIT_NOTE)
 INVOICE_JOURNAL_KINDS = (Journal.Kind.SALES_INVOICE, Journal.Kind.PURCHASE_INVOICE,
                          Journal.Kind.SALES_RETURN, Journal.Kind.PURCHASE_RETURN)
+STOCK_JOURNAL_KINDS = (Journal.Kind.STOCK_COST, Journal.Kind.STOCK_RETURN)
 REVIEW_VOUCHER_KINDS = (Journal.Kind.GENERAL,) + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS
 
 
@@ -94,8 +95,11 @@ def lock_period(workspace, actor, period_id):
 
 @transaction.atomic
 def post_journal(workspace, actor, *, date, kind, reference, narration, submission_key,
-                 lines=(), branch=None, cost_centre=None, reverses=None, invoice_correction=False):
+                 lines=(), branch=None, cost_centre=None, reverses=None, invoice_correction=False, stock_workflow=False):
     lock_books(workspace, actor)
+    stock_allowed = stock_workflow and settings.INTERNAL_STOCK_ACCOUNTING
+    if kind in STOCK_JOURNAL_KINDS and not stock_allowed:
+        raise PermissionDenied("Stock journals require the inventory workflow.")
     if kind in INVOICE_JOURNAL_KINDS and not settings.INTERNAL_INVOICE_ISSUANCE:
         raise PermissionDenied("Internal invoice issuance is disabled.")
     if reverses is not None:
@@ -103,12 +107,14 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
             raise ValidationError("Choose an original journal in your workspace.")
         if reverses.kind in INVOICE_JOURNAL_KINDS and not (invoice_correction and settings.INTERNAL_INVOICE_ISSUANCE):
             raise ValidationError("Invoice journals require the invoice correction workflow.")
+        if reverses.kind in STOCK_JOURNAL_KINDS and not stock_allowed:
+            raise ValidationError("Stock journals require the inventory correction workflow.")
         if date < reverses.date:
             raise ValidationError("A reversal cannot be dated before the original journal.")
         kind = Journal.Kind.REVERSAL
         branch, cost_centre = reverses.branch, reverses.cost_centre
         lines = [(line.ledger, "C" if line.side == "D" else "D", line.amount) for line in reverses.lines.all()]
-    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS + INVOICE_JOURNAL_KINDS:
+    elif kind not in MANUAL_JOURNAL_KINDS + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS + INVOICE_JOURNAL_KINDS + STOCK_JOURNAL_KINDS:
         raise ValidationError("Choose a valid journal type.")
 
     if any(item and item.workspace_id != workspace.pk for item in (branch, cost_centre)):

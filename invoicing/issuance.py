@@ -8,6 +8,7 @@ from django.db import transaction
 
 from accounting.models import Journal, Period
 from accounting.services import lock_books, post_journal
+from inventory.sale_costs import apply_sale_cost_correction
 
 from .models import InvoiceCancellation, InvoiceDraft, IssuedInvoice
 from .posting import plan_invoice_posting, resolve_invoice_lines
@@ -104,7 +105,7 @@ def _issue_internal(workspace, actor, *, kind, draft_id, posting_on, confirmed_t
 
 
 @transaction.atomic
-def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason):
+def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason, restock_movement_id=None):
     """Reverse an internal invoice while retaining the issued document and its reference."""
     if not settings.INTERNAL_INVOICE_ISSUANCE:
         raise PermissionDenied("Internal invoice issuance is disabled.")
@@ -121,7 +122,7 @@ def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason)
     if existing:
         if existing.reason != reason or existing.reversal.date != posting_on:
             raise ValidationError("This invoice was already cancelled with different inputs.")
-        return existing
+        return apply_sale_cost_correction(workspace, actor, existing, restock_movement_id)
     if invoice.returns.exists():
         raise ValidationError("An invoice with recorded returns cannot be fully cancelled.")
 
@@ -130,4 +131,5 @@ def cancel_internal_invoice(workspace, actor, *, invoice_id, posting_on, reason)
         narration=reason, submission_key=uuid5(NAMESPACE_URL, f"steel-quotes/internal-cancellation/{invoice.pk}"),
         reverses=invoice.journal, invoice_correction=True,
     )
-    return InvoiceCancellation.objects.create(invoice=invoice, reversal=reversal, reason=reason, cancelled_by=actor)
+    correction = InvoiceCancellation.objects.create(invoice=invoice, reversal=reversal, reason=reason, cancelled_by=actor)
+    return apply_sale_cost_correction(workspace, actor, correction, restock_movement_id)

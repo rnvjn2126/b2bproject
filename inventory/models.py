@@ -350,3 +350,30 @@ class SupplierDailyRate(models.Model):
         indexes = [
             models.Index(fields=["workspace", "product", "supplier", "-quoted_on"], name="inventory_rate_lookup_idx"),
         ]
+
+
+class SaleCost(models.Model):
+    invoice = models.OneToOneField("invoicing.IssuedInvoice", related_name="sale_cost", on_delete=models.PROTECT)
+    issue = models.OneToOneField(ValuationEvent, on_delete=models.PROTECT)
+    inventory_ledger = models.ForeignKey("accounting.Ledger", related_name="+", on_delete=models.PROTECT)
+    expense_ledger = models.ForeignKey("accounting.Ledger", related_name="+", on_delete=models.PROTECT)
+    journal = models.OneToOneField("accounting.Journal", null=True, related_name="sale_cost", on_delete=models.PROTECT)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+
+class SaleCostCorrection(models.Model):
+    sale_cost = models.ForeignKey(SaleCost, related_name="corrections", on_delete=models.PROTECT)
+    receipt = models.OneToOneField(ValuationEvent, on_delete=models.PROTECT)
+    cancellation = models.OneToOneField("invoicing.InvoiceCancellation", null=True, on_delete=models.PROTECT)
+    invoice_return = models.OneToOneField("invoicing.InvoiceReturn", null=True, on_delete=models.PROTECT)
+    journal = models.OneToOneField("accounting.Journal", null=True, on_delete=models.PROTECT)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            condition=Q(cancellation__isnull=False, invoice_return__isnull=True)
+            | Q(cancellation__isnull=True, invoice_return__isnull=False),
+            name="inventory_one_sale_cost_source",
+        )]

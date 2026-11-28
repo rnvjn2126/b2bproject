@@ -1,0 +1,80 @@
+{% extends "accounting/base.html" %}
+{% load indian_finance %}
+{% block title %}Finance dashboard · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <h1>Finance dashboard</h1>
+  <form method="get" class="inline-form">
+    {{ form.non_field_errors }}
+    {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}{% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}</div>{% endfor %}
+    <button type="submit">Run report</button>
+  </form>
+  {% if not workspace %}<p><a href="{% url 'accounting:home' %}">Set up your company books</a> to start reporting.</p>{% endif %}
+</section>
+{% if report %}
+<section class="card">
+  <h2>Performance</h2>
+  <p>{{ report.start|date:"d M Y" }} through {{ report.end|date:"d M Y" }}</p>
+  <div class="pipeline-grid">
+    <div class="metric"><span>Posted income</span><strong>{{ report.income|inr }}</strong></div>
+    <div class="metric"><span>Posted expenses</span><strong>{{ report.expenses|inr }}</strong></div>
+    <div class="metric"><span>Net profit</span><strong>{{ report.statements.net_result|inr }}</strong></div>
+    <div class="metric"><span>Sales less linked stock cost</span><strong>{{ report.gross|inr }}</strong></div>
+    <div class="metric"><span>Cash and bank</span><strong>{{ report.cash.closing|inr }}</strong></div>
+    <div class="metric"><span>Current working capital</span><strong>{{ report.working_capital.net|inr }}</strong></div>
+    <div class="metric"><span>Invoice receivables</span><strong>{{ report.receivables|inr }}</strong></div>
+    <div class="metric"><span>Invoice payables</span><strong>{{ report.payables|inr }}</strong></div>
+    <div class="metric"><span>Stock valuation</span>{% if report.stock %}<strong>{{ report.stock.inventory_value|inr }}</strong>{% else %}<strong>Ledger unavailable</strong>{% endif %}</div>
+  </div>
+  <ul>
+    {% if report.uncosted_sales %}<li>{{ report.uncosted_sales }} issued sales {{ report.uncosted_sales|pluralize:"invoice,invoices" }} still need linked stock costs.</li>{% endif %}
+    {% if report.past_due %}<li>Overdue customer invoices total {{ report.past_due|inr }}.</li>{% endif %}
+    {% if report.stock and not report.stock.reconciled %}<li>Stock value or quantities require review. Difference from the stock ledger {{ report.stock.difference|inr }}.</li>{% endif %}
+    {% if report.statements.difference %}<li>Balance sheet difference {{ report.statements.difference|inr }}.</li>{% endif %}
+  </ul>
+  <div class="record-actions">
+    <a href="{% url 'accounting:statements' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Balance sheet and profit and loss</a>
+    <a href="{% url 'accounting:trial_balance' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Trial balance and ledgers</a>
+    <a href="{% url 'accounting:day_book' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Day book</a>
+  </div>
+</section>
+{% if comparison %}
+<section class="card">
+  <h2>Period comparison</h2>
+  <p>{{ comparison.start|date:"d M Y" }} through {{ comparison.end|date:"d M Y" }}</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Period comparison">
+    <table class="table-wide">
+      <thead><tr><th scope="col">Measure</th><th scope="col">Selected period</th><th scope="col">Comparison period</th></tr></thead>
+      <tbody><tr><th scope="row">Income</th><td>{{ report.income|inr }}</td><td>{{ comparison.income|inr }}</td></tr>
+      <tr><th scope="row">Expenses</th><td>{{ report.expenses|inr }}</td><td>{{ comparison.expenses|inr }}</td></tr>
+      <tr><th scope="row">Net profit</th><td>{{ report.statements.net_result|inr }}</td><td>{{ comparison.statements.net_result|inr }}</td></tr>
+      <tr><th scope="row">Cash and bank</th><td>{{ report.cash.closing|inr }}</td><td>{{ comparison.cash.closing|inr }}</td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+<section class="card">
+  <h2>Cash flow</h2>
+  <p>Opening balance {{ report.cash.opening|inr }} · Opening adjustments {{ report.cash.opening_adjustments|inr }}</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Cash flow by activity">
+    <table class="table-wide">
+      <thead><tr><th scope="col">Activity</th><th scope="col">Inflow</th><th scope="col">Outflow</th><th scope="col">Net</th></tr></thead>
+      <tbody>
+      {% for entry in report.cash.flows %}<tr><th scope="row">{{ entry.label }}</th><td>{{ entry.inflow|inr }}</td><td>{{ entry.outflow|inr }}</td><td>{{ entry.net|inr }}</td></tr>{% endfor %}
+      </tbody>
+      <tfoot><tr><th scope="row" colspan="3">Closing cash and bank</th><td>{{ report.cash.closing|inr }}</td></tr></tfoot>
+    </table>
+  </div>
+  {% if report.cash.unclassified %}<p>{{ report.cash.unclassified }} cash movements need classification.</p>{% endif %}
+</section>
+<section class="card">
+  <h2>Working capital</h2>
+  <dl><dt>Current assets</dt><dd>{{ report.working_capital.assets|inr }}</dd>
+    <dt>Current liabilities</dt><dd>{{ report.working_capital.liabilities|inr }}</dd>
+    <dt>Net working capital</dt><dd>{{ report.working_capital.net|inr }}</dd></dl>
+  {% if report.working_capital.other_assets or report.working_capital.other_liabilities %}
+    <p>Unclassified assets {{ report.working_capital.other_assets|inr }} · Unclassified liabilities {{ report.working_capital.other_liabilities|inr }}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

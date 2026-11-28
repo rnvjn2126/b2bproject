@@ -1,0 +1,8 @@
+<form method="get" class="inline-form">
+  {{ form.non_field_errors }}
+  {% for field in form %}
+    <div>{{ field.label_tag }}{{ field }}{{ field.errors }}
+      {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}</div>
+  {% endfor %}
+  <button type="submit">Run report</button>
+</form>

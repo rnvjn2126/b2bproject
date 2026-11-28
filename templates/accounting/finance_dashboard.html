@@ -4,11 +4,7 @@
 {% block books %}
 <section class="card">
   <h1>Finance dashboard</h1>
-  <form method="get" class="inline-form">
-    {{ form.non_field_errors }}
-    {% for field in form %}<div>{{ field.label_tag }}{{ field }}{{ field.errors }}{% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}</div>{% endfor %}
-    <button type="submit">Run report</button>
-  </form>
+  {% include "accounting/report_filter.html" with form=form only %}
   {% if not workspace %}<p><a href="{% url 'accounting:home' %}">Set up your company books</a> to start reporting.</p>{% endif %}
 </section>
 {% if report %}
@@ -36,6 +32,9 @@
     <a href="{% url 'accounting:statements' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Balance sheet and profit and loss</a>
     <a href="{% url 'accounting:trial_balance' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Trial balance and ledgers</a>
     <a href="{% url 'accounting:day_book' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Day book</a>
+    <a href="{% url 'accounting:trade_register' 'sales' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Sales register</a>
+    <a href="{% url 'accounting:trade_register' 'purchase' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Purchase register</a>
+    <a href="{% url 'accounting:finance_analysis' %}?start={{ report.start|date:'Y-m-d' }}&amp;end={{ report.end|date:'Y-m-d' }}">Profitability and expenses</a>
   </div>
 </section>
 {% if comparison %}

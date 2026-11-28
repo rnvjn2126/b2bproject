@@ -1,0 +1,11 @@
+{% load indian_finance %}
+<div class="table-scroll" tabindex="0" role="region" aria-label="{{ label }} profitability">
+  <table class="table-wide">
+    <thead><tr><th scope="col">{{ label }}</th><th scope="col">Posted revenue</th><th scope="col">Revenue with cost</th>
+      <th scope="col">Linked cost</th><th scope="col">Matched gross profit</th><th scope="col">Missing cost documents</th></tr></thead>
+    <tbody>{% for row in rows %}
+      <tr><th scope="row">{{ row.name }}</th><td>{{ row.revenue|inr }}</td><td>{{ row.matched_revenue|inr }}</td>
+        <td>{{ row.known_cost|inr }}</td><td>{{ row.matched_gross|inr }}</td><td>{{ row.missing_cost }}</td></tr>
+    {% empty %}<tr><td colspan="6">No posted sales invoices or corrections in this period.</td></tr>{% endfor %}</tbody>
+  </table>
+</div>

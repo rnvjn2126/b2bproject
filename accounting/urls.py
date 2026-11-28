@@ -52,6 +52,8 @@ urlpatterns = [
     path("trial-balance/", views.balances, name="trial_balance"),
     path("statements/", views.statements, name="statements"),
     path("finance/", report_views.dashboard, name="finance"),
+    path("finance/registers/<slug:kind>/", report_views.register, name="trade_register"),
+    path("finance/analysis/", report_views.finance_analysis, name="finance_analysis"),
     path("audit/", views.audit_history, name="audit_history"),
     path("ledgers/<int:pk>/", views.balances, name="ledger"),
 ]

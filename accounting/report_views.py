@@ -1,22 +1,38 @@
 from datetime import date
 
+from django.core.paginator import Paginator
+from django.http import Http404
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
+from invoicing.models import InvoiceDraft
+
 from .report_forms import FinancialReportForm
-from .reporting import comparison_dates, financial_overview
+from .reporting import ZERO, comparison_dates, financial_overview
+from .statements import financial_statements
+from .trade_reports import profitability, trade_register
 from .views import financial_year_start, owner_only
+
+
+def _dates(request, workspace, *, allow_comparison=False):
+    today = timezone.localdate()
+    defaults = {"start": date(financial_year_start(today), 4, 1), "end": today}
+    data = request.GET.copy()
+    if not any(data.get(key) for key in ("year", "start", "end")):
+        data.update(defaults)
+    form = FinancialReportForm(data, workspace=workspace)
+    if not allow_comparison:
+        del form.fields["comparison"]
+    return form
 
 
 @owner_only
 @never_cache
 @require_GET
 def dashboard(request, workspace):
-    today = timezone.localdate()
-    defaults = {"start": date(financial_year_start(today), 4, 1), "end": today}
-    form = FinancialReportForm(request.GET or defaults, workspace=workspace)
+    form = _dates(request, workspace, allow_comparison=True)
     result = comparison = None
     if workspace and form.is_valid():
         data = form.cleaned_data
@@ -28,3 +44,37 @@ def dashboard(request, workspace):
     return render(request, "accounting/finance_dashboard.html", {
         "form": form, "report": result, "comparison": comparison, "workspace": workspace,
     })
+
+
+@owner_only
+@never_cache
+@require_GET
+def register(request, workspace, kind):
+    if kind not in InvoiceDraft.Kind.values:
+        raise Http404
+    form = _dates(request, workspace)
+    entries = None
+    totals = None
+    if workspace and form.is_valid():
+        rows = trade_register(workspace, kind, form.cleaned_data["start"], form.cleaned_data["end"])
+        entries = Paginator(rows, 50).get_page(request.GET.get("page"))
+        totals = {key: sum((getattr(row, key) for row in rows), ZERO)
+                  for key in ("trade_amount", "tax_posted", "invoice_amount")}
+    return render(request, "accounting/trade_register.html", {"kind": kind, "form": form, "entries": entries, "totals": totals})
+
+
+@owner_only
+@never_cache
+@require_GET
+def finance_analysis(request, workspace):
+    form = _dates(request, workspace)
+    result = None
+    if workspace and form.is_valid():
+        start, end = form.cleaned_data["start"], form.cleaned_data["end"]
+        sales = trade_register(workspace, InvoiceDraft.Kind.SALES, start, end)
+        result = {
+            "expenses": financial_statements(workspace, start, end)["profit_loss"][1],
+            "customer": profitability(sales, "customer"),
+            "product": profitability(sales, "product"),
+        }
+    return render(request, "accounting/finance_analysis.html", {"form": form, "result": result})

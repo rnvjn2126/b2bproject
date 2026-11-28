@@ -1,0 +1,39 @@
+{% extends "accounting/base.html" %}
+{% load indian_finance %}
+{% block title %}{% if kind == "sales" %}Sales{% else %}Purchase{% endif %} register · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <h1>{% if kind == "sales" %}Sales{% else %}Purchase{% endif %} register</h1>
+  <p>Issued invoices and sealed corrections in the selected period.</p>
+  {% include "accounting/report_filter.html" with form=form only %}
+</section>
+{% if entries %}
+<section class="card">
+  <h2>Posted documents</h2>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Posted register">
+    <table class="table-wide">
+      <thead><tr><th scope="col">Posting date</th><th scope="col">Invoice</th><th scope="col">Event</th><th scope="col">Party</th>
+      <th scope="col">Product</th><th scope="col">Quantity</th><th scope="col">{% if kind == "sales" %}Posted revenue{% else %}Acquisition debit{% endif %}</th>
+      <th scope="col">Posted tax</th><th scope="col">Control amount</th><th scope="col">Journal</th></tr></thead>
+      <tbody>
+      {% for row in entries %}
+        <tr><td>{{ row.date|date:"d M Y" }}</td><th scope="row">{{ row.invoice_number }}</th><td>{{ row.event }}</td><td>{{ row.party }}</td>
+          <td>{{ row.product }}</td><td>{{ row.quantity|floatformat:"-3" }} {{ row.unit }}</td>
+          <td>{{ row.trade_amount|inr }}</td><td>{{ row.tax_posted|inr }}</td><td>{{ row.invoice_amount|inr }}</td>
+          <td><a href="{% url 'accounting:journal' row.journal_id %}">{{ row.journal_reference }}</a></td></tr>
+      {% empty %}<tr><td colspan="10">No posted documents in this period.</td></tr>{% endfor %}
+      </tbody>
+      <tfoot><tr><th scope="row" colspan="6">Period totals</th><td>{{ totals.trade_amount|inr }}</td>
+        <td>{{ totals.tax_posted|inr }}</td><td>{{ totals.invoice_amount|inr }}</td><td></td></tr></tfoot>
+    </table>
+  </div>
+  {% if entries.has_other_pages %}<nav class="pagination" aria-label="Register pages">
+    {% if entries.has_previous %}<a href="{% querystring page=entries.previous_page_number %}">Previous</a>{% endif %}
+    <span>Page {{ entries.number }} of {{ entries.paginator.num_pages }}</span>
+    {% if entries.has_next %}<a href="{% querystring page=entries.next_page_number %}">Next</a>{% endif %}
+  </nav>{% endif %}
+</section>
+{% elif entries is not None %}
+<p>No posted documents in this period.</p>
+{% endif %}
+{% endblock %}

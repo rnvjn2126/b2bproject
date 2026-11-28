@@ -75,6 +75,10 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
                                            registration.registered_address)):
         raise ValidationError("The company and trading party need registered names and addresses.")
 
+    product = line.quote_line.rfq_line.product
+    if product is not None and product.owner_id != workspace.owner_id:
+        raise ValidationError("Choose a catalogue product in your workspace.")
+
     tax = calculate_line(quantity=movement.quantity, unit_price=unit_price, discount=discount, freight=freight,
                          inclusive=inclusive, rate=rate, supplier_state=supplier_state,
                          place_of_supply=place_of_supply, local_component=local_component)
@@ -90,7 +94,8 @@ def prepare_draft(workspace, actor, *, movement_id, registration_id, party_gstin
             "tax_rate_date": rate_date.isoformat(),
             "supplier_invoice_date": supplier_invoice_date.isoformat() if has_supplier_actuals else None,
             "item": {"description": line.description, "grade": line.grade, "dimensions": line.dimensions,
-                     "unit": line.unit, "quantity": str(movement.quantity), "unit_price": str(unit_price)},
+                     "unit": line.unit, "quantity": str(movement.quantity), "unit_price": str(unit_price),
+                     "catalogue_id": product.pk if product else None, "catalogue_name": product.name if product else ""},
             "rate": {"hsn": rate.item_code, "effective_from": rate.effective_from.isoformat(),
                      "source": rate.source_url, "integrated": str(rate.integrated_rate), "central": str(rate.central_rate),
                      "local": str(rate.local_rate), "cess": str(rate.cess_rate)},

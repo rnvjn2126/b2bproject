@@ -1,0 +1,32 @@
+{% extends "accounting/base.html" %}
+{% load indian_finance %}
+{% block title %}Profitability and expenses · Steel Quotes{% endblock %}
+{% block books %}
+<section class="card">
+  <h1>Profitability and expenses</h1>
+  {% include "accounting/report_filter.html" with form=form only %}
+</section>
+{% if result %}
+<section class="card">
+  <h2>Customer profitability</h2>
+  {% include "accounting/profitability_table.html" with rows=result.customer label="Customer" only %}
+</section>
+<section class="card">
+  <h2>Product profitability</h2>
+  {% include "accounting/profitability_table.html" with rows=result.product label="Product" only %}
+  <p>Gross profit uses revenue with linked stock costs. Missing costs are flagged for review.</p>
+</section>
+<section class="card">
+  <h2>Posted expenses</h2>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Posted expenses">
+    <table class="table-wide">
+      <thead><tr><th scope="col">Expense account</th><th scope="col">Net expense</th></tr></thead>
+      <tbody>{% for row in result.expenses.rows %}
+        <tr><th scope="row">{{ row.code }} · {{ row.name }}</th><td>{{ row.amount|inr }}</td></tr>
+      {% empty %}<tr><td colspan="2">No posted expenses.</td></tr>{% endfor %}</tbody>
+      <tfoot><tr><th scope="row">Total expenses</th><td>{{ result.expenses.total|inr }}</td></tr></tfoot>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

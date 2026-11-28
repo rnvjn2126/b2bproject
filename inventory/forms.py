@@ -3,13 +3,14 @@ from uuid import uuid4
 
 from django import forms
 
-from accounting.models import AccountGroup, Ledger
+from accounting.models import AccountGroup, JournalLine, Ledger
 from dashboard.models import Product, Supplier
 from invoicing.models import InvoiceDraft, IssuedInvoice
 
 from .costing import CostMethod
 from .cutting import MAX_CUT_OUTPUTS
-from .models import ReservationAction, SteelSpecification, StockCutOutput, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
+from .landed_costs import eligible_expense_lines
+from .models import LandedCharge, PurchaseCost, ReservationAction, SteelSpecification, StockCutOutput, StockLot, StockMovement, StockPosition, StorageLocation, Warehouse
 from .reconciliation import stock_asset_ledgers
 from .reports import company_positions
 
@@ -220,3 +221,30 @@ class CutOutputForm(CompanyForm):
 
 
 CutOutputs = forms.formset_factory(CutOutputForm, extra=3, max_num=MAX_CUT_OUTPUTS, validate_max=True)
+
+
+class LandedChargeForm(CompanyForm):
+    kind = forms.ChoiceField(choices=LandedCharge.Kind.choices)
+    posted_on = forms.DateField(widget=DATE_WIDGET)
+    source_line_id = forms.ModelChoiceField(JournalLine.objects.none(), label="Posted expense debit")
+    purchase_ids = forms.ModelMultipleChoiceField(PurchaseCost.objects.none(), label="Capitalised receipts",
+                                                   widget=forms.CheckboxSelectMultiple)
+
+    def __init__(self, *args, workspace, **kwargs):
+        super().__init__(*args, workspace=workspace, **kwargs)
+        self.fields["source_line_id"].queryset = eligible_expense_lines(workspace).filter(landed_charge__isnull=True)
+        self.fields["source_line_id"].label_from_instance = lambda line: (
+            f"{line.journal.date} · {line.journal.reference} · {line.ledger.name} · INR {line.amount}"
+        )
+        self.fields["purchase_ids"].queryset = PurchaseCost.objects.filter(
+            invoice__workspace=workspace, invoice__returns__isnull=True, invoice__cancellation__isnull=True,
+        ).select_related("invoice").order_by("-invoice__posting_on", "-pk")
+        self.fields["purchase_ids"].label_from_instance = lambda cost: str(cost.invoice)
+
+    def arguments(self):
+        return {
+            "source_line_id": self.cleaned_data["source_line_id"].pk,
+            "purchase_ids": [purchase.pk for purchase in self.cleaned_data["purchase_ids"]],
+            "kind": self.cleaned_data["kind"],
+            "posted_on": self.cleaned_data["posted_on"],
+        }

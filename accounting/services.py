@@ -38,7 +38,7 @@ CASH_LEDGER_CODES = ("1000", "1010")
 TRADE_VOUCHER_KINDS = (Journal.Kind.SALES, Journal.Kind.PURCHASE, Journal.Kind.DEBIT_NOTE, Journal.Kind.CREDIT_NOTE)
 INVOICE_JOURNAL_KINDS = (Journal.Kind.SALES_INVOICE, Journal.Kind.PURCHASE_INVOICE,
                          Journal.Kind.SALES_RETURN, Journal.Kind.PURCHASE_RETURN)
-STOCK_JOURNAL_KINDS = (Journal.Kind.STOCK_ACQUISITION, Journal.Kind.STOCK_COST, Journal.Kind.STOCK_RETURN)
+STOCK_JOURNAL_KINDS = (Journal.Kind.STOCK_ACQUISITION, Journal.Kind.STOCK_LANDED, Journal.Kind.STOCK_COST, Journal.Kind.STOCK_RETURN)
 REVIEW_VOUCHER_KINDS = (Journal.Kind.GENERAL,) + CASH_VOUCHER_KINDS + TRADE_VOUCHER_KINDS
 
 
@@ -109,6 +109,8 @@ def post_journal(workspace, actor, *, date, kind, reference, narration, submissi
             raise ValidationError("Invoice journals require the invoice correction workflow.")
         if reverses.kind in STOCK_JOURNAL_KINDS and not stock_allowed:
             raise ValidationError("Stock journals require the inventory correction workflow.")
+        if JournalLine.objects.filter(journal=reverses, landed_charge__isnull=False).exists():
+            raise ValidationError("An allocated landed charge requires an inventory correction.")
         if date < reverses.date:
             raise ValidationError("A reversal cannot be dated before the original journal.")
         kind = Journal.Kind.REVERSAL

@@ -5,6 +5,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.core.validators import DecimalValidator
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from accounting.services import lock_books
@@ -111,9 +112,11 @@ def record_stock_movement(workspace, actor, *, lot_id, kind, source_id=None, des
     check_lot_chronology(lot, posted_on)
     if StockMovement.objects.filter(
         workspace=workspace, lot__product_id=lot.product_id, lot__unit=lot.unit,
-        posted_on__gt=posted_on, valuation__isnull=False,
+    ).filter(
+        Q(posted_on__gt=posted_on, valuation__isnull=False)
+        | Q(valuation__landed_allocations__charge__journal__date__gt=posted_on),
     ).exists():
-        raise ValidationError("This date precedes an existing valuation for this product and unit.")
+        raise ValidationError("This date precedes an existing valuation or landed charge for this product and unit.")
     if order_movement_id is not None:
         _check_order_movement(workspace, lot, kind, order_movement_id, posted_on, quantity)
 

@@ -86,6 +86,12 @@ def value_stock_movement(workspace, actor, *, movement_id, material=None, freigh
         raise ValidationError("The valuation would change a previously valued movement.")
     closing_quantity = last.closing_quantity if last else Decimal(0)
     closing_amount = last.closing_amount if last else ZERO
+    if last:
+        charges = last.landed_allocations.values_list("charge__journal__date", "amount")
+        for charge_date, charge_amount in charges:
+            if charge_date > movement.posted_on:
+                raise ValidationError("This movement precedes a recorded landed charge for the cost pool.")
+            closing_amount += charge_amount
     amount = ZERO
     if is_receipt:
         amount = sum(cost_components, ZERO)

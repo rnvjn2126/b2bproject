@@ -436,3 +436,33 @@ class StockCutOutput(models.Model):
             models.CheckConstraint(condition=Q(kind__in=["finished", "remnant", "scrap"]),
                                    name="inventory_valid_cut_output_kind"),
         ]
+
+
+class LandedCharge(models.Model):
+    class Kind(models.TextChoices):
+        FREIGHT = "freight", "Freight"
+        PACKAGING = "packaging", "Packaging"
+
+    workspace = models.ForeignKey("dashboard.BusinessAccount", on_delete=models.PROTECT)
+    source_line = models.OneToOneField("accounting.JournalLine", related_name="landed_charge", on_delete=models.PROTECT)
+    journal = models.OneToOneField("accounting.Journal", on_delete=models.PROTECT)
+    kind = models.CharField(max_length=9, choices=Kind.choices)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(kind__in=["freight", "packaging"]),
+                                              name="inventory_valid_landed_kind")]
+
+
+class LandedChargeAllocation(models.Model):
+    charge = models.ForeignKey(LandedCharge, related_name="allocations", on_delete=models.PROTECT)
+    purchase = models.ForeignKey(PurchaseCost, on_delete=models.PROTECT)
+    anchor = models.ForeignKey(ValuationEvent, related_name="landed_allocations", on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["charge", "purchase"], name="inventory_unique_landed_purchase"),
+            models.CheckConstraint(condition=Q(amount__gte=0), name="inventory_valid_landed_amount"),
+        ]

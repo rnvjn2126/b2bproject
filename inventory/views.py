@@ -15,7 +15,8 @@ from accounting.views import owner_only
 from . import forms
 from .counts import record_physical_count
 from .cutting import CutOutput, record_stock_cut
-from .models import LotCertificate, SteelSpecification, StockCount, StockCut, StockCutOutput, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
+from .landed_costs import allocate_purchase_charge
+from .models import LandedCharge, LotCertificate, SteelSpecification, StockCount, StockCut, StockCutOutput, StockLot, StockMovement, StockReservation, ValuationPolicy, Warehouse
 from .purchase_costs import capitalise_purchase_cost
 from .reconciliation import reconcile_stock_to_ledger
 from .reports import reorder_status, set_reorder_policy, stock_ageing
@@ -41,6 +42,7 @@ ACTIONS = {
     "reorder": ("Save reorder threshold", forms.ReorderForm, set_reorder_policy),
 }
 STOCK_COST_ACTIONS = {
+    "landed-charge": ("Allocate freight or packaging", forms.LandedChargeForm, allocate_purchase_charge),
     "purchase-cost": ("Capitalise a purchase", forms.InvoiceStockCostForm, capitalise_purchase_cost),
     "sale-cost": ("Post the cost of a sale", forms.SaleStockCostForm, post_sale_cost),
 }
@@ -214,6 +216,9 @@ def valuation_review(request, workspace):
     return render(request, "inventory/valuation_review.html", {
         "form": form, "result": result, "policy": ValuationPolicy.objects.filter(workspace=workspace).first(),
         "stock_cost_actions": STOCK_COST_ACTIONS if settings.INTERNAL_STOCK_ACCOUNTING else {},
+        "landed_charges": LandedCharge.objects.filter(workspace=workspace).select_related(
+            "source_line__journal", "journal",
+        ).order_by("-journal__date", "-pk")[:20] if settings.INTERNAL_STOCK_ACCOUNTING else (),
     })
 
 

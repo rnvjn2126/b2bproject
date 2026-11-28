@@ -9,7 +9,7 @@ from django.utils import timezone
 from accounting.models import AccountGroup, JournalLine, Ledger
 from dashboard.models import BusinessAccount
 
-from .models import StockMovement
+from .models import LandedChargeAllocation, StockMovement
 
 
 @dataclass
@@ -69,11 +69,12 @@ def reconcile_stock_to_ledger(workspace, actor, *, ledger_id, as_of):
     movements = StockMovement.objects.filter(
         workspace=workspace, lot__workspace=workspace, lot__product__owner_id=workspace.owner_id, posted_on__lte=as_of,
     ).order_by("posted_on", "pk").values_list(
-        "lot__product_id", "lot__product__name", "lot__unit", "kind", "quantity",
+        "pk", "lot__product_id", "lot__product__name", "lot__unit", "kind", "quantity",
         "valuation__closing_quantity", "valuation__closing_amount",
     )
     pools = {}
-    for product_id, product, unit, kind, quantity, valued_quantity, amount in movements.iterator():
+    latest = {}
+    for movement_id, product_id, product, unit, kind, quantity, valued_quantity, amount in movements.iterator():
         key = product_id, unit
         if key not in pools:
             pools[key] = ReconciliationPool(product, unit)
@@ -86,6 +87,15 @@ def reconcile_stock_to_ledger(workspace, actor, *, ledger_id, as_of):
             pool.unvalued_movements += 1
         else:
             pool.valued_quantity, pool.inventory_value = valued_quantity, amount
+            latest[key] = movement_id
+
+    pool_by_anchor = {movement_id: pools[key] for key, movement_id in latest.items()}
+    allocations = LandedChargeAllocation.objects.filter(
+        anchor__movement_id__in=pool_by_anchor, charge__workspace=workspace, charge__journal__date__lte=as_of,
+        charge__journal__sealed=True,
+    ).values_list("anchor__movement_id", "amount")
+    for anchor_id, amount in allocations.iterator():
+        pool_by_anchor[anchor_id].inventory_value += amount
 
     lines = JournalLine.objects.filter(
         ledger=ledger, journal__workspace=workspace, journal__sealed=True, journal__date__lte=as_of,

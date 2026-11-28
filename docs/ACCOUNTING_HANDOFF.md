@@ -2,6 +2,16 @@
 
 Current branch: `ai/accounting-overnight`.
 
+## Checkpoint 08 complete · Inventory valuation and procurement pilot
+
+- A cut records one stock issue and each finished, remnant or scrap receipt atomically. It carries grade, heat, batch, mill and manufacturer identity to distinct output lots. Measured weight is conserved and its allocation preserves every paisa of the input cost.
+- Owners can allocate a separate, sealed freight or packaging expense debit to active, fully unconsumed purchases. The service reclassifies the cost to stock without editing the original purchase or cost snapshot. It holds transactions for review if a receipt was consumed, a weighted-average pool already issued stock, or a purchase return would require a variance. Historical stock-to-ledger reports retain their original as-of values.
+- Confirmed scrap disposal reduces the weighed quantity, charges a reviewed expense ledger and credits the inventory asset through a sealed journal. Replays cannot create a second movement or journal. The operation requires an established recoverable-scrap lot and a supported inventory balance.
+- Implementation commits `e865d6d712a6a38c328a47b23481739a5d99ca17`, `496374351c5f8da5c56feb09d2018aecead355f3` and `a0c2b5215b4415eca06996df79245f0ba4412b1a`. Changed inventory and accounting models, services, owner screens, tests, browser form controls and templates. New accounting and inventory migrations through 0012.
+- Targeted packages passed 134 tests. Django, JavaScript syntax and migration drift checks passed. Both full suites passed 261 tests (89.726 s normal, 89.041 s reverse). A populated SQLite upgrade from accounting 0008 and inventory 0007 preserved sealed invoices and the five-unit receipt. Purchase and sales costs reconciled two remaining units at INR 150.00. Edge at 390 px verified freight allocation, reconciliation, supplier history and adding a cut output.
+- Keep monetary stock postings default-off pending production review. Before release, check PostgreSQL guards, invoice adjustments without physical returns, charge corrections and costs from already consumed receipts. Procurement recommendations help choose a split. Staff confirm actual supplier offers and place orders through the approved order workflow.
+- Begin Checkpoint 09. Inspect the existing ledger-based financial statements and add the missing reports, preserving date filters and sealed-journal scope.
+
 ## Checkpoint 08E–08F · Sealed costs of sale and purchase acquisitions
 
 - An issued sales invoice can post cost only from the exact valued stock issue linked to its approved dispatch. The owner selects the inventory asset and cost-of-sales expense ledgers. The service validates the sealed invoice, checks the period and prior asset balance, and prevents duplicate posting. Zero cost is recorded without an empty journal.

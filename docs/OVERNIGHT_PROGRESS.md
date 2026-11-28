@@ -2,12 +2,12 @@
 
 - **Branch:** `ai/accounting-overnight`
 - **Baseline:** `c9659aa490d51902cb214925cfdf973d4f5f0bb8`
-- **Latest implementation commit:** `a0eaaf5be985f5485ff2febb1618ca4aca6ed8d5`.
-- **Active checkpoint:** 08, Inventory valuation and procurement. Partial.
-- **Last verified task:** Gated sales and purchase inventory journals and atomic matched invoice corrections.
-- **Changed files and migrations:** Accounting, invoicing and inventory services, models, owner forms, views and templates. Added accounting migrations 0009–0010 and inventory migrations 0008–0009.
-- **Latest tests:** 120 targeted tests, Django and migration drift checks passed. Both latest full runs passed 242 before the stock journal work. New screens still need browser verification.
-- **Exact next task:** Implement and verify measured cutting, traced remnants and scrap, then late freight and packaging. Financial pilot remains default off. Review cost variances and verify PostgreSQL before release.
+- **Latest implementation commit:** `a0c2b5215b4415eca06996df79245f0ba4412b1a`.
+- **Active checkpoint:** 09, Financial reporting. Ready to begin after verified Checkpoint 08.
+- **Last verified task:** Cutting and scrap disposal, sealed sales and acquisitions, matched returns, late-cost allocation and owner ledger review.
+- **Changed files and migrations:** Accounting, invoicing and inventory services, models, owner forms, views and templates. Added accounting migrations 0009–0012 and inventory migrations 0008–0012.
+- **Latest tests:** 134 targeted tests passed. Django, migration drift and JavaScript syntax checks passed. Both full suites passed 261 tests. Edge at 390 px and populated SQLite accounting/inventory upgrades passed.
+- **Exact next task:** Read Checkpoint 09 and inspect existing posted financial reports. Financial pilot remains default off. Review cost variances, additional correction cases and PostgreSQL before release.
 
 ## Resume on Windows
 
@@ -19,7 +19,7 @@ git status --short --branch
 git log -5 --oneline
 Get-Content AGENTS.md
 Get-Content docs/ACCOUNTING_HANDOFF.md -TotalCount 20
-Get-Content docs/checkpoints/08-inventory-valuation.md
+Get-Content docs/checkpoints/09-financial-reports.md
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py check
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py makemigrations --check --dry-run
 & '..\..\b2bproject\.venv\Scripts\python.exe' manage.py test --noinput

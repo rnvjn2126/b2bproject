@@ -14,8 +14,8 @@ The [numbered specifications](checkpoints/) define each checkpoint's scope. A ch
 | 05 | Receivables, payables and payments | Partial. Due dates, ageing, immutable payments and allocation/release passed both 175-test suites. Credit settings and reviewed MSE dates passed both 178-test suites. Private statements and reminder drafts passed both 181-test suites. Settlement operation forms passed both 184-test suites. Complete for the internal pilot. Release gates remain. |
 | 06 | Banking and reconciliation | Complete for the gated local pilot. Both 202-test suites and Chrome checks passed. |
 | 07 | Steel-specific inventory | Complete for the gated local pilot. Both final runs passed 223 tests. Chrome, a populated SQLite migration upgrade and two-thread stock probes passed. Work paused by request. |
-| 08 | Inventory valuation and procurement | Partial. Valuation, supplier rate board, split recommendations and stock-to-ledger review passed 40 inventory tests. Both full regression runs passed 242 tests. Sealed COGS, purchase capitalisation and matched returns passed 120 targeted tests. Late costs, cutting, remnants and scrap remain open. |
-| 09 | Financial reporting | Assigned. Existing core statements; additional reports depend on posted data from earlier checkpoints |
+| 08 | Inventory valuation and procurement | Complete for the gated local pilot. Valuation, cost journals, procurement, late charges, cutting and scrap verified. Both full runs passed 261 tests. PostgreSQL and production accounting approval remain release gates. |
+| 09 | Financial reporting | Active. Extend existing sealed-ledger statements with the remaining reports, comparisons and authorised exports. |
 | 10 | Tally migration and interoperability | Assigned. Depends on stable accounting, voucher and stock import targets |
 | 11 | Customer acquisition | Assigned. Reuses quote constraints, catalogue and company branding |
 | 12 | Advanced accounting and taxation | Assigned. Depends on reconciled invoices, ledgers and official sources |
